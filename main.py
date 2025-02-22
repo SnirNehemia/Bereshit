@@ -9,7 +9,7 @@ from environment import Environment
 
 
 def initialize_creatures(num_creatures, simulation_space, input_size, output_size,
-                         left_eye_params, right_eye_params, env: Environment):
+                         eyes_params, env: Environment):
     """
     Initializes creatures ensuring they are not placed in a forbidden (black) area.
     """
@@ -36,7 +36,7 @@ def initialize_creatures(num_creatures, simulation_space, input_size, output_siz
         thirst = np.random.rand() * 10
         color = np.random.rand(3)  # Random RGB color.
         creature = Creature(pos, max_size, max_speed,
-                            left_eye_params, right_eye_params,
+                            eyes_params,
                             vision_limit, brain, speed, hunger, thirst, color)
         creatures.append(creature)
     return creatures
@@ -47,24 +47,25 @@ if __name__ == "__main__":
 
     num_creatures = 200
     simulation_space = 1000
-    input_size = 10
-    output_size = 2
+
     # Define eye parameters: (angle_offset in radians, aperture in radians)
-    left_eye_params = (np.radians(30), np.radians(60))
-    right_eye_params = (np.radians(-30), np.radians(60))
+    eyes_params = [(np.radians(30), np.radians(60)),(np.radians(-30), np.radians(60))]
 
     # Create the environment. Ensure that 'map.png' exists and follows the color conventions.
-    env = Environment("Penvs\\Env1.png", grass_generation_rate=5, leaves_generation_rate=3)
-
+    env = Environment("Penvs\\Env1.png", grass_generation_rate=3, leaves_generation_rate=1)
+    # parameters of network
+    input_size = 2 + 2 + 3 * len(
+        eyes_params) * 4  # 2 for position, 2 for speed, 3 (flag, distance, angle) for each eye * 4 channels
+    output_size = 2
     # Initialize creatures (ensuring they are not in forbidden areas).
     creatures = initialize_creatures(num_creatures, simulation_space, input_size, output_size,
-                                     left_eye_params, right_eye_params, env)
+                                     eyes_params, env)
 
     sim = Simulation(creatures, env)
 
     noise_std = 0.5
     dt = 1.0
-    frames = 300
+    frames = 75
 
     sim.run_and_visualize(dt, noise_std, frames, save_filename="simulation.mp4")
 

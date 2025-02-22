@@ -9,17 +9,16 @@ class StaticTraits:
     """
 
     def __init__(self, position: np.ndarray, max_size: float, max_speed: float,
-                 left_eye_params: tuple, right_eye_params: tuple,
+                 eyes_params: list,
                  vision_limit: float, brain: Brain):
         """
-        left_eye_params and right_eye_params are tuples: (angle_offset, aperture)
+        eyes_params is a list of tuples: (angle_offset, aperture)
         where angle_offset (in radians) is relative to the creature's heading.
         """
         self.position = position
         self.max_size = max_size
         self.max_speed = max_speed
-        self.left_eye_params = left_eye_params
-        self.right_eye_params = right_eye_params
+        self.eyes_params = eyes_params
         self.vision_limit = vision_limit
         self.brain = brain
 

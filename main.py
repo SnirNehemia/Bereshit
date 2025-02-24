@@ -9,7 +9,7 @@ from environment import Environment
 
 
 def initialize_creatures(num_creatures, simulation_space, input_size, output_size,
-                         left_eye_params, right_eye_params, env: Environment):
+                         env: Environment):
     """
     Initializes creatures ensuring they are not placed in a forbidden (black) area.
     """
@@ -17,9 +17,9 @@ def initialize_creatures(num_creatures, simulation_space, input_size, output_siz
     for _ in range(num_creatures):
         valid_position = False
         while not valid_position:
-            pos = np.random.rand(2) * simulation_space
+            position = np.random.rand(2) * simulation_space
             # Convert (x, y) to indices (col, row)
-            col, row = int(pos[0]), int(pos[1])
+            col, row = int(position[0]), int(position[1])
             height, width = env.map_data.shape[:2]
             # Check bounds and obstacle mask.
             if col < 0 or col >= width or row < 0 or row >= height:
@@ -27,17 +27,41 @@ def initialize_creatures(num_creatures, simulation_space, input_size, output_siz
             if env.obstacle_mask[row, col]:
                 continue
             valid_position = True
-        speed = (np.random.rand(2) - 0.5) * 5
-        max_size = 10.0
+
+        # static traits
+        max_age = 50
+        max_weight = 10.0
+        max_height = 5.0
         max_speed = 5.0
+        color = np.random.rand(3)  # Random RGB color.
+
+        energy_efficiency = 5
+        speed_efficiency = 0.3
+        food_efficiency = 0.2
+        reproduction_energy = 20
+
+        left_eye_params = (np.radians(30), np.radians(60))  # (angle_offset in radians, aperture in radians)
+        right_eye_params = (np.radians(-30), np.radians(60))  # (angle_offset in radians, aperture in radians)
         vision_limit = 100.0
         brain = Brain(input_size, output_size)
+
+        # dynamic traits
+        weight = np.random.rand() * max_weight
+        height = np.random.rand() * max_height
+        speed = (np.random.rand(2) - 0.5) * max_speed
+        energy = np.random.rand() * 1000
         hunger = np.random.rand() * 10
         thirst = np.random.rand() * 10
-        color = np.random.rand(3)  # Random RGB color.
-        creature = Creature(pos, max_size, max_speed,
-                            left_eye_params, right_eye_params,
-                            vision_limit, brain, speed, hunger, thirst, color)
+
+        # init creature
+        creature = Creature(max_age=max_age, max_weight=max_weight, max_height=max_height, max_speed=max_speed, color=color,
+                            energy_efficiency=energy_efficiency, speed_efficiency=speed_efficiency,
+                            food_efficiency=food_efficiency, reproduction_energy=reproduction_energy,
+                            left_eye_params=left_eye_params, right_eye_params=right_eye_params,
+                            vision_limit=vision_limit, brain=brain,
+                            weight=weight, height=height,
+                            position=position, speed=speed, energy=energy, hunger=hunger, thirst=thirst)
+
         creatures.append(creature)
     return creatures
 
@@ -49,22 +73,22 @@ if __name__ == "__main__":
     simulation_space = 1000
     input_size = 10
     output_size = 2
-    # Define eye parameters: (angle_offset in radians, aperture in radians)
-    left_eye_params = (np.radians(30), np.radians(60))
-    right_eye_params = (np.radians(-30), np.radians(60))
+
+    grass_generation_rate = 1  # 5
+    leaves_generation_rate = 2  # 3
 
     # Create the environment. Ensure that 'map.png' exists and follows the color conventions.
-    env = Environment("Penvs\\Env1.png", grass_generation_rate=5, leaves_generation_rate=3)
+    env = Environment("Penvs\\Env1.png",
+                      grass_generation_rate=grass_generation_rate, leaves_generation_rate=leaves_generation_rate)
 
     # Initialize creatures (ensuring they are not in forbidden areas).
-    creatures = initialize_creatures(num_creatures, simulation_space, input_size, output_size,
-                                     left_eye_params, right_eye_params, env)
+    creatures = initialize_creatures(num_creatures, simulation_space, input_size, output_size, env)
 
     sim = Simulation(creatures, env)
 
     noise_std = 0.5
     dt = 1.0
-    frames = 300
+    frames = 100
 
     sim.run_and_visualize(dt, noise_std, frames, save_filename="simulation.mp4")
 

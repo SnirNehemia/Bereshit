@@ -23,8 +23,8 @@ class StaticTraits:
         self.color = color      # Creature's color as an RGB vector.
 
         self.energy_efficiency = energy_efficiency
-        self.speed_efficiency = speed_efficiency  # number between 0 to 1
-        self.food_efficiency = food_efficiency  # number between 0 to 1
+        self.speed_efficiency = speed_efficiency  # number between 0 and 1
+        self.food_efficiency = food_efficiency  # number between 0 and 1
         self.reproduction_energy = reproduction_energy
 
         self.eyes_params = eyes_params

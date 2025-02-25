@@ -32,13 +32,13 @@ def initialize_creatures(num_creatures, simulation_space, input_size, output_siz
         max_age = 50
         max_weight = 10.0
         max_height = 5.0
-        max_speed = 5.0
+        max_speed = [5.0, 5.0]
         color = np.random.rand(3)  # Random RGB color.
 
-        energy_efficiency = 5
-        speed_efficiency = 0.3
-        food_efficiency = 0.2
-        reproduction_energy = 20
+        energy_efficiency = 1
+        speed_efficiency = 0.1
+        food_efficiency = 1
+        reproduction_energy = 80
 
         vision_limit = 100.0
         brain = Brain([input_size, output_size])
@@ -52,7 +52,8 @@ def initialize_creatures(num_creatures, simulation_space, input_size, output_siz
         thirst = np.random.rand() * 10
 
         # init creature
-        creature = Creature(max_age=max_age, max_weight=max_weight, max_height=max_height, max_speed=max_speed, color=color,
+        creature = Creature(max_age=max_age, max_weight=max_weight, max_height=max_height, max_speed=max_speed,
+                            color=color,
                             energy_efficiency=energy_efficiency, speed_efficiency=speed_efficiency,
                             food_efficiency=food_efficiency, reproduction_energy=reproduction_energy,
                             eyes_params=eyes_params, vision_limit=vision_limit, brain=brain,
@@ -66,34 +67,25 @@ def initialize_creatures(num_creatures, simulation_space, input_size, output_siz
 if __name__ == "__main__":
     start_time = time.time()
 
-    noise_std = 0.5
-    dt = 1.0
-    frames = 150
-    num_creatures = 100
-    simulation_space = 1000
-
-    grass_generation_rate = 1  # 5
-    leaves_generation_rate = 2  # 3
-
-    # Define eye parameters: (angle_offset in radians, aperture in radians)
-    # eyes_params = [(np.radians(30), np.radians(45)),(np.radians(-30), np.radians(45))]
-    eyes_params = [(np.radians(0), np.radians(60))]
-
-    # parameters of network
-    input_size = 2 + 2 + 3 * len(eyes_params) * 4
-    # 2 for position, 2 for speed, 3 (flag, distance, angle) for each eye * 4 channels
-    output_size = 2
-
     # Create the environment. Ensure that 'map.png' exists and follows the color conventions.
-    env = Environment("Penvs\\Env1.png",
-                      grass_generation_rate=grass_generation_rate, leaves_generation_rate=leaves_generation_rate)
+    env = Environment(map_filename=config.ENV_PATH,
+                      grass_generation_rate=config.GRASS_GENERATION_RATE,
+                      leaves_generation_rate=config.LEAVES_GENERATION_RATE)
 
     # Initialize creatures (ensuring they are not in forbidden areas).
-    creatures = initialize_creatures(num_creatures, simulation_space, input_size, output_size, eyes_params, env)
+    creatures = initialize_creatures(num_creatures=config.NUM_CREATURES,
+                                     simulation_space=config.SIMULATION_SPACE,
+                                     input_size=config.INPUT_SIZE,
+                                     output_size=config.OUTPUT_SIZE,
+                                     eyes_params=config.EYES_PARAMS,
+                                     env=env)
 
     sim = Simulation(creatures, env)
 
-    sim.run_and_visualize(dt, noise_std, frames, save_filename="simulation.mp4")
+    sim.run_and_visualize(dt=config.DT,
+                          noise_std=config.NOISE_STD,
+                          frames=config.NUM_FRAMES,
+                          save_filename=config.SAVE_FILENAME)
 
     total_time = time.time() - start_time
     print("Simulation animation saved as simulation.mp4")

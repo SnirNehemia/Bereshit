@@ -7,6 +7,11 @@ from environment import Environment
 from tqdm import tqdm
 
 
+FOOD_DISTANCE_THRESHOLD = 5
+LEAF_HEIGHT = 10
+GRASS_ENERGY = 2
+LEAF_ENREGY = 5
+
 
 def prepare_eye_input(detection_result, vision_limit):
     """
@@ -82,20 +87,21 @@ class Simulation:
     Implements multi-channel perception by using separate KDTree queries for each target type.
     """
 
-    def __init__(self, creatures, environment: Environment):
+    def __init__(self, creatures: list[Creature], environment: Environment):
         self.creatures = creatures
         self.env = environment
         # Build a KDTree for creature positions.
         self.creatures_kd_tree = self.build_creatures_kd_tree()
-        # self.update_count = 0 # for quicker simulation, update kd_trees and vegetations each update_freq-th step
-        # self.update_freq = 10
 
     def build_creatures_kd_tree(self) -> KDTree:
         """
         Builds a KDTree from the positions of all creatures.
         """
         positions = [creature.position for creature in self.creatures]
-        return KDTree(positions)
+        if positions:
+            return KDTree(positions)
+        else:
+            return KDTree([[0, 0]])
 
     def update_creatures_kd_tree(self):
         self.creatures_kd_tree = self.build_creatures_kd_tree()
@@ -159,7 +165,7 @@ class Simulation:
             ])
             decision = creature.think(brain_input)
             delta_angle, delta_speed = decision
-            delta_angle = np.clip(delta_angle, -0.1,0.1)
+            delta_angle = np.clip(delta_angle, -0.1, 0.1)
             delta_speed = np.clip(delta_speed, -1, 1)
 
             current_speed = creature.speed
@@ -191,14 +197,62 @@ class Simulation:
                 if self.env.obstacle_mask[row, col]:
                     creature.speed = np.array([0.0, 0.0])
 
-        # Move creatures.
         for creature in self.creatures:
-            creature.position += creature.speed * dt
-        # if self.update_count % self.update_freq == 0:
+            # death from age
+            if creature.age >= creature.max_age:
+                self.creatures.remove(creature)
+                continue
+            else:
+                creature.age += 1
+
+            # check energy
+            energy_consumption = 0
+            energy_consumption += creature.energy_efficiency  # idle energy
+            energy_consumption += creature.speed_efficiency * np.linalg.norm(creature.speed)  # movement energy
+
+            # update or kill creature
+            if creature.energy > energy_consumption:
+                # update creature energy and position
+                creature.energy -= energy_consumption
+                creature.position += creature.speed * dt
+
+                # check for food
+                is_found_food = self.eat_food(creature=creature, food_type='grass')
+                if not is_found_food and creature.height >= LEAF_HEIGHT:
+                    _ = self.eat_food(creature=creature, food_type='leaf')
+
+            else:
+                # death from energy
+                self.creatures.remove(creature)
+
         self.update_creatures_kd_tree()
         # Update environment vegetation.
         self.env.update()
-        # self.update_count += 1
+
+    def eat_food(self, creature: Creature, food_type: str):
+        is_found_food = False
+
+        if food_type == 'grass':
+            food_points = self.env.grass_points
+            food_energy = GRASS_ENERGY
+        elif food_type == 'leaf':
+            food_points = self.env.leaf_points
+            food_energy = LEAF_ENREGY
+
+        if food_points:
+            food_distances = [np.linalg.norm(food_point - creature.position)
+                              for food_point in food_points]
+
+            if np.min(food_distances) <= FOOD_DISTANCE_THRESHOLD:
+                # update creature energy
+                creature.energy += creature.food_efficiency * food_energy
+
+                # remove food from board
+                closest_food_point = self.env.grass_points[np.argmin(food_distances)]
+                self.env.grass_points.remove(closest_food_point)
+                is_found_food = True
+
+        return is_found_food
 
     def run_and_visualize(self, dt: float, noise_std: float,
                           frames: int, save_filename: str = "simulation.mp4"):
@@ -213,6 +267,7 @@ class Simulation:
         import matplotlib.pyplot as plt
         import matplotlib.animation as animation
         from matplotlib.patches import Circle
+        global quiv, scat, grass_scat, leaves_scat
 
         # Initialize the progress bar outside of the update function
         progress_bar = tqdm(total=frames, desc="Simulation progress")
@@ -223,7 +278,7 @@ class Simulation:
         ax.set_title("Evolution Simulation")
 
         # Display the environment map with origin='lower' to avoid vertical mirroring.
-        ax.imshow(self.env.map_data, extent=extent, alpha=0.3, origin='lower')#, aspect='auto')
+        ax.imshow(self.env.map_data, extent=extent, alpha=0.3, origin='lower')  # , aspect='auto')
 
         # Draw the water source.
         water_x, water_y, water_r = self.env.water_source
@@ -253,24 +308,54 @@ class Simulation:
 
         def update(frame):
             self.step(dt, noise_std)
+
+            # clear quiver and scatter
+            global quiv, scat, grass_scat, leaves_scat
+            if 'quiv' in globals():
+                quiv.remove()
+            if 'scat' in globals():
+                scat.remove()
+            if 'grass_scat' in globals():
+                grass_scat.remove()
+            if 'leaves_scat' in globals():
+                leaves_scat.remove()
+
             # Update creature positions.
             positions = np.array([creature.position for creature in self.creatures])
-            scat.set_offsets(positions)
-            U, V = [], []
-            for creature in self.creatures:
-                if np.linalg.norm(creature.speed) > 0:
-                    U.append(creature.speed[0])
-                    V.append(creature.speed[1])
-                else:
-                    U.append(0)
-                    V.append(0)
-            quiv.set_offsets(positions)
-            quiv.set_UVC(U, V)
+            colors = [creature.color for creature in self.creatures]
+            if len(positions) > 0:
+                scat = ax.scatter(positions[:, 0], positions[:, 1], c=colors, s=20)
+            # scat.set_offsets(positions)
+
+                U, V = [], []
+                for creature in self.creatures:
+                    if np.linalg.norm(creature.speed) > 0:
+                        U.append(creature.speed[0])
+                        V.append(creature.speed[1])
+                    else:
+                        U.append(0)
+                        V.append(0)
+
+                quiv = ax.quiver(positions[:, 0], positions[:, 1], U, V,
+                                 color='black', scale=150, width=0.005)
+                # quiv.set_offsets(positions)
+                # quiv.set_UVC(U, V)
+            else:
+                print('all creatures are dead :(')
+                scat = ax.scatter([1], [1])
+                quiv = ax.quiver([1], [1], [1], [1])
+
             # Update vegetation scatter data.
             if len(self.env.grass_points) > 0:
-                grass_scat.set_offsets(np.array(self.env.grass_points))
+                grass_points = np.array(self.env.grass_points)
+                grass_scat = ax.scatter(grass_points[:, 0], grass_points[:, 1], c='lightgreen', edgecolors='black', s=20)
+                # grass_scat.set_offsets(np.array(self.env.grass_points))
             if len(self.env.leaf_points) > 0:
-                leaves_scat.set_offsets(np.array(self.env.leaf_points))
+                leaf_points = np.array(self.env.leaf_points)
+                leaves_scat = ax.scatter(leaf_points[:, 0], leaf_points[:, 1], c='darkgreen', edgecolors='black', s=20)
+                # leaves_scat.set_offsets(np.array(self.env.leaf_points))
+            if frame % 10 == 0:
+                print(f"Frame {frame} / {frames}")
             # Update the progress bar
             progress_bar.update(1)
             return scat, quiv, grass_scat, leaves_scat

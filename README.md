@@ -5,7 +5,11 @@
 
 ## running main 
 
-- here will be instructions for running main
+- install ffmpeg and put it in project folder
+- create venv:
+  - py -3.11 -m venv /.venv
+  - .venv\Scripts\activate
+  - pip3 install -r requirements.txt
 
 ### The environment it uses is a PNG file with the following format:
 - black areas are forbidden areas

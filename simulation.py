@@ -4,6 +4,8 @@ from scipy.spatial import KDTree
 from static_traits import StaticTraits
 from creature import Creature
 from environment import Environment
+from tqdm import tqdm
+
 
 
 def prepare_eye_input(detection_result, vision_limit):
@@ -85,6 +87,8 @@ class Simulation:
         self.env = environment
         # Build a KDTree for creature positions.
         self.creatures_kd_tree = self.build_creatures_kd_tree()
+        # self.update_count = 0 # for quicker simulation, update kd_trees and vegetations each update_freq-th step
+        # self.update_freq = 10
 
     def build_creatures_kd_tree(self) -> KDTree:
         """
@@ -190,10 +194,11 @@ class Simulation:
         # Move creatures.
         for creature in self.creatures:
             creature.position += creature.speed * dt
-
+        # if self.update_count % self.update_freq == 0:
         self.update_creatures_kd_tree()
         # Update environment vegetation.
         self.env.update()
+        # self.update_count += 1
 
     def run_and_visualize(self, dt: float, noise_std: float,
                           frames: int, save_filename: str = "simulation.mp4"):
@@ -209,6 +214,8 @@ class Simulation:
         import matplotlib.animation as animation
         from matplotlib.patches import Circle
 
+        # Initialize the progress bar outside of the update function
+        progress_bar = tqdm(total=frames, desc="Simulation progress")
         fig, ax = plt.subplots(figsize=(8, 8))
         extent = self.env.get_extent()
         ax.set_xlim(extent[0], extent[1])
@@ -264,8 +271,8 @@ class Simulation:
                 grass_scat.set_offsets(np.array(self.env.grass_points))
             if len(self.env.leaf_points) > 0:
                 leaves_scat.set_offsets(np.array(self.env.leaf_points))
-            if frame % 10 == 0:
-                print(f"Frame {frame} / {frames}")
+            # Update the progress bar
+            progress_bar.update(1)
             return scat, quiv, grass_scat, leaves_scat
 
         ani = animation.FuncAnimation(fig, update, frames=frames, interval=50, blit=True)

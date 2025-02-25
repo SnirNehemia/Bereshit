@@ -31,7 +31,7 @@ def initialize_creatures(num_creatures, simulation_space, input_size, output_siz
         max_size = 10.0
         max_speed = 5.0
         vision_limit = 100.0
-        brain = Brain(input_size, output_size)
+        brain = Brain([input_size, output_size])
         hunger = np.random.rand() * 10
         thirst = np.random.rand() * 10
         color = np.random.rand(3)  # Random RGB color.
@@ -45,27 +45,27 @@ def initialize_creatures(num_creatures, simulation_space, input_size, output_siz
 if __name__ == "__main__":
     start_time = time.time()
 
-    num_creatures = 200
+    noise_std = 0.5
+    dt = 1.0
+    frames = 150
+    num_creatures = 100
     simulation_space = 1000
 
     # Define eye parameters: (angle_offset in radians, aperture in radians)
-    eyes_params = [(np.radians(30), np.radians(60)),(np.radians(-30), np.radians(60))]
+    # eyes_params = [(np.radians(30), np.radians(45)),(np.radians(-30), np.radians(45))]
+    eyes_params = [(np.radians(0), np.radians(60))]
 
     # Create the environment. Ensure that 'map.png' exists and follows the color conventions.
-    env = Environment("Penvs\\Env1.png", grass_generation_rate=3, leaves_generation_rate=1)
+    env = Environment("Penvs\\Env1.png", grass_generation_rate=2, leaves_generation_rate=1)
     # parameters of network
-    input_size = 2 + 2 + 3 * len(
-        eyes_params) * 4  # 2 for position, 2 for speed, 3 (flag, distance, angle) for each eye * 4 channels
+    input_size = 2 + 2 + 3 * len(eyes_params) * 4
+    # 2 for position, 2 for speed, 3 (flag, distance, angle) for each eye * 4 channels
     output_size = 2
     # Initialize creatures (ensuring they are not in forbidden areas).
     creatures = initialize_creatures(num_creatures, simulation_space, input_size, output_size,
                                      eyes_params, env)
 
     sim = Simulation(creatures, env)
-
-    noise_std = 0.5
-    dt = 1.0
-    frames = 75
 
     sim.run_and_visualize(dt, noise_std, frames, save_filename="simulation.mp4")
 

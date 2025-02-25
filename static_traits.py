@@ -11,10 +11,9 @@ class StaticTraits:
     def __init__(self, max_age: int, max_weight: float, max_height: float, max_speed: float, color: np.ndarray,
                  energy_efficiency: float, speed_efficiency: float,
                  food_efficiency: float, reproduction_energy: float,
-                 left_eye_params: tuple, right_eye_params: tuple,
-                 vision_limit: float, brain: Brain):
+                 eyes_params: list[tuple], vision_limit: float, brain: Brain):
         """
-        left_eye_params and right_eye_params are tuples: (angle_offset, aperture)
+        eyes_params is a list of tuples: (angle_offset, aperture)
         where angle_offset (in radians) is relative to the creature's heading.
         """
         self.max_age = max_age
@@ -28,8 +27,7 @@ class StaticTraits:
         self.food_efficiency = food_efficiency  # number between 0 to 1
         self.reproduction_energy = reproduction_energy
 
-        self.left_eye_params = left_eye_params
-        self.right_eye_params = right_eye_params
+        self.eyes_params = eyes_params
         self.vision_limit = vision_limit
         self.brain = brain
 

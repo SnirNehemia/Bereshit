@@ -13,8 +13,7 @@ class Creature(StaticTraits):
     def __init__(self, max_age: int, max_weight: float, max_height: float, max_speed: float, color: np.ndarray,
                  energy_efficiency: float, speed_efficiency: float,
                  food_efficiency: float, reproduction_energy: float,
-                 left_eye_params: tuple, right_eye_params: tuple,
-                 vision_limit: float, brain: Brain,
+                 eyes_params: list[tuple], vision_limit: float, brain: Brain,
                  weight: float, height: float,
                  position: np.ndarray, speed: np.ndarray,
                  energy: float, hunger: float, thirst: float):
@@ -22,8 +21,7 @@ class Creature(StaticTraits):
                          color=color,
                          energy_efficiency=energy_efficiency, speed_efficiency=speed_efficiency,
                          food_efficiency=food_efficiency, reproduction_energy=reproduction_energy,
-                         left_eye_params=left_eye_params, right_eye_params=right_eye_params,
-                         vision_limit=vision_limit, brain=brain)
+                         eyes_params=eyes_params, vision_limit=vision_limit, brain=brain)
 
         self.age = 0
         self.weight = weight

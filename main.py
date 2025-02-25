@@ -9,7 +9,7 @@ from environment import Environment
 
 
 def initialize_creatures(num_creatures, simulation_space, input_size, output_size,
-                         env: Environment):
+                         eyes_params, env: Environment):
     """
     Initializes creatures ensuring they are not placed in a forbidden (black) area.
     """
@@ -40,8 +40,6 @@ def initialize_creatures(num_creatures, simulation_space, input_size, output_siz
         food_efficiency = 0.2
         reproduction_energy = 20
 
-        left_eye_params = (np.radians(30), np.radians(60))  # (angle_offset in radians, aperture in radians)
-        right_eye_params = (np.radians(-30), np.radians(60))  # (angle_offset in radians, aperture in radians)
         vision_limit = 100.0
         brain = Brain(input_size, output_size)
 
@@ -57,8 +55,7 @@ def initialize_creatures(num_creatures, simulation_space, input_size, output_siz
         creature = Creature(max_age=max_age, max_weight=max_weight, max_height=max_height, max_speed=max_speed, color=color,
                             energy_efficiency=energy_efficiency, speed_efficiency=speed_efficiency,
                             food_efficiency=food_efficiency, reproduction_energy=reproduction_energy,
-                            left_eye_params=left_eye_params, right_eye_params=right_eye_params,
-                            vision_limit=vision_limit, brain=brain,
+                            eyes_params=eyes_params, vision_limit=vision_limit, brain=brain,
                             weight=weight, height=height,
                             position=position, speed=speed, energy=energy, hunger=hunger, thirst=thirst)
 
@@ -71,18 +68,24 @@ if __name__ == "__main__":
 
     num_creatures = 200
     simulation_space = 1000
-    input_size = 10
-    output_size = 2
 
     grass_generation_rate = 1  # 5
     leaves_generation_rate = 2  # 3
+
+    # Define eye parameters: (angle_offset in radians, aperture in radians)
+    eyes_params = [(np.radians(30), np.radians(60)), (np.radians(-30), np.radians(60))]
+
+    # parameters of network
+    input_size = 2 + 2 + 3 * len(
+        eyes_params) * 4  # 2 for position, 2 for speed, 3 (flag, distance, angle) for each eye * 4 channels
+    output_size = 2
 
     # Create the environment. Ensure that 'map.png' exists and follows the color conventions.
     env = Environment("Penvs\\Env1.png",
                       grass_generation_rate=grass_generation_rate, leaves_generation_rate=leaves_generation_rate)
 
     # Initialize creatures (ensuring they are not in forbidden areas).
-    creatures = initialize_creatures(num_creatures, simulation_space, input_size, output_size, env)
+    creatures = initialize_creatures(num_creatures, simulation_space, input_size, output_size, eyes_params, env)
 
     sim = Simulation(creatures, env)
 

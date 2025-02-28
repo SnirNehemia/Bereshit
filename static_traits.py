@@ -11,6 +11,7 @@ class StaticTraits:
     def __init__(self, max_age: int, max_weight: float, max_height: float, max_speed: float, color: np.ndarray,
                  energy_efficiency: float, speed_efficiency: float,
                  food_efficiency: float, reproduction_energy: float,
+                 max_energy: float,
                  eyes_params: list[tuple], vision_limit: float, brain: Brain):
         """
         eyes_params is a list of tuples: (angle_offset, aperture)
@@ -26,6 +27,7 @@ class StaticTraits:
         self.speed_efficiency = speed_efficiency  # number between 0 and 1
         self.food_efficiency = food_efficiency  # number between 0 and 1
         self.reproduction_energy = reproduction_energy
+        self.max_energy = max_energy
 
         self.eyes_params = eyes_params
         self.vision_limit = vision_limit

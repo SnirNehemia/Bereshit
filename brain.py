@@ -34,7 +34,7 @@ class Brain:
         self.activations = []  # Activation functions for each layer
 
         # self.memory_values = np.zeros(layers_size[-1])
-        self.activation = ACTIVATION_FUNCTIONS.get(activation)
+        # self.activation = ACTIVATION_FUNCTIONS.get(activation)
         self.size = 0  # Effective network size
         self.random_magnitude = 0.1
         self.layers = []
@@ -42,10 +42,12 @@ class Brain:
         if no_lineage:
             weight = np.random.randn(self.input_size, self.output_size) * self.random_magnitude
             self.layers.insert(0, weight)
-            self.activations.insert(0, ACTIVATION_FUNCTIONS.get(activation, relu))
+            self.activations.insert(0, ACTIVATION_FUNCTIONS.get(activation))
             if len(layers_size) > 2:
                 for i in range(1, len(layers_size) - 1):
                     self.add_layer(i, layers_size[i], activation)
+        else:
+            raise ValueError('No lineage')
 
     def add_layer(self, index: int, activation: str = 'relu'):
         if index < 0 or index >= len(self.layers):
@@ -129,10 +131,11 @@ class Brain:
         self.size = sum(layer.size for layer in self.layers)
 
     def forward(self, input_data: np.ndarray) -> np.ndarray:
-        x = np.concatenate([input_data]) #, self.memory_nodes])
+        x = np.concatenate([input_data, self.memory_nodes])
         for weight, activation in zip(self.layers, self.activations):
             x = activation(x @ weight)
-        return x#[:-len(self.memory_nodes)]
+        self.memory_nodes = x[:-len(self.memory_nodes)]
+        return x[-len(self.memory_nodes):]
 
     def mutate_brain(self, brain_mutation_rate: dict):  # not in use
         # mutation_roll = np.random.rand(len(brain_mutation_rate))

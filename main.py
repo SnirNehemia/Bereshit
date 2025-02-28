@@ -6,7 +6,7 @@ from brain import Brain
 from creature import Creature
 from simulation import Simulation
 from environment import Environment
-
+from datetime import datetime
 
 def initialize_creatures(num_creatures, simulation_space, input_size, output_size,
                          eyes_params, env: Environment):
@@ -38,7 +38,8 @@ def initialize_creatures(num_creatures, simulation_space, input_size, output_siz
         energy_efficiency = 1
         speed_efficiency = 0.1
         food_efficiency = 1
-        reproduction_energy = 80
+        reproduction_energy = 800
+        max_energy = 100
 
         vision_limit = 100.0
         brain = Brain([input_size, output_size])
@@ -56,6 +57,7 @@ def initialize_creatures(num_creatures, simulation_space, input_size, output_siz
                             color=color,
                             energy_efficiency=energy_efficiency, speed_efficiency=speed_efficiency,
                             food_efficiency=food_efficiency, reproduction_energy=reproduction_energy,
+                            max_energy=max_energy,
                             eyes_params=eyes_params, vision_limit=vision_limit, brain=brain,
                             weight=weight, height=height,
                             position=position, speed=speed, energy=energy, hunger=hunger, thirst=thirst)
@@ -66,6 +68,24 @@ def initialize_creatures(num_creatures, simulation_space, input_size, output_siz
 
 if __name__ == "__main__":
     start_time = time.time()
+    # noise_std = 0.5
+    # dt = 1.0
+    # frames = 150
+    # num_creatures = 100
+    # simulation_space = 1000
+
+    # grass_generation_rate = 1  # 5
+    # leaves_generation_rate = 2  # 3
+
+    # Define eye parameters: (angle_offset in radians, aperture in radians)
+    # eyes_params = [(np.radians(30), np.radians(45)),(np.radians(-30), np.radians(45))]
+    # eyes_params = [(np.radians(0), np.radians(60))]
+
+    # parameters of network
+    # input_size = 2 + 2 + 3 * len(eyes_params) * 4
+    # # 2 for position, 2 for speed, 3 (flag, distance, angle) for each eye * 4 channels
+    # output_size = 2
+
 
     # Create the environment. Ensure that 'map.png' exists and follows the color conventions.
     env = Environment(map_filename=config.ENV_PATH,
@@ -88,5 +108,5 @@ if __name__ == "__main__":
                           save_filename=config.SAVE_FILENAME)
 
     total_time = time.time() - start_time
-    print("Simulation animation saved as simulation.mp4")
+    print("Simulation animation saved as ", config.SAVE_FILENAME)
     print(f"Total simulation time: {total_time:.2f} seconds")

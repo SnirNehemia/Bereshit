@@ -6,6 +6,7 @@ from pathlib import Path
 # make sure we can plot for debugging (did not test on debugger mode)
 import matplotlib
 import numpy as np
+from datetime import datetime
 
 if platform.system() == 'Darwin':
     matplotlib.use('MacOSX')
@@ -16,19 +17,21 @@ else:
 project_folder = Path(__file__).parent
 plt.rcParams['animation.ffmpeg_path'] = project_folder.joinpath(
     r'ffmpeg-2025-02-20-git-bc1a3bfd2c-essentials_build\bin\ffmpeg.exe')
+now = datetime.now()
+date_str = now.strftime('%d_%m_%Y')
 
 # --------------------------------------- CONFIG PARAMETERS -------------------------------------------------------- #
 # general config params
 NOISE_STD = 0.5
 DT = 1.0
-NUM_FRAMES = 150
-NUM_CREATURES = 100
+NUM_FRAMES = 80
+NUM_CREATURES = 20
 SIMULATION_SPACE = 1000
 
 # environment
 ENV_PATH = r"Penvs\Env1.png"
-GRASS_GENERATION_RATE = 5  # 5
-LEAVES_GENERATION_RATE = 3  # 3
+GRASS_GENERATION_RATE = 2  # 5
+LEAVES_GENERATION_RATE = 2  # 3
 
 # Define eye parameters: (angle_offset in radians, aperture in radians)
 # eyes_params = [(np.radians(30), np.radians(45)),(np.radians(-30), np.radians(45))]
@@ -39,16 +42,16 @@ INPUT_SIZE = 2 + 2 + 3 * len(EYES_PARAMS) * 4
 # 2 for hunger and thirst, 2 for speed, 3 (flag, distance, angle) for each eye * 4 channels
 OUTPUT_SIZE = 2
 
-SAVE_FILENAME = "simulation.mp4"
+SAVE_FILENAME = f"simulation_{date_str}.mp4"
 
 # For food
-FOOD_DISTANCE_THRESHOLD = 5
+FOOD_DISTANCE_THRESHOLD = 50
 LEAF_HEIGHT = 10
 GRASS_ENERGY = 50
-LEAF_ENREGY = 100
+LEAF_ENREGY = 20
 
 # For reproduction
-MIN_LIFE_ENREGY = 500  # energy to be left after reproduction
+MIN_LIFE_ENREGY = 20  # energy to be left after reproduction
 MAX_MUTATION_FACTORS = {'max_age': 2,
                         'max_weight': 1,
                         'max_height': 1,
@@ -59,6 +62,7 @@ MAX_MUTATION_FACTORS = {'max_age': 2,
                         'speed_efficiency': 2,
                         'food_efficiency': 2,
                         'reproduction_energy': 5,
+                        'max_energy': 5,
 
                         'eyes_params': np.radians(5),  # +-degrees for each eye
                         'vision_limit': 4,

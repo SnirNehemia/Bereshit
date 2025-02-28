@@ -271,7 +271,7 @@ class Simulation:
                         if num_to_rand == 1:
                             child_attributes[key] = float(child_attributes[key])
 
-
+            child_attributes['energy'] = config.MIN_LIFE_ENREGY   # set child energy to minimum
             # Add child to creatures
             child_creature = Creature(**child_attributes)
             self.creatures.append(child_creature)
@@ -283,6 +283,8 @@ class Simulation:
         self.env.update()
 
     def eat_food(self, creature: Creature, food_type: str):
+        if creature.energy >= creature.max_energy:
+            return False
         is_found_food = False
 
         if food_type == 'grass':
@@ -365,7 +367,8 @@ class Simulation:
             else:
                 max_creature_energy = 0
             print(f'{frame=} started with {len(self.creatures)} creatures ({max_creature_energy=}).')
-
+            if len(self.creatures) > 300:
+                raise Exception('Too many creatures, simulation is stuck.')
             self.step(dt, noise_std)
 
             self.num_creatures_per_frame.append(len(self.creatures))
@@ -417,8 +420,8 @@ class Simulation:
                 leaf_points = np.array(self.env.leaf_points)
                 leaves_scat = ax.scatter(leaf_points[:, 0], leaf_points[:, 1], c='darkgreen', edgecolors='black', s=20)
                 # leaves_scat.set_offsets(np.array(self.env.leaf_points))
-            if frame % 10 == 0:
-                print(f"Frame {frame} / {frames}")
+            # if frame % 10 == 0:
+            #     print(f"Frame {frame} / {frames}")
             # Update the progress bar
             progress_bar.update(1)
             return scat, quiv, grass_scat, leaves_scat

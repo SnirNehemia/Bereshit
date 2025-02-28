@@ -25,7 +25,7 @@ date_str = now.strftime('%d_%m_%Y')
 NOISE_STD = 0.5
 DT = 1.0
 NUM_FRAMES = 80
-NUM_CREATURES = 20
+NUM_CREATURES = 10
 SIMULATION_SPACE = 1000
 
 # environment

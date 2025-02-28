@@ -89,6 +89,7 @@ class Simulation:
         self.creatures_kd_tree = self.build_creatures_kd_tree()
         self.num_creatures_per_frame = []
         self.max_creature_energy_per_frame = []
+        self.debug_print = False
 
     def build_creatures_kd_tree(self) -> KDTree:
         """
@@ -228,23 +229,35 @@ class Simulation:
                 is_found_food = self.eat_food(creature=creature, food_type='grass')
                 if not is_found_food and creature.height >= config.LEAF_HEIGHT:
                     _ = self.eat_food(creature=creature, food_type='leaf')
+                creature.log_eat.append(is_found_food)
 
                 # reproduce
                 if creature.energy > creature.reproduction_energy + config.MIN_LIFE_ENREGY:
                     creature.energy -= creature.reproduction_energy
                     creatures_reproduced.append(creature)
+                    creature.log_reproduce.append(1)
+                else:
+                    creature.log_reproduce.append(0)
             else:
                 # death from energy
                 self.creatures.remove(creature)
+            creature.log_energy.append(creature.energy)
 
         # Reproduction
         for creature in creatures_reproduced:
             # Mutate father attributes for child
             child_attributes = creature.__dict__.copy()
             del child_attributes['age']
+            # del child_attributes[creature.log_list]
+            for key in creature.log_list:
+                del child_attributes[key]
+            # child_attributes.pop()
             mutation_binary_mask = np.random.randint(0, 2, size=len(child_attributes))  # which traits to change
 
             for i, key in enumerate(child_attributes.keys()):
+                # if key.startswith('log'):  # clear logs for child
+                #     # child_attributes[key] = []
+                #     continue
                 do_mutate = mutation_binary_mask[i]
                 max_mutation_factor = config.MAX_MUTATION_FACTORS[key]
                 if do_mutate:
@@ -275,8 +288,8 @@ class Simulation:
             # Add child to creatures
             child_creature = Creature(**child_attributes)
             self.creatures.append(child_creature)
-
-        print(f'num new creatures = {len(creatures_reproduced)}')
+        if self.debug_print:
+            print(f'num new creatures = {len(creatures_reproduced)}')
 
         self.update_creatures_kd_tree()
         # Update environment vegetation.
@@ -360,13 +373,14 @@ class Simulation:
         # Scatter plots for vegetation.
         grass_scat = ax.scatter([], [], c='lightgreen', edgecolors='black', s=20)
         leaves_scat = ax.scatter([], [], c='darkgreen', edgecolors='black', s=20)
-
+        print('starting simulation')
         def update(frame):
             if len(self.creatures) > 0:
                 max_creature_energy = np.round(np.max([creature.energy for creature in self.creatures]), 2)
             else:
                 max_creature_energy = 0
-            print(f'{frame=} started with {len(self.creatures)} creatures ({max_creature_energy=}).')
+            if self.debug_print:
+                print(f'{frame=} started with {len(self.creatures)} creatures ({max_creature_energy=}).')
             if len(self.creatures) > 300:
                 raise Exception('Too many creatures, simulation is stuck.')
             self.step(dt, noise_std)
@@ -406,7 +420,8 @@ class Simulation:
                 # quiv.set_offsets(positions)
                 # quiv.set_UVC(U, V)
             else:
-                print('all creatures are dead :(')
+                if self.debug_print:
+                    print('all creatures are dead :(')
                 scat = ax.scatter([1], [1])
                 quiv = ax.quiver([1], [1], [1], [1])
 
@@ -427,9 +442,10 @@ class Simulation:
             return scat, quiv, grass_scat, leaves_scat
 
         ani = animation.FuncAnimation(fig, update, frames=frames, interval=50, blit=True)
+
         ani.save(save_filename, writer="ffmpeg", dpi=200)
         plt.close(fig)
-
+        print('finished simulation')
         # Final fig
         fig, ax = plt.subplots(2, 1)
         ax[0].plot(self.num_creatures_per_frame, '.-')

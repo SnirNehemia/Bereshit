@@ -67,7 +67,7 @@ def initialize_creatures(num_creatures, simulation_space, input_size, output_siz
 
 
 if __name__ == "__main__":
-    np.seed = 0
+    np.random.seed = 0
     start_time = time.time()
     # noise_std = 0.5
     # dt = 1.0

@@ -132,10 +132,15 @@ class Brain:
 
     def forward(self, input_data: np.ndarray) -> np.ndarray:
         x = np.concatenate([input_data, self.memory_nodes])
+        self.neuron_values = [x]
         for weight, activation in zip(self.layers, self.activations):
             x = activation(x @ weight)
-        self.memory_nodes = x[:-len(self.memory_nodes)]
-        return x[-len(self.memory_nodes):]
+            self.neuron_values.append(x)
+        if len(self.memory_nodes) > 0:
+            self.memory_nodes = x[-len(self.memory_nodes):]
+            return x[:-len(self.memory_nodes)]
+        else:
+            return x
 
     def mutate_brain(self, brain_mutation_rate: dict):  # not in use
         # mutation_roll = np.random.rand(len(brain_mutation_rate))
@@ -154,9 +159,59 @@ class Brain:
         return self
 
 
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+
+def visualize_brain(brain, ax):
+    ax.clear()
+
+    # Set up the color map: blue for negative, white for zero, red for positive
+    cmap = plt.cm.bwr
+    norm = mcolors.Normalize(vmin=-1, vmax=1)
+
+    layer_positions = []
+    max_neurons = max(layer.shape[0] for layer in brain.neuron_values)
+
+    # Draw neurons
+    for i, neuron in enumerate(brain.neuron_values):
+        layer_neurons = neuron.shape[0]
+        y_positions = np.linspace(-max_neurons / 2, max_neurons / 2, layer_neurons)
+        x_position = i * 2
+        layer_positions.append((x_position, y_positions))
+
+        # Draw neurons with color representing their value
+        for y, value in zip(y_positions, brain.neuron_values[i]):
+            ax.scatter(x_position, y, color=cmap(norm(value)), edgecolors='k', s=100, zorder=3)
+
+    # Draw weights (connections between neurons)
+    for i, weights in enumerate(brain.layers):
+        x_start, y_start = layer_positions[i]
+        x_end, y_end = layer_positions[i + 1]
+        # weights = next_layer  # Assuming the weights are stored in the 'next' layer
+
+        for j, start_y in enumerate(y_start):
+            for k, end_y in enumerate(y_end):
+                weight = weights.T[k, j] if weights.ndim > 1 else weights[j]
+                ax.plot([x_start, x_end], [start_y, end_y], color=cmap(norm(weight)), zorder=1)
+
+    ax.axis('equal')
+    ax.axis('off')
+    plt.draw()
+
+
 if __name__ == '__main__':
+    import matplotlib
+    import platform
+    if platform.system() == 'Darwin':
+        matplotlib.use('MacOSX')
+    else:
+        matplotlib.use('TkAgg')
+    np.random.seed(0)
     # Example usage
-    brain = Brain([3, 3])
+    brain = Brain([3, 5])
+    brain.layers[0][0, 0] = 1
+    brain.layers[0][0, 1] = -1
     brain.add_layer(0)  # 0<=X< len(layers)
     print('new_layer:', brain.layers[0].shape, brain.layers[1].shape)
     brain.remove_neuron(0)  # 0<=X< len(layers)
@@ -168,18 +223,26 @@ if __name__ == '__main__':
     brain.remove_neuron(1)  # 0<=X< len(layers)
     print('after remove:', brain.layers[0].shape, brain.layers[1].shape, brain.layers[2].shape)
     brain.add_memory_node()  # still doesn't work
-    print('after add:', brain.layers[0].shape, brain.layers[1].shape, brain.layers[2].shape)
+    print('after add memory:', brain.layers[0].shape, brain.layers[1].shape, brain.layers[2].shape)
+    print(brain.memory_nodes.shape)
     brain.add_memory_node()  # still doesn't work
     print('after add memory:', brain.layers[0].shape, brain.layers[1].shape, brain.layers[2].shape)
+    print(brain.memory_nodes.shape)
     brain.add_memory_node()  # still doesn't work
     print('after add memory:', brain.layers[0].shape, brain.layers[1].shape, brain.layers[2].shape)
+    print(brain.memory_nodes.shape)
     brain.remove_memory_node()  # still doesn't work
     print('after remove memory:', brain.layers[0].shape, brain.layers[1].shape, brain.layers[2].shape)
+    print(brain.memory_nodes.shape)
     brain.change_layer(1)
     brain.change_layer(2)
-    print('Brain output')
-    print(brain.forward(np.ones(3)))
-    brain.set_activation(1, 'tanh')
-    output = brain.forward(np.random.rand(10))
+    # print('Brain output')
+    # print(brain.forward(np.ones(3)))
+    # brain.set_activation(1, 'tanh')
+    output = brain.forward(np.random.rand(3))
     print('Output:', output)
     print('Effective size:', brain.size)
+    fig, ax = plt.subplots()
+    visualize_brain(brain, ax)
+    plt.show()
+

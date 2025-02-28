@@ -248,16 +248,17 @@ class Simulation:
             # Mutate father attributes for child
             child_attributes = creature.__dict__.copy()
             del child_attributes['age']
-            # del child_attributes[creature.log_list]
+
             for key in creature.log_list:
                 del child_attributes[key]
+            del child_attributes['log_list']
             # child_attributes.pop()
             mutation_binary_mask = np.random.randint(0, 2, size=len(child_attributes))  # which traits to change
 
             for i, key in enumerate(child_attributes.keys()):
-                # if key.startswith('log'):  # clear logs for child
-                #     # child_attributes[key] = []
-                #     continue
+                if key.startswith('log'):  # clear logs for child
+                    child_attributes[key] = []
+                    continue
                 do_mutate = mutation_binary_mask[i]
                 max_mutation_factor = config.MAX_MUTATION_FACTORS[key]
                 if do_mutate:

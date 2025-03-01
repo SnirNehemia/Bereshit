@@ -23,14 +23,16 @@ date_str = now.strftime('%d_%m_%Y')
 # --------------------------------------- CONFIG PARAMETERS -------------------------------------------------------- #
 # general config params
 NOISE_STD = 0.5
-DT = 1.0
-NUM_FRAMES = 80
+DT = 1.0  # time passing from frame to frame (relevant when calculating velocities)
+NUM_FRAMES = 20
 NUM_CREATURES = 20
+MAX_NUM_CREATURES = 300
+MAX_INIT_ENERGY = 2200
 SIMULATION_SPACE = 1000
 
 # environment
 ENV_PATH = r"Penvs\Env1.png"
-GRASS_GENERATION_RATE = 2  # 5
+GRASS_GENERATION_RATE = 4  # 5
 LEAVES_GENERATION_RATE = 2  # 3
 
 # Define eye parameters: (angle_offset in radians, aperture in radians)
@@ -51,6 +53,7 @@ GRASS_ENERGY = 50
 LEAF_ENREGY = 20
 
 # For reproduction
+REPRODUCTION_ENERGY = 800
 MIN_LIFE_ENREGY = 20  # energy to be left after reproduction
 MAX_MUTATION_FACTORS = {'max_age': 2,
                         'max_weight': 1,

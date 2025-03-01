@@ -8,13 +8,15 @@ from simulation import Simulation
 from environment import Environment
 from datetime import datetime
 
+
 def initialize_creatures(num_creatures, simulation_space, input_size, output_size,
                          eyes_params, env: Environment):
     """
     Initializes creatures ensuring they are not placed in a forbidden (black) area.
     """
-    creatures = []
-    for _ in range(num_creatures):
+    creatures = dict()
+    for id in range(num_creatures):
+        position = []
         valid_position = False
         while not valid_position:
             position = np.random.rand(2) * simulation_space
@@ -38,8 +40,8 @@ def initialize_creatures(num_creatures, simulation_space, input_size, output_siz
         energy_efficiency = 1
         speed_efficiency = 0.1
         food_efficiency = 1
-        reproduction_energy = 800
-        max_energy = 100
+        reproduction_energy = config.REPRODUCTION_ENERGY
+        max_energy = config.MAX_INIT_ENERGY
 
         vision_limit = 100.0
         brain = Brain([input_size, output_size])
@@ -48,7 +50,7 @@ def initialize_creatures(num_creatures, simulation_space, input_size, output_siz
         weight = np.random.rand() * max_weight
         height = np.random.rand() * max_height
         speed = (np.random.rand(2) - 0.5) * max_speed
-        energy = np.random.rand() * 1000
+        energy = np.random.rand() * max_energy
         hunger = np.random.rand() * 10
         thirst = np.random.rand() * 10
 
@@ -62,7 +64,7 @@ def initialize_creatures(num_creatures, simulation_space, input_size, output_siz
                             weight=weight, height=height,
                             position=position, speed=speed, energy=energy, hunger=hunger, thirst=thirst)
 
-        creatures.append(creature)
+        creatures[id] = creature
     return creatures
 
 
@@ -86,7 +88,6 @@ if __name__ == "__main__":
     # # 2 for position, 2 for speed, 3 (flag, distance, angle) for each eye * 4 channels
     # output_size = 2
 
-
     # Create the environment. Ensure that 'map.png' exists and follows the color conventions.
     env = Environment(map_filename=config.ENV_PATH,
                       grass_generation_rate=config.GRASS_GENERATION_RATE,
@@ -102,10 +103,7 @@ if __name__ == "__main__":
 
     sim = Simulation(creatures, env)
 
-    sim.run_and_visualize(dt=config.DT,
-                          noise_std=config.NOISE_STD,
-                          frames=config.NUM_FRAMES,
-                          save_filename=config.SAVE_FILENAME)
+    sim.run_and_visualize()
 
     total_time = time.time() - start_time
     print("Simulation animation saved as ", config.SAVE_FILENAME)

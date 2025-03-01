@@ -238,15 +238,20 @@ class Simulation:
                 # check for food (first grass, if not found search for leaf if tall enough)
                 is_found_food = self.eat_food(id=id, food_type='grass')
                 if not is_found_food and creature.height >= config.LEAF_HEIGHT:
-                    _ = self.eat_food(creature=creature, food_type='leaf')
+                    _ = self.eat_food(id=id, food_type='leaf')
+                creature.log_eat.append(is_found_food)
 
                 # reproduce
                 if creature.energy > creature.reproduction_energy + config.MIN_LIFE_ENREGY:
                     creature.energy -= creature.reproduction_energy
                     creatures_reproduced.append(creature)
+                    creature.log_reproduce.append(1)
+                else:
+                    creature.log_reproduce.append(0)
             else:
                 # death from energy
                 died_creatured_id.append(id)
+            creature.log_energy.append(creature.energy)
 
         # kill creatures
         for id in died_creatured_id:
@@ -261,9 +266,17 @@ class Simulation:
             # Mutate father attributes for child
             child_attributes = creature.__dict__.copy()
             del child_attributes['age']
+
+            for key in creature.log_list:
+                del child_attributes[key]
+            del child_attributes['log_list']
+            # child_attributes.pop()
             mutation_binary_mask = np.random.randint(0, 2, size=len(child_attributes))  # which traits to change
 
             for i, key in enumerate(child_attributes.keys()):
+                if key.startswith('log'):  # clear logs for child
+                    child_attributes[key] = []
+                    continue
                 do_mutate = mutation_binary_mask[i]
                 max_mutation_factor = config.MAX_MUTATION_FACTORS[key]
                 if do_mutate:
@@ -391,6 +404,7 @@ class Simulation:
 
         # -------------------------------- function for simulation progress -------------------------------- #
 
+        print('starting simulation')
         def update(frame):
 
             # --------------------------- run frame --------------------------- #
@@ -476,6 +490,7 @@ class Simulation:
         ani = animation.FuncAnimation(fig, update, frames=num_frames, interval=50, blit=True)
         ani.save(save_filename, writer="ffmpeg", dpi=200)
         plt.close(fig)
+        print('finished simulation')
 
         # ----------------------------------- Plot graphs after simulation ended ----------------------------------- #
         # creature energy fig

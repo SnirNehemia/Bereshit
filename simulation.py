@@ -38,6 +38,8 @@ class Simulation:
         self.creatures_kd_tree = self.build_creatures_kd_tree()
         self.max_creature_id = len(self.creatures.keys()) - 1
 
+        # TODO: add dictionary for dead creatures
+
         # debug run
         self.creatures_energy_per_frame = dict([(id, list()) for id in range(len(self.creatures.keys()))])
         self.num_creatures_per_frame = []
@@ -75,9 +77,9 @@ class Simulation:
             max_speed = [5.0, 5.0]
             color = np.random.rand(3)  # Random RGB color.
 
-            energy_efficiency = 1
-            speed_efficiency = 0.1
-            food_efficiency = 1
+            energy_efficiency = 1   # idle energy
+            speed_efficiency = 0.1  # speed * speed_efficiency
+            food_efficiency = 1     # energy from food * food_efficiency
             reproduction_energy = config.REPRODUCTION_ENERGY
             max_energy = config.MAX_INIT_ENERGY
 
@@ -280,7 +282,7 @@ class Simulation:
             height, width = self.env.map_data.shape[:2]
             if col < 0 or col >= width or row < 0 or row >= height or self.env.obstacle_mask[row, col]:
                 creature.speed = np.array([0.0, 0.0])
-            else:
+            else:  # TODO: check if neccessary
                 if self.env.obstacle_mask[row, col]:
                     creature.speed = np.array([0.0, 0.0])
 
@@ -314,7 +316,7 @@ class Simulation:
                 creature.log_eat.append(is_found_food)
 
                 # reproduce
-                if creature.energy > creature.reproduction_energy + config.MIN_LIFE_ENREGY:
+                if creature.energy > creature.reproduction_energy + config.MIN_LIFE_ENERGY:
                     creature.energy -= creature.reproduction_energy
                     creatures_reproduced.append(creature)
                     creature.log_reproduce.append(1)
@@ -327,7 +329,7 @@ class Simulation:
 
         # kill creatures
         for id in died_creatured_id:
-            del self.creatures[id]
+            del self.creatures[id]  # TODO: move to a cemetery dictionary
 
         # Reproduction
         for creature in creatures_reproduced:
@@ -375,7 +377,6 @@ class Simulation:
                         if num_to_rand == 1:
                             child_attributes[key] = float(child_attributes[key])
 
-            child_attributes['energy'] = config.MIN_LIFE_ENREGY  # set child energy to minimum
             # Add child to creatures
             child_creature = Creature(**child_attributes)
             self.creatures[id] = child_creature
@@ -400,7 +401,7 @@ class Simulation:
             food_energy = config.GRASS_ENERGY
         elif food_type == 'leaf':
             food_points = self.env.leaf_points
-            food_energy = config.LEAF_ENREGY
+            food_energy = config.LEAF_ENERGY
 
         if len(food_points) > 0:
             food_distances = [np.linalg.norm(food_point - creature.position)
@@ -569,7 +570,7 @@ class Simulation:
         creature_ids_to_plot = [0, 1, 2, 3, 4, 5]
         for id in creature_ids_to_plot:
             plt.plot(self.creatures_energy_per_frame[id], '.-', label=f'{id=}')
-        plt.axhline(y=list(self.creatures.values())[0].reproduction_energy + config.MIN_LIFE_ENREGY,
+        plt.axhline(y=config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY,
                     linestyle='--', color='r', label='reproduction threshold')
         plt.legend()
         plt.title('creature energy per frame')
@@ -587,7 +588,7 @@ class Simulation:
         ax[1].errorbar(x=np.arange(len(self.mean_creature_energy_per_frame)),
                        y=self.mean_creature_energy_per_frame,
                        yerr=self.std_creature_energy_per_frame, linestyle='-', marker='.', label='mean and std energy')
-        ax[1].axhline(y=list(self.creatures.values())[0].reproduction_energy + config.MIN_LIFE_ENREGY,
+        ax[1].axhline(y=list(self.creatures.values())[0].reproduction_energy + config.MIN_LIFE_ENERGY,
                       linestyle='--', color='r', label='reproduction threshold')
         ax[1].set_title('energy statistics per frame')
         ax[1].set_xlabel('frame number')

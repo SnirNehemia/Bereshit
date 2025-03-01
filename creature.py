@@ -31,7 +31,6 @@ class Creature(StaticTraits):
         self.position = position
         self.speed = speed  # 2D velocity vector.
         self.energy = energy
-        self.max_energy = max_energy
         self.hunger = hunger
         self.thirst = thirst
         # logs for debugging

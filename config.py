@@ -31,8 +31,8 @@ np.random.seed = 0
 # general config params
 NOISE_STD = 0.5
 DT = 1.0  # time passing from frame to frame (relevant when calculating velocities)
-NUM_FRAMES = 20
-NUM_CREATURES = 20
+NUM_FRAMES = 150
+NUM_CREATURES = 50
 MAX_NUM_CREATURES = 300
 MAX_INIT_ENERGY = 2200
 SIMULATION_SPACE = 1000
@@ -55,11 +55,11 @@ OUTPUT_SIZE = 2
 FOOD_DISTANCE_THRESHOLD = 50
 LEAF_HEIGHT = 10
 GRASS_ENERGY = 50
-LEAF_ENREGY = 20
+LEAF_ENERGY = 20
 
 # For reproduction
 REPRODUCTION_ENERGY = 800
-MIN_LIFE_ENREGY = 20  # energy to be left after reproduction
+MIN_LIFE_ENERGY = 20  # energy to be left after reproduction
 MAX_MUTATION_FACTORS = {'max_age': 2,
                         'max_weight': 1,
                         'max_height': 1,

@@ -326,7 +326,7 @@ if __name__ == "__main__":
     noise_std = 0.5
     dt = 1.0
     frames = 200
-    sim.run_and_visualize(dt, noise_std, frames, save_filename="simulation.mp4")
+    sim.run_and_visualize(dt, noise_std, frames, save_filename="outputs/simulation.mp4")
     total_time = time.time() - start_time
     print("Simulation animation saved as simulation.mp4")
     print(f"Total simulation time: {total_time:.2f} seconds")

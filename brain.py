@@ -143,7 +143,7 @@ class Brain:
         else:
             return x
 
-    def mutate_brain(self, brain_mutation_rate: dict):  # not in use
+    def mutate(self, brain_mutation_rate: dict):  # not in use
         mutation_roll = np.random.rand(len(brain_mutation_rate))
         if mutation_roll[0] < brain_mutation_rate['layer_addition']:
             index = np.random.randint(0, len(self.layers))

@@ -33,8 +33,8 @@ NOISE_STD = 0.5
 DT = 1.0  # time passing from frame to frame (relevant when calculating velocities)
 NUM_FRAMES = 300
 NUM_CREATURES = 50
-MAX_NUM_CREATURES = 300
-INIT_MAX_ENERGY = 1500
+MAX_NUM_CREATURES = 250
+INIT_MAX_ENERGY = 1200
 INIT_MAX_AGE = 1500
 SIMULATION_SPACE = 1000
 
@@ -44,8 +44,8 @@ GRASS_GENERATION_RATE = 4  # 5
 LEAVES_GENERATION_RATE = 2  # 3
 
 # Define eye parameters: (angle_offset in radians, aperture in radians)
-# eyes_params = [(np.radians(30), np.radians(45)),(np.radians(-30), np.radians(45))]
-EYES_PARAMS = [(np.radians(0), np.radians(60))]
+# eyes_params = ((np.radians(30), np.radians(45)),(np.radians(-30), np.radians(45)))
+EYES_PARAMS = ((np.radians(0), np.radians(60)))
 
 # parameters of network
 INPUT_SIZE = 2 + 2 + 3 * len(EYES_PARAMS) * 4

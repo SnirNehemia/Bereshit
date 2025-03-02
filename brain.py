@@ -1,7 +1,8 @@
 # brain.py
 import numpy as np
 from typing import Callable, Optional
-
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 
 # TODO: pay attention to activation function and run as main to check the hidden layers
 # Activation functions
@@ -143,61 +144,56 @@ class Brain:
             return x
 
     def mutate_brain(self, brain_mutation_rate: dict):  # not in use
-        # mutation_roll = np.random.rand(len(brain_mutation_rate))
-        # if mutation_roll[0] < brain_mutation_rate['layer_addition']:
-        #     index = np.random.randint(0, len(self.layers))
-        #     self.add_layer(index)
-        # if mutation_roll[1] < brain_mutation_rate['modify_weights']:
-        #     index = np.random.randint(0, len(self.layers))
-        #     self.change_connectivity(index)
-        # if mutation_roll[2] < brain_mutation_rate['modify_layer']:
-        #     index = np.random.randint(0, len(self.layers))
-        #     if np.random.rand() < 0.5:
-        #         self.add_neuron(index)
-        #     else:
-        #         self.remove_neuron(index)
+        mutation_roll = np.random.rand(len(brain_mutation_rate))
+        if mutation_roll[0] < brain_mutation_rate['layer_addition']:
+            index = np.random.randint(0, len(self.layers))
+            self.add_layer(index)
+        if mutation_roll[1] < brain_mutation_rate['modify_weights']:
+            index = np.random.randint(0, len(self.layers))
+            self.change_layer(index)
+        if mutation_roll[2] < brain_mutation_rate['modify_layer'] and len(self.layers) > 2:
+            index = np.random.randint(1, len(self.layers)-1)
+            if np.random.rand() < 0.5:
+                self.add_neuron(index)
+            elif self.layers[index].shape[1] > 1:
+                self.remove_neuron(index)
         return self
 
+    def plot(brain, ax):
+        ax.clear()
 
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
+        # Set up the color map: blue for negative, white for zero, red for positive
+        cmap = plt.cm.bwr
+        norm = mcolors.Normalize(vmin=-1, vmax=1)
 
-def visualize_brain(brain, ax):
-    ax.clear()
+        layer_positions = []
+        max_neurons = max(layer.shape[0] for layer in brain.neuron_values)
 
-    # Set up the color map: blue for negative, white for zero, red for positive
-    cmap = plt.cm.bwr
-    norm = mcolors.Normalize(vmin=-1, vmax=1)
+        # Draw neurons
+        for i, neuron in enumerate(brain.neuron_values):
+            layer_neurons = neuron.shape[0]
+            y_positions = np.linspace(-max_neurons / 2, max_neurons / 2, layer_neurons)
+            x_position = i * 2
+            layer_positions.append((x_position, y_positions))
 
-    layer_positions = []
-    max_neurons = max(layer.shape[0] for layer in brain.neuron_values)
+            # Draw neurons with color representing their value
+            for y, value in zip(y_positions, brain.neuron_values[i]):
+                ax.scatter(x_position, y, color=cmap(norm(value)), edgecolors='k', s=100, zorder=3)
 
-    # Draw neurons
-    for i, neuron in enumerate(brain.neuron_values):
-        layer_neurons = neuron.shape[0]
-        y_positions = np.linspace(-max_neurons / 2, max_neurons / 2, layer_neurons)
-        x_position = i * 2
-        layer_positions.append((x_position, y_positions))
+        # Draw weights (connections between neurons)
+        for i, weights in enumerate(brain.layers):
+            x_start, y_start = layer_positions[i]
+            x_end, y_end = layer_positions[i + 1]
+            # weights = next_layer  # Assuming the weights are stored in the 'next' layer
 
-        # Draw neurons with color representing their value
-        for y, value in zip(y_positions, brain.neuron_values[i]):
-            ax.scatter(x_position, y, color=cmap(norm(value)), edgecolors='k', s=100, zorder=3)
+            for j, start_y in enumerate(y_start):
+                for k, end_y in enumerate(y_end):
+                    weight = weights.T[k, j] if weights.ndim > 1 else weights[j]
+                    ax.plot([x_start, x_end], [start_y, end_y], color=cmap(norm(weight)), zorder=1)
 
-    # Draw weights (connections between neurons)
-    for i, weights in enumerate(brain.layers):
-        x_start, y_start = layer_positions[i]
-        x_end, y_end = layer_positions[i + 1]
-        # weights = next_layer  # Assuming the weights are stored in the 'next' layer
-
-        for j, start_y in enumerate(y_start):
-            for k, end_y in enumerate(y_end):
-                weight = weights.T[k, j] if weights.ndim > 1 else weights[j]
-                ax.plot([x_start, x_end], [start_y, end_y], color=cmap(norm(weight)), zorder=1)
-
-    ax.axis('equal')
-    ax.axis('off')
-    plt.draw()
+        # ax.axis('equal')
+        # ax.axis('off')
+        plt.draw()
 
 
 if __name__ == '__main__':
@@ -243,6 +239,6 @@ if __name__ == '__main__':
     print('Output:', output)
     print('Effective size:', brain.size)
     fig, ax = plt.subplots()
-    visualize_brain(brain, ax)
+    brain.plot(ax)
     plt.show()
 

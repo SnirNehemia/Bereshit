@@ -41,7 +41,7 @@ class Simulation:
         # Build a KDTree for creature positions.
         self.creatures_kd_tree = self.build_creatures_kd_tree()
         self.max_creature_id = len(self.creatures.keys()) - 1
-
+        self.children_num = 0
         # debug run
         self.creatures_energy_per_frame = dict([(id, list()) for id in range(len(self.creatures.keys()))])
         self.num_creatures_per_frame = []
@@ -342,7 +342,7 @@ class Simulation:
             # update id
             id = self.max_creature_id + 1
             self.max_creature_id += 1
-
+            self.children_num += 1
             # Copy father attributes to child
             child_attributes = copy.deepcopy(creature.__dict__)
 
@@ -438,7 +438,7 @@ class Simulation:
         """
 
         # -------------------------- init relevant parameters for simulation -------------------------- #
-        global quiv, scat, grass_scat, leaves_scat, first_frame
+        global quiv, scat, grass_scat, leaves_scat, agent_scat, first_frame
 
         first_frame = True
         dt = config.DT
@@ -446,8 +446,14 @@ class Simulation:
         num_frames = config.NUM_FRAMES
 
         # Initialize the progress bar outside of the update function
-        progress_bar = tqdm(total=num_frames, desc="Simulation progress")
-        fig, ax = plt.subplots(figsize=(8, 8))
+        progress_bar = tqdm(total=num_frames, desc=f"Alive num: {len(self.creatures)}\n"
+                                                   f"Total children {self.children_num} \n"
+                                                   f"Total dead {len(self.dead_creatures)}"
+                                                   f"\nSimulation progress:")
+        fig, axes = plt.subplots(1,2)
+        ax = axes[0]
+        ax_brain = axes[1]
+        fig.figsize=(8, 8)
         extent = self.env.get_extent()
         ax.set_xlim(extent[0], extent[1])
         ax.set_ylim(extent[2], extent[3])
@@ -481,6 +487,7 @@ class Simulation:
         # Scatter plots for vegetation.
         grass_scat = ax.scatter([], [], c='lightgreen', edgecolors='black', s=20)
         leaves_scat = ax.scatter([], [], c='darkgreen', edgecolors='black', s=20)
+        agent_scat = ax.scatter([], [], s=30, facecolors='none', edgecolors='r')
 
         # -------------------------------- function for simulation progress -------------------------------- #
 
@@ -488,10 +495,10 @@ class Simulation:
 
         def update(frame):
             # Skip extra initial calls (because blit=True)
-            global quiv, scat, grass_scat, leaves_scat, first_frame
+            global quiv, scat, grass_scat, leaves_scat, agent_scat, first_frame
             if first_frame and frame == 0:
                 first_frame = False
-                return scat, quiv, grass_scat, leaves_scat
+                return scat, quiv, grass_scat, leaves_scat, agent_scat
 
             # --------------------------- run frame --------------------------- #
             child_ids, dead_ids = self.step(dt, noise_std)
@@ -523,9 +530,9 @@ class Simulation:
                     else:
                         self.creatures_energy_per_frame[id].append(creature.energy)
 
-                print(f'{frame=}: ended with {current_num_creatures} creatures '
-                      f'(+{len(child_ids)}, -{len(dead_ids)}), '
-                      f'max energy = {round(self.max_creature_energy_per_frame[-1], 2)}.')
+                # print(f'{frame=}: ended with {current_num_creatures} creatures '
+                #       f'(+{len(child_ids)}, -{len(dead_ids)}), '
+                #       f'max energy = {round(self.max_creature_energy_per_frame[-1], 2)}.')
             else:
                 print(f'{frame=}: all creatures are dead :(.')
 
@@ -539,6 +546,8 @@ class Simulation:
                 grass_scat.remove()
             if 'leaves_scat' in globals():
                 leaves_scat.remove()
+            if 'agent_scat' in globals():
+                agent_scat.remove()
 
             # Update creature positions.
             positions = np.array([creature.position for creature in self.creatures.values()])
@@ -577,8 +586,15 @@ class Simulation:
             # if frame % 10 == 0:
             #     print(f"Frame {frame} / {num_frames}")
             # Update the progress bar
+            progress_bar.set_description(f"Alive: {len(self.creatures)} | "
+                                         f"Children: {self.children_num} | "
+                                         f"Dead: {len(self.dead_creatures)} | Progress:")
             progress_bar.update(1)
             ax.set_title(f"Evolution Simulation ({frame=})")
+            # --------------------- focus on one agent ----------------------------
+            agent = self.creatures[min(self.creatures.keys())]
+            agent_scat = ax.scatter(agent.position[0], agent.position[1], s=50, facecolors='none', edgecolors='r')
+            agent.brain.plot(ax_brain)
             return scat, quiv, grass_scat, leaves_scat
 
         # ----------------------------------- run simulation and save animation ------------------------------------ #

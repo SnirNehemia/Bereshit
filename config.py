@@ -31,16 +31,16 @@ STATISTICS_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"statistics_fig_{date_str}.png
 np.random.seed = 0
 NOISE_STD = 0.5
 DT = 1.0  # time passing from frame to frame (relevant when calculating velocities)
-NUM_FRAMES = 300
-NUM_CREATURES = 50
+NUM_FRAMES = 100
+NUM_CREATURES = 30
 MAX_NUM_CREATURES = 250
 INIT_MAX_ENERGY = 1200
-INIT_MAX_AGE = 1500
+INIT_MAX_AGE = 300
 SIMULATION_SPACE = 1000
 
 # environment
-ENV_PATH = r"Penvs\Env1.png"
-GRASS_GENERATION_RATE = 4  # 5
+ENV_PATH = r"Penvs\Env3.png"
+GRASS_GENERATION_RATE = 2  # 5
 LEAVES_GENERATION_RATE = 2  # 3
 
 # Define eye parameters: (angle_offset in radians, aperture in radians)
@@ -53,10 +53,10 @@ INPUT_SIZE = 2 + 2 + 3 * len(EYES_PARAMS) * 4
 OUTPUT_SIZE = 2
 
 # For food
-FOOD_DISTANCE_THRESHOLD = 50
+FOOD_DISTANCE_THRESHOLD = 10
 LEAF_HEIGHT = 10
-GRASS_ENERGY = 50
-LEAF_ENERGY = 20
+GRASS_ENERGY = 150
+LEAF_ENERGY = 100
 
 # For reproduction
 REPRODUCTION_ENERGY = 800

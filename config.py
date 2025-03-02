@@ -27,14 +27,15 @@ SPECIFIC_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"specific_fig_{date_str}.png")
 STATISTICS_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"statistics_fig_{date_str}.png")
 
 # --------------------------------------- CONFIG PARAMETERS -------------------------------------------------------- #
-np.random.seed = 0
 # general config params
+np.random.seed = 0
 NOISE_STD = 0.5
 DT = 1.0  # time passing from frame to frame (relevant when calculating velocities)
-NUM_FRAMES = 150
+NUM_FRAMES = 300
 NUM_CREATURES = 50
 MAX_NUM_CREATURES = 300
-MAX_INIT_ENERGY = 2200
+INIT_MAX_ENERGY = 1500
+INIT_MAX_AGE = 1500
 SIMULATION_SPACE = 1000
 
 # environment
@@ -44,7 +45,7 @@ LEAVES_GENERATION_RATE = 2  # 3
 
 # Define eye parameters: (angle_offset in radians, aperture in radians)
 # eyes_params = [(np.radians(30), np.radians(45)),(np.radians(-30), np.radians(45))]
-EYES_PARAMS = ((np.radians(0), np.radians(60)))
+EYES_PARAMS = [(np.radians(0), np.radians(60))]
 
 # parameters of network
 INPUT_SIZE = 2 + 2 + 3 * len(EYES_PARAMS) * 4
@@ -60,6 +61,7 @@ LEAF_ENERGY = 20
 # For reproduction
 REPRODUCTION_ENERGY = 800
 MIN_LIFE_ENERGY = 20  # energy to be left after reproduction
+MUTATION_CHANCE = 0.4  # number between 0-1 indicating chance of trait to be mutated
 MAX_MUTATION_FACTORS = {'max_age': 2,
                         'max_weight': 1,
                         'max_height': 1,

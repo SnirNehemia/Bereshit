@@ -33,8 +33,8 @@ NOISE_STD = 0.5
 DT = 1.0  # time passing from frame to frame (relevant when calculating velocities)
 NUM_FRAMES = 300
 NUM_CREATURES = 50
-MAX_NUM_CREATURES = 300
-INIT_MAX_ENERGY = 1500
+MAX_NUM_CREATURES = 250
+INIT_MAX_ENERGY = 1200
 INIT_MAX_AGE = 1500
 SIMULATION_SPACE = 1000
 

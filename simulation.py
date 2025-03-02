@@ -372,9 +372,9 @@ class Simulation:
                     # mutate other attributes
                     else:
                         # check if attribute contain number or array
-                        if type(child_attributes[key]) is np.ndarray or type(child_attributes[key]) is list:
+                        try:
                             mutation_roll = np.random.rand(len(child_attributes[key])) - 0.5  # so it will be between -0.5 and 0.5
-                        else:
+                        except:
                             mutation_roll = np.random.rand() - 0.5  # so it will be between -0.5 and 0.5
 
                         # mutate attribute

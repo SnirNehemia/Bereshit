@@ -44,8 +44,8 @@ GRASS_GENERATION_RATE = 4  # 5
 LEAVES_GENERATION_RATE = 2  # 3
 
 # Define eye parameters: (angle_offset in radians, aperture in radians)
-# eyes_params = [(np.radians(30), np.radians(45)),(np.radians(-30), np.radians(45))]
-EYES_PARAMS = [(np.radians(0), np.radians(60))]
+# eyes_params = ((np.radians(30), np.radians(45)),(np.radians(-30), np.radians(45)))
+EYES_PARAMS = ((np.radians(0), np.radians(60)))
 
 # parameters of network
 INPUT_SIZE = 2 + 2 + 3 * len(EYES_PARAMS) * 4

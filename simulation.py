@@ -74,7 +74,7 @@ class Simulation:
                 valid_position = True
 
             # static traits
-            max_age = np.random.rand() * config.INIT_MAX_AGE
+            max_age = np.random.randint(low=0, high=config.INIT_MAX_AGE)
             max_weight = 10.0
             max_height = 5.0
             max_speed = [5.0, 5.0]
@@ -191,7 +191,6 @@ class Simulation:
             creature.speed = new_direction * new_speed_mag
         except Exception as e:
             print(e)
-            breakpoint()
 
     @staticmethod
     def prepare_eye_input(detection_result, vision_limit):
@@ -373,18 +372,13 @@ class Simulation:
                     # mutate other attributes
                     else:
                         # check if attribute contain number or array
-                        try:
-                            num_to_rand = len(child_attributes[key])
-                        except:
-                            num_to_rand = 1
+                        if type(child_attributes[key]) is np.ndarray or type(child_attributes[key]) is list:
+                            mutation_roll = np.random.rand(len(child_attributes[key])) - 0.5  # so it will be between -0.5 and 0.5
+                        else:
+                            mutation_roll = np.random.rand() - 0.5  # so it will be between -0.5 and 0.5
 
                         # mutate attribute
-                        mutation_roll = np.random.rand(num_to_rand) - 0.5  # so it will be between -0.5 and 0.5
                         child_attributes[key] += mutation_roll * max_mutation_factor
-
-                        # change array with size 1 back to float
-                        if num_to_rand == 1:
-                            child_attributes[key] = float(child_attributes[key])
 
                     # set energy of child
                     child_attributes['energy'] = np.random.rand() * child_attributes['max_energy']

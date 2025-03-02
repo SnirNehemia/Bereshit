@@ -31,7 +31,7 @@ STATISTICS_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"statistics_fig_{date_str}.png
 np.random.seed = 0
 NOISE_STD = 0.5
 DT = 1.0  # time passing from frame to frame (relevant when calculating velocities)
-NUM_FRAMES = 100
+NUM_FRAMES = 25
 NUM_CREATURES = 30
 MAX_NUM_CREATURES = 250
 INIT_MAX_ENERGY = 1200
@@ -39,9 +39,9 @@ INIT_MAX_AGE = 300
 SIMULATION_SPACE = 1000
 
 # environment
-ENV_PATH = r"Penvs\Env3.png"
-GRASS_GENERATION_RATE = 2  # 5
-LEAVES_GENERATION_RATE = 2  # 3
+ENV_PATH = r"Penvs\Env1.png"
+GRASS_GENERATION_RATE = 1  # 5
+LEAVES_GENERATION_RATE = 1  # 3
 
 # Define eye parameters: (angle_offset in radians, aperture in radians)
 # eyes_params = ((np.radians(30), np.radians(45)),(np.radians(-30), np.radians(45)))
@@ -59,8 +59,8 @@ GRASS_ENERGY = 150
 LEAF_ENERGY = 100
 
 # For reproduction
-REPRODUCTION_ENERGY = 800
-MIN_LIFE_ENERGY = 20  # energy to be left after reproduction
+REPRODUCTION_ENERGY = 500
+MIN_LIFE_ENERGY = 50  # energy to be left after reproduction
 MUTATION_CHANCE = 0.4  # number between 0-1 indicating chance of trait to be mutated
 MAX_MUTATION_FACTORS = {'max_age': 2,
                         'max_weight': 1,
@@ -76,9 +76,9 @@ MAX_MUTATION_FACTORS = {'max_age': 2,
 
                         'eyes_params': np.radians(5),  # +-degrees for each eye
                         'vision_limit': 4,
-                        'brain': {'layer_addition': 0.5,
-                                  'modify_weights': 0.2,
-                                  'modify_layer': 0.3},
+                        'brain': {'layer_addition': 0.7,
+                                  'modify_weights': 0.8,
+                                  'modify_layer': 0.9},
 
                         'weight': 3,
                         'height': 3,

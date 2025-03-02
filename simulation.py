@@ -81,8 +81,8 @@ class Simulation:
             max_speed = [5.0, 5.0]
             color = np.random.rand(3)  # Random RGB color.
 
-            energy_efficiency = 1  # idle energy
-            speed_efficiency = 0.1  # speed * speed_efficiency
+            energy_efficiency = 2  # idle energy
+            speed_efficiency = 1  # speed * speed_efficiency
             food_efficiency = 1  # energy from food * food_efficiency
             reproduction_energy = config.REPRODUCTION_ENERGY
             max_energy = config.INIT_MAX_ENERGY
@@ -363,15 +363,9 @@ class Simulation:
                 if do_mutate:
                     max_mutation_factor = config.MAX_MUTATION_FACTORS[key]
 
-                    # mutate brain (NOT IN USE RIGHT NOW)
+                    # mutate brain separately
                     if key == "brain":
-                        brain_mutation_rate = dict()
-                        max_brain_mutation_rate = max_mutation_factor
-                        for brain_mutation_rate_key in max_mutation_factor.keys():
-                            mutation_roll = np.random.rand()
-                            brain_mutation_rate[brain_mutation_rate_key] = \
-                                mutation_roll * max_brain_mutation_rate[brain_mutation_rate_key]
-                        creature.brain.mutate_brain(brain_mutation_rate=brain_mutation_rate)
+                        creature.brain.mutate(brain_mutation_rate=max_mutation_factor)
 
                     # mutate other attributes
                     else:
@@ -453,7 +447,7 @@ class Simulation:
         fig, axes = plt.subplots(1,2)
         ax = axes[0]
         ax_brain = axes[1]
-        fig.figsize=(8, 8)
+        fig.figsize=(16, 8)
         extent = self.env.get_extent()
         ax.set_xlim(extent[0], extent[1])
         ax.set_ylim(extent[2], extent[3])
@@ -496,6 +490,8 @@ class Simulation:
         def update(frame):
             # Skip extra initial calls (because blit=True)
             global quiv, scat, grass_scat, leaves_scat, agent_scat, first_frame
+            if len(self.creatures)==0:
+                return scat, quiv, grass_scat, leaves_scat, agent_scat
             if first_frame and frame == 0:
                 first_frame = False
                 return scat, quiv, grass_scat, leaves_scat, agent_scat
@@ -595,7 +591,7 @@ class Simulation:
             agent = self.creatures[min(self.creatures.keys())]
             agent_scat = ax.scatter(agent.position[0], agent.position[1], s=50, facecolors='none', edgecolors='r')
             agent.brain.plot(ax_brain)
-            return scat, quiv, grass_scat, leaves_scat
+            return scat, quiv, grass_scat, leaves_scat, agent_scat
 
         # ----------------------------------- run simulation and save animation ------------------------------------ #
         ani = animation.FuncAnimation(fig, update, frames=num_frames, interval=50, blit=True)

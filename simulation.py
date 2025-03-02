@@ -33,7 +33,7 @@ class Simulation:
                                                    output_size=config.OUTPUT_SIZE,
                                                    eyes_params=config.EYES_PARAMS,
                                                    env=self.env)
-
+        self.birthday = {id: 0 for id in self.creatures.keys()}
         # Build a KDTree for creature positions.
         self.creatures_kd_tree = self.build_creatures_kd_tree()
         self.max_creature_id = len(self.creatures.keys()) - 1
@@ -330,7 +330,7 @@ class Simulation:
         # kill creatures
         for id in died_creatured_id:
             del self.creatures[id]  # TODO: move to a cemetery dictionary
-
+        child_ids = []
         # Reproduction
         for creature in creatures_reproduced:
             # update id
@@ -345,7 +345,7 @@ class Simulation:
                 del child_attributes[key]
             del child_attributes['log_list']
             # child_attributes.pop()
-            mutation_binary_mask = np.random.randint(0, 2, size=len(child_attributes))  # which traits to change
+            mutation_binary_mask = np.random.rand(len(child_attributes)) > config.MUTATION_THRESHOLD  # which traits to change
 
             for i, key in enumerate(child_attributes.keys()):
                 if key.startswith('log'):  # clear logs for child
@@ -380,13 +380,13 @@ class Simulation:
             # Add child to creatures
             child_creature = Creature(**child_attributes)
             self.creatures[id] = child_creature
+            child_ids.append(id)
 
         self.update_creatures_kd_tree()
         # Update environment vegetation.
         self.env.update()
 
-        num_new_creatures = len(creatures_reproduced)
-        return num_new_creatures
+        return child_ids
 
     def eat_food(self, id: id, food_type: str):
         creature = self.creatures[id]
@@ -479,8 +479,10 @@ class Simulation:
         def update(frame):
 
             # --------------------------- run frame --------------------------- #
-            num_new_creatures = self.step(dt, noise_std)
-
+            child_ids = self.step(dt, noise_std)
+            # update birthdays
+            for child_id in child_ids:
+                self.birthday[child_id] = frame
             # ------------------------- update debug parameters ------------------------- #
             current_num_creatures = len(self.creatures.keys())
             if current_num_creatures > config.MAX_NUM_CREATURES:
@@ -500,7 +502,7 @@ class Simulation:
                     else:
                         self.creatures_energy_per_frame[id].append(creature.energy)
 
-                print(f'{frame=}: ended with {current_num_creatures} creatures (+{num_new_creatures}), '
+                print(f'{frame=}: ended with {current_num_creatures} creatures (+{len(child_ids)}), '
                       f' max energy = {round(self.max_creature_energy_per_frame[-1], 2)}.')
             else:
                 print(f'{frame=}: all creatures are dead :(.')

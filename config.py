@@ -60,6 +60,7 @@ LEAF_ENERGY = 20
 # For reproduction
 REPRODUCTION_ENERGY = 800
 MIN_LIFE_ENERGY = 20  # energy to be left after reproduction
+MUTATION_THRESHOLD = 0.25  # probability of mutation in each gene
 MAX_MUTATION_FACTORS = {'max_age': 2,
                         'max_weight': 1,
                         'max_height': 1,

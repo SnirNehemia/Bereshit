@@ -1,4 +1,6 @@
 # simulation.py
+import copy
+
 import numpy as np
 from scipy.spatial import KDTree
 
@@ -33,12 +35,12 @@ class Simulation:
                                                    output_size=config.OUTPUT_SIZE,
                                                    eyes_params=config.EYES_PARAMS,
                                                    env=self.env)
+        self.dead_creatures = dict()
+
         self.birthday = {id: 0 for id in self.creatures.keys()}
         # Build a KDTree for creature positions.
         self.creatures_kd_tree = self.build_creatures_kd_tree()
         self.max_creature_id = len(self.creatures.keys()) - 1
-
-        # TODO: add dictionary for dead creatures
 
         # debug run
         self.creatures_energy_per_frame = dict([(id, list()) for id in range(len(self.creatures.keys()))])
@@ -47,6 +49,8 @@ class Simulation:
         self.max_creature_energy_per_frame = []
         self.mean_creature_energy_per_frame = []
         self.std_creature_energy_per_frame = []
+        self.num_new_creatures_per_frame = []
+        self.num_dead_creatures_per_frame = []
 
     @staticmethod
     def initialize_creatures(num_creatures, simulation_space, input_size, output_size,
@@ -71,17 +75,17 @@ class Simulation:
                 valid_position = True
 
             # static traits
-            max_age = 50
+            max_age = np.random.rand() * config.INIT_MAX_AGE
             max_weight = 10.0
             max_height = 5.0
             max_speed = [5.0, 5.0]
             color = np.random.rand(3)  # Random RGB color.
 
-            energy_efficiency = 1   # idle energy
+            energy_efficiency = 1  # idle energy
             speed_efficiency = 0.1  # speed * speed_efficiency
-            food_efficiency = 1     # energy from food * food_efficiency
+            food_efficiency = 1  # energy from food * food_efficiency
             reproduction_energy = config.REPRODUCTION_ENERGY
-            max_energy = config.MAX_INIT_ENERGY
+            max_energy = config.INIT_MAX_ENERGY
 
             vision_limit = 100.0
             brain = Brain([input_size, output_size])
@@ -282,9 +286,6 @@ class Simulation:
             height, width = self.env.map_data.shape[:2]
             if col < 0 or col >= width or row < 0 or row >= height or self.env.obstacle_mask[row, col]:
                 creature.speed = np.array([0.0, 0.0])
-            else:  # TODO: check if neccessary
-                if self.env.obstacle_mask[row, col]:
-                    creature.speed = np.array([0.0, 0.0])
 
         creatures_reproduced = []
         died_creatured_id = []
@@ -303,16 +304,16 @@ class Simulation:
             energy_consumption += creature.energy_efficiency  # idle energy
             energy_consumption += creature.speed_efficiency * np.linalg.norm(creature.speed)  # movement energy
 
-            # update or kill creature
+            # test whether to update or kill creature
             if creature.energy > energy_consumption:
                 # update creature energy and position
                 creature.energy -= energy_consumption
                 creature.position += creature.speed * dt
 
                 # check for food (first grass, if not found search for leaf if tall enough)
-                is_found_food = self.eat_food(id=id, food_type='grass')
+                is_found_food = self.eat_food(creature=creature, food_type='grass')
                 if not is_found_food and creature.height >= config.LEAF_HEIGHT:
-                    _ = self.eat_food(id=id, food_type='leaf')
+                    _ = self.eat_food(creature=creature, food_type='leaf')
                 creature.log_eat.append(is_found_food)
 
                 # reproduce
@@ -328,32 +329,42 @@ class Simulation:
             creature.log_energy.append(creature.energy)
 
         # kill creatures
+        dead_ids = []
+        num_dead_creatures = 0
         for id in died_creatured_id:
-            del self.creatures[id]  # TODO: move to a cemetery dictionary
-        child_ids = []
+            num_dead_creatures += 1
+            self.dead_creatures[id] = self.creatures[id]
+            del self.creatures[id]
+            dead_ids.append(id)
+
         # Reproduction
+        child_ids = []
         for creature in creatures_reproduced:
             # update id
             id = self.max_creature_id + 1
             self.max_creature_id += 1
 
-            # Mutate father attributes for child
-            child_attributes = creature.__dict__.copy()
-            del child_attributes['age']
+            # Copy father attributes to child
+            child_attributes = copy.deepcopy(creature.__dict__)
 
-            for key in creature.log_list:
-                del child_attributes[key]
-            del child_attributes['log_list']
-            # child_attributes.pop()
-            mutation_binary_mask = np.random.rand(len(child_attributes)) > config.MUTATION_THRESHOLD  # which traits to change
+            # clear age and logs for child
+            del child_attributes['age']
+            attributes_keys = list(child_attributes.keys())
+            for key in attributes_keys:
+                if key.startswith('log'):
+                    del child_attributes[key]
+
+            # which traits to change
+            mutation_binary_mask = np.random.rand(len(child_attributes)) >= config.MUTATION_CHANCE
 
             for i, key in enumerate(child_attributes.keys()):
-                if key.startswith('log'):  # clear logs for child
-                    child_attributes[key] = []
-                    continue
+
+                # mutate static and dynamic traits and brain
                 do_mutate = mutation_binary_mask[i]
-                max_mutation_factor = config.MAX_MUTATION_FACTORS[key]
                 if do_mutate:
+                    max_mutation_factor = config.MAX_MUTATION_FACTORS[key]
+
+                    # mutate brain (NOT IN USE RIGHT NOW)
                     if key == "brain":
                         brain_mutation_rate = dict()
                         max_brain_mutation_rate = max_mutation_factor
@@ -362,6 +373,8 @@ class Simulation:
                             brain_mutation_rate[brain_mutation_rate_key] = \
                                 mutation_roll * max_brain_mutation_rate[brain_mutation_rate_key]
                         creature.brain.mutate_brain(brain_mutation_rate=brain_mutation_rate)
+
+                    # mutate other attributes
                     else:
                         # check if attribute contain number or array
                         try:
@@ -377,6 +390,9 @@ class Simulation:
                         if num_to_rand == 1:
                             child_attributes[key] = float(child_attributes[key])
 
+                    # set energy of child
+                    child_attributes['energy'] = np.random.rand() * child_attributes['max_energy']
+
             # Add child to creatures
             child_creature = Creature(**child_attributes)
             self.creatures[id] = child_creature
@@ -386,10 +402,9 @@ class Simulation:
         # Update environment vegetation.
         self.env.update()
 
-        return child_ids
+        return child_ids, dead_ids
 
-    def eat_food(self, id: id, food_type: str):
-        creature = self.creatures[id]
+    def eat_food(self, creature: Creature, food_type: str):
         is_found_food = False
         if creature.energy >= creature.max_energy:
             return False
@@ -429,8 +444,9 @@ class Simulation:
         """
 
         # -------------------------- init relevant parameters for simulation -------------------------- #
-        global quiv, scat, grass_scat, leaves_scat
+        global quiv, scat, grass_scat, leaves_scat, first_frame
 
+        first_frame = True
         dt = config.DT
         noise_std = config.NOISE_STD
         num_frames = config.NUM_FRAMES
@@ -477,9 +493,15 @@ class Simulation:
         print('starting simulation')
 
         def update(frame):
+            # Skip extra initial calls (because blit=True)
+            global quiv, scat, grass_scat, leaves_scat, first_frame
+            if first_frame and frame == 0:
+                first_frame = False
+                return scat, quiv, grass_scat, leaves_scat
 
             # --------------------------- run frame --------------------------- #
-            child_ids = self.step(dt, noise_std)
+            child_ids, dead_ids = self.step(dt, noise_std)
+
             # update birthdays
             for child_id in child_ids:
                 self.birthday[child_id] = frame
@@ -488,7 +510,12 @@ class Simulation:
             if current_num_creatures > config.MAX_NUM_CREATURES:
                 raise Exception(f'{frame=}: Too many creatures, simulation is stuck.')
             if current_num_creatures > 0:
+                # update total/new/dead number of creatures
                 self.num_creatures_per_frame.append(current_num_creatures)
+                self.num_new_creatures_per_frame.append(len(child_ids))
+                self.num_dead_creatures_per_frame.append(len(dead_ids))
+
+                # update energy statistics
                 creatures_energy = [creature.energy for creature in self.creatures.values()]
                 self.min_creature_energy_per_frame.append(np.min(creatures_energy))
                 self.max_creature_energy_per_frame.append(np.max(creatures_energy))
@@ -502,14 +529,14 @@ class Simulation:
                     else:
                         self.creatures_energy_per_frame[id].append(creature.energy)
 
-                print(f'{frame=}: ended with {current_num_creatures} creatures (+{len(child_ids)}), '
-                      f' max energy = {round(self.max_creature_energy_per_frame[-1], 2)}.')
+                print(f'{frame=}: ended with {current_num_creatures} creatures '
+                      f'(+{len(child_ids)}, -{len(dead_ids)}), '
+                      f'max energy = {round(self.max_creature_energy_per_frame[-1], 2)}.')
             else:
                 print(f'{frame=}: all creatures are dead :(.')
 
             # --------------------------- plot --------------------------- #
             # clear quiver and scatter
-            global quiv, scat, grass_scat, leaves_scat
             if 'quiv' in globals():
                 quiv.remove()
             if 'scat' in globals():
@@ -557,6 +584,7 @@ class Simulation:
             #     print(f"Frame {frame} / {num_frames}")
             # Update the progress bar
             progress_bar.update(1)
+            ax.set_title(f"Evolution Simulation ({frame=})")
             return scat, quiv, grass_scat, leaves_scat
 
         # ----------------------------------- run simulation and save animation ------------------------------------ #
@@ -567,7 +595,7 @@ class Simulation:
         print(f'Simulation animation saved as {config.ANIMATION_FILEPATH.stem}.')
 
         # ----------------------------------- Plot graphs after simulation ended ----------------------------------- #
-        # creature energy fig
+        # specific fig
         plt.figure()
         creature_ids_to_plot = [0, 1, 2, 3, 4, 5]
         for id in creature_ids_to_plot:
@@ -581,10 +609,14 @@ class Simulation:
         plt.savefig(fname=config.SPECIFIC_FIG_FILEPATH)
         print(f'specific fig saved as {config.SPECIFIC_FIG_FILEPATH.stem}.')
 
-        # Final fig
+        # statistics fig
         fig, ax = plt.subplots(2, 1, sharex='all')
-        ax[0].plot(self.num_creatures_per_frame, '.-')
+        ax[0].plot(self.num_creatures_per_frame, 'b.-', label='total')
+        ax[0].plot(self.num_new_creatures_per_frame, 'g.-', label='new')
+        ax[0].plot(self.num_dead_creatures_per_frame, 'r.-', label='dead')
         ax[0].set_title('num creatures per frame')
+        ax[0].legend()
+
         ax[1].plot(self.min_creature_energy_per_frame, '.-', label='min energy')
         ax[1].plot(self.max_creature_energy_per_frame, '.-', label='max energy')
         ax[1].errorbar(x=np.arange(len(self.mean_creature_energy_per_frame)),
@@ -595,6 +627,7 @@ class Simulation:
         ax[1].set_title('energy statistics per frame')
         ax[1].set_xlabel('frame number')
         ax[1].legend()
+
         fig.savefig(fname=config.STATISTICS_FIG_FILEPATH)
         print(f'statistics fig saved as {config.STATISTICS_FIG_FILEPATH.stem}.')
 

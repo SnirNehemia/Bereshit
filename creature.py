@@ -33,8 +33,8 @@ class Creature(StaticTraits):
         self.energy = energy
         self.hunger = hunger
         self.thirst = thirst
+
         # logs for debugging
-        self.log_list = ['log_eat', 'log_reproduce', 'log_energy']
         self.log_eat = []
         self.log_reproduce = []
         self.log_energy = []

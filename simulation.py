@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.patches import Circle
 
+from lineage_tree import plot_lineage_tree
+
 
 class Simulation:
     """
@@ -58,7 +60,7 @@ class Simulation:
         Initializes creatures ensuring they are not placed in a forbidden (black) area.
         """
         creatures = dict()
-        for id in range(num_creatures):
+        for creature_id in range(num_creatures):
             position = []
             valid_position = False
             while not valid_position:
@@ -74,17 +76,20 @@ class Simulation:
                 valid_position = True
 
             # static traits
+            gen = 0
+            parent_id = None
+            birth_frame = 0
             max_age = np.random.randint(low=0, high=config.INIT_MAX_AGE)
             max_weight = 10.0
             max_height = 5.0
             max_speed = [5.0, 5.0]
+            max_energy = config.INIT_MAX_ENERGY
             color = np.random.rand(3)  # Random RGB color.
 
             energy_efficiency = 1  # idle energy
             speed_efficiency = 0.1  # speed * speed_efficiency
             food_efficiency = 1  # energy from food * food_efficiency
             reproduction_energy = config.REPRODUCTION_ENERGY
-            max_energy = config.INIT_MAX_ENERGY
 
             vision_limit = 100.0
             brain = Brain([input_size, output_size])
@@ -98,16 +103,17 @@ class Simulation:
             thirst = np.random.rand() * 10
 
             # init creature
-            creature = Creature(max_age=max_age, max_weight=max_weight, max_height=max_height, max_speed=max_speed,
-                                color=color,
-                                energy_efficiency=energy_efficiency, speed_efficiency=speed_efficiency,
-                                food_efficiency=food_efficiency, reproduction_energy=reproduction_energy,
-                                max_energy=max_energy,
-                                eyes_params=eyes_params, vision_limit=vision_limit, brain=brain,
-                                weight=weight, height=height,
-                                position=position, speed=speed, energy=energy, hunger=hunger, thirst=thirst)
+            creature = Creature(
+                creature_id=creature_id, gen=gen, parent_id=parent_id, birth_frame=birth_frame,
+                max_age=max_age, max_weight=max_weight, max_height=max_height,
+                max_speed=max_speed, max_energy=max_energy, color=color,
+                energy_efficiency=energy_efficiency, speed_efficiency=speed_efficiency,
+                food_efficiency=food_efficiency, reproduction_energy=reproduction_energy,
+                eyes_params=eyes_params, vision_limit=vision_limit, brain=brain,
+                weight=weight, height=height,
+                position=position, speed=speed, energy=energy, hunger=hunger, thirst=thirst)
 
-            creatures[id] = creature
+            creatures[creature_id] = creature
         return creatures
 
     def build_creatures_kd_tree(self) -> KDTree:
@@ -259,7 +265,7 @@ class Simulation:
                 detected_info = (distance, angle)
         return detected_info
 
-    def step(self, dt: float, noise_std: float = 0.0):
+    def step(self, dt: float, noise_std: float = 0.0, frame: int = 0):
         """
         Advances the simulation by one time step.
         For each creature:
@@ -270,13 +276,13 @@ class Simulation:
         Then, moves creatures and updates the vegetation.
         """
         # Update each creature's velocity.
-        for id, creature in self.creatures.items():
-            # print(f'creature {i}: start brain use...')
+        for creature_id, creature in self.creatures.items():
+            # print(f'creature {creature_id}: start brain use...')
             self.use_brain(creature=creature, noise_std=noise_std)
-            # print(f'creature {i}: completed brain use!')
+            # print(f'creature {creature_id}: completed brain use!')
 
         # Collision detection: if a creature's new position would be inside an obstacle, stop it.
-        for id, creature in self.creatures.items():
+        for creature_id, creature in self.creatures.items():
             new_position = creature.position + creature.speed * dt
             # Convert (x, y) to image indices (col, row).
             col = int(new_position[0])
@@ -289,10 +295,10 @@ class Simulation:
         died_creatured_id = []
 
         # energy consumption
-        for id, creature in self.creatures.items():
+        for creature_id, creature in self.creatures.items():
             # death from age
             if creature.age >= creature.max_age:
-                died_creatured_id.append(id)
+                died_creatured_id.append(creature_id)
                 continue
             else:
                 creature.age += 1
@@ -323,26 +329,26 @@ class Simulation:
                     creature.log_reproduce.append(0)
             else:
                 # death from energy
-                died_creatured_id.append(id)
+                died_creatured_id.append(creature_id)
             creature.log_energy.append(creature.energy)
 
         # kill creatures
         num_dead_creatures = 0
-        for id in died_creatured_id:
+        for creature_id in died_creatured_id:
             num_dead_creatures += 1
-            self.dead_creatures[id] = self.creatures[id]
-            del self.creatures[id]
+            self.dead_creatures[creature_id] = self.creatures[creature_id]
+            del self.creatures[creature_id]
 
         # Reproduction
         for creature in creatures_reproduced:
-            # update id
-            id = self.max_creature_id + 1
-            self.max_creature_id += 1
-
             # Copy father attributes to child
             child_attributes = copy.deepcopy(creature.__dict__)
 
-            # clear age and logs for child
+            # clear some non-mutated child attributes (defined afterwards)
+            del child_attributes['creature_id']
+            del child_attributes['gen']
+            del child_attributes['parent_id']
+            del child_attributes['birth_frame']
             del child_attributes['age']
             attributes_keys = list(child_attributes.keys())
             for key in attributes_keys:
@@ -373,25 +379,39 @@ class Simulation:
                     else:
                         # check if attribute contain number or array
                         try:
-                            mutation_roll = np.random.rand(len(child_attributes[key])) - 0.5  # so it will be between -0.5 and 0.5
+                            mutation_roll = np.random.rand(
+                                len(child_attributes[key])) - 0.5  # so it will be between -0.5 and 0.5
                         except:
                             mutation_roll = np.random.rand() - 0.5  # so it will be between -0.5 and 0.5
 
                         # mutate attribute
                         child_attributes[key] += mutation_roll * max_mutation_factor
 
-                    # set energy of child
-                    child_attributes['energy'] = np.random.rand() * child_attributes['max_energy']
+            # set non-mutated attributes of child
+            child_id = self.max_creature_id + 1
+            self.max_creature_id += 1
+            child_attributes['creature_id'] = child_id
+            child_attributes['gen'] = creature.gen + 1
+            child_attributes['parent_id'] = creature.creature_id
+            child_attributes['birth_frame'] = frame
+            child_attributes['energy'] = np.random.rand() * child_attributes['max_energy']
 
             # Add child to creatures
             child_creature = Creature(**child_attributes)
-            self.creatures[id] = child_creature
+            self.creatures[child_id] = child_creature
+
+            # print(f'{child_creature.creature_id} born to {child_creature.parent_id} in {frame=}')
 
         self.update_creatures_kd_tree()
         # Update environment vegetation.
         self.env.update()
 
         num_new_creatures = len(creatures_reproduced)
+
+        # debug print
+        # creatures_reproduced_id = [creature_reproduced.creature_id for creature_reproduced in creatures_reproduced]
+        # print(f'{frame=}: {creatures_reproduced_id=}')
+
         return num_new_creatures, num_dead_creatures
 
     def eat_food(self, creature: Creature, food_type: str):
@@ -434,63 +454,58 @@ class Simulation:
         """
 
         # -------------------------- init relevant parameters for simulation -------------------------- #
-        global quiv, scat, grass_scat, leaves_scat, first_frame
+        global quiv, scat, grass_scat, leaves_scat
 
-        first_frame = True
-        dt = config.DT
-        noise_std = config.NOISE_STD
-        num_frames = config.NUM_FRAMES
-
-        # Initialize the progress bar outside of the update function
-        progress_bar = tqdm(total=num_frames, desc="Simulation progress")
+        # Initialize the progress bar outside the update function
+        progress_bar = tqdm(total=config.NUM_FRAMES, desc="Simulation progress")
         fig, ax = plt.subplots(figsize=(8, 8))
-        extent = self.env.get_extent()
-        ax.set_xlim(extent[0], extent[1])
-        ax.set_ylim(extent[2], extent[3])
-        ax.set_title("Evolution Simulation")
-
-        # Display the environment map with origin='lower' to avoid vertical mirroring.
-        ax.imshow(self.env.map_data, extent=extent, alpha=0.3, origin='lower')  # , aspect='auto')
-
-        # Draw the water source.
-        water_x, water_y, water_r = self.env.water_source
-        water_circle = Circle((water_x, water_y), water_r, color='blue', alpha=0.3)
-        ax.add_patch(water_circle)
-
-        # Initial creature positions.
-        positions = np.array([creature.position for creature in self.creatures.values()])
-        colors = [creature.color for creature in self.creatures.values()]
-        scat = ax.scatter(positions[:, 0], positions[:, 1], c=colors, s=20)
-
-        # Create quiver arrows for creature headings.
-        U, V = [], []
-        for creature in self.creatures.values():
-            if np.linalg.norm(creature.speed) > 0:
-                U.append(creature.speed[0])
-                V.append(creature.speed[1])
-            else:
-                U.append(0)
-                V.append(0)
-        quiv = ax.quiver(positions[:, 0], positions[:, 1], U, V,
-                         color='black', scale=150, width=0.005)
-
-        # Scatter plots for vegetation.
-        grass_scat = ax.scatter([], [], c='lightgreen', edgecolors='black', s=20)
-        leaves_scat = ax.scatter([], [], c='darkgreen', edgecolors='black', s=20)
 
         # -------------------------------- function for simulation progress -------------------------------- #
 
         print('starting simulation')
 
-        def update(frame):
-            # Skip extra initial calls (because blit=True)
-            global quiv, scat, grass_scat, leaves_scat, first_frame
-            if first_frame and frame == 0:
-                first_frame = False
-                return scat, quiv, grass_scat, leaves_scat
+        def init_func():
+            global quiv, scat, grass_scat, leaves_scat
+            extent = self.env.get_extent()
+            ax.set_xlim(extent[0], extent[1])
+            ax.set_ylim(extent[2], extent[3])
+            ax.set_title("Evolution Simulation")
 
+            # Display the environment map with origin='lower' to avoid vertical mirroring.
+            ax.imshow(self.env.map_data, extent=extent, alpha=0.3, origin='lower')  # , aspect='auto')
+
+            # Draw the water source.
+            water_x, water_y, water_r = self.env.water_source
+            water_circle = Circle((water_x, water_y), water_r, color='blue', alpha=0.3)
+            ax.add_patch(water_circle)
+
+            # Initial creature positions.
+            positions = np.array([creature.position for creature in self.creatures.values()])
+            colors = [creature.color for creature in self.creatures.values()]
+            scat = ax.scatter(positions[:, 0], positions[:, 1], c=colors, s=20)
+
+            # Create quiver arrows for creature headings.
+            U, V = [], []
+            for creature in self.creatures.values():
+                if np.linalg.norm(creature.speed) > 0:
+                    U.append(creature.speed[0])
+                    V.append(creature.speed[1])
+                else:
+                    U.append(0)
+                    V.append(0)
+            quiv = ax.quiver(positions[:, 0], positions[:, 1], U, V,
+                             color='black', scale=150, width=0.005)
+
+            # Scatter plots for vegetation.
+            grass_scat = ax.scatter([], [], c='lightgreen', edgecolors='black', s=20)
+            leaves_scat = ax.scatter([], [], c='darkgreen', edgecolors='black', s=20)
+
+            return scat, quiv, grass_scat, leaves_scat
+
+        def update(frame):
+            global quiv, scat, grass_scat, leaves_scat
             # --------------------------- run frame --------------------------- #
-            num_new_creatures, num_dead_creatures = self.step(dt, noise_std)
+            num_new_creatures, num_dead_creatures = self.step(config.DT, config.NOISE_STD, frame)
 
             # ------------------------- update debug parameters ------------------------- #
             current_num_creatures = len(self.creatures.keys())
@@ -509,12 +524,12 @@ class Simulation:
                 self.mean_creature_energy_per_frame.append(np.mean(creatures_energy))
                 self.std_creature_energy_per_frame.append(np.std(creatures_energy))
 
-                for id, creature in self.creatures.items():
-                    if id not in self.creatures_energy_per_frame.keys():
-                        self.creatures_energy_per_frame[id] = np.zeros(frame).tolist()
-                        self.creatures_energy_per_frame[id].append(creature.energy)
+                for creature_id, creature in self.creatures.items():
+                    if creature_id not in self.creatures_energy_per_frame.keys():
+                        self.creatures_energy_per_frame[creature_id] = np.zeros(frame).tolist()
+                        self.creatures_energy_per_frame[creature_id].append(creature.energy)
                     else:
-                        self.creatures_energy_per_frame[id].append(creature.energy)
+                        self.creatures_energy_per_frame[creature_id].append(creature.energy)
 
                 print(f'{frame=}: ended with {current_num_creatures} creatures '
                       f'(+{num_new_creatures}, -{num_dead_creatures}), '
@@ -568,20 +583,24 @@ class Simulation:
                 leaves_scat = ax.scatter(leaf_points[:, 0], leaf_points[:, 1], c='darkgreen', edgecolors='black', s=20)
                 # leaves_scat.set_offsets(np.array(self.env.leaf_points))
             # if frame % 10 == 0:
-            #     print(f"Frame {frame} / {num_frames}")
+            #     print(f"Frame {frame} / {config.NUM_FRAMES}")
             # Update the progress bar
             progress_bar.update(1)
             ax.set_title(f"Evolution Simulation ({frame=})")
             return scat, quiv, grass_scat, leaves_scat
 
         # ----------------------------------- run simulation and save animation ------------------------------------ #
-        ani = animation.FuncAnimation(fig, update, frames=num_frames, interval=50, blit=True)
+        ani = animation.FuncAnimation(fig, update, frames=config.NUM_FRAMES, interval=50,
+                                      init_func=init_func, blit=True)
         ani.save(config.ANIMATION_FILEPATH, writer="ffmpeg", dpi=200)
         plt.close(fig)
         print('finished simulation.')
         print(f'Simulation animation saved as {config.ANIMATION_FILEPATH.stem}.')
 
         # ----------------------------------- Plot graphs after simulation ended ----------------------------------- #
+        all_creatures = {**self.creatures, **self.dead_creatures}
+        plot_lineage_tree(all_creatures)
+
         # specific fig
         plt.figure()
         creature_ids_to_plot = [0, 1, 2, 3, 4, 5]

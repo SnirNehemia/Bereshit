@@ -10,19 +10,20 @@ class Creature(StaticTraits):
     Inherits static traits and adds dynamic properties such as position, speed, hunger, etc.
     """
 
-    def __init__(self, max_age: int, max_weight: float, max_height: float, max_speed: list[float], color: np.ndarray,
+    def __init__(self, creature_id: int, gen: int, parent_id: str | None, birth_frame: int,
+                 max_age: int, max_weight: float, max_height: float,
+                 max_speed: list[float], max_energy: float, color: np.ndarray,
                  energy_efficiency: float, speed_efficiency: float,
                  food_efficiency: float, reproduction_energy: float,
-                    max_energy: float,
                  eyes_params: list[tuple], vision_limit: float, brain: Brain,
                  weight: float, height: float,
                  position: np.ndarray, speed: np.ndarray,
                  energy: float, hunger: float, thirst: float):
-        super().__init__(max_age=max_age, max_weight=max_weight, max_height=max_height, max_speed=max_speed,
-                         color=color,
+        super().__init__(creature_id=creature_id, gen=gen, parent_id=parent_id, birth_frame=birth_frame,
+                         max_age=max_age, max_weight=max_weight, max_height=max_height,
+                         max_speed=max_speed, max_energy=max_energy, color=color,
                          energy_efficiency=energy_efficiency, speed_efficiency=speed_efficiency,
                          food_efficiency=food_efficiency, reproduction_energy=reproduction_energy,
-                         max_energy=max_energy,
                          eyes_params=eyes_params, vision_limit=vision_limit, brain=brain)
 
         self.age = 0

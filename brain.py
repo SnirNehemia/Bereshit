@@ -37,7 +37,7 @@ class Brain:
         # self.memory_values = np.zeros(layers_size[-1])
         # self.activation = ACTIVATION_FUNCTIONS.get(activation)
         self.size = 0  # Effective network size
-        self.random_magnitude = 0.1
+        self.random_magnitude = 0.2
         self.layers = []
         # Initialize a simple two-layer network
         if no_lineage:
@@ -161,7 +161,7 @@ class Brain:
 
     def plot(brain, ax):
         ax.clear()
-
+        if len(brain.neuron_values[0].shape) > 1: return # Skip plotting if the neurons are not a list of vector
         # Set up the color map: blue for negative, white for zero, red for positive
         cmap = plt.cm.bwr
         norm = mcolors.Normalize(vmin=-1, vmax=1)
@@ -178,21 +178,28 @@ class Brain:
 
             # Draw neurons with color representing their value
             for y, value in zip(y_positions, brain.neuron_values[i]):
-                ax.scatter(x_position, y, color=cmap(norm(value)), edgecolors='k', s=100, zorder=3)
+                ax.scatter(x_position, y, color=cmap(norm(value)), edgecolors='k', s=100, zorder=3, clim=[-1,1])
 
         # Draw weights (connections between neurons)
         for i, weights in enumerate(brain.layers):
             x_start, y_start = layer_positions[i]
+            if i+1 >= len(layer_positions):
+                print('Brain error - neurons and weights mismatch')
             x_end, y_end = layer_positions[i + 1]
             # weights = next_layer  # Assuming the weights are stored in the 'next' layer
 
             for j, start_y in enumerate(y_start):
                 for k, end_y in enumerate(y_end):
                     weight = weights.T[k, j] if weights.ndim > 1 else weights[j]
-                    ax.plot([x_start, x_end], [start_y, end_y], color=cmap(norm(weight)), zorder=1)
+                    ax.plot([x_start, x_end], [start_y, end_y], color=cmap(np.clip(norm(weight),-1,1)), zorder=1,
+                            alpha=min(norm(weight), 1))
 
         # ax.axis('equal')
         # ax.axis('off')
+        max_value = max(np.max(arr) for arr in brain.layers)
+        min_value = min(np.min(arr) for arr in brain.layers)
+        plt.title(f'max weight: {max_value:.2f}\n'
+                  f'min weight: {min_value:.2f}')
         plt.draw()
 
 

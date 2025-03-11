@@ -52,10 +52,11 @@ class Environment:
         else:
             num_new_grass = int(self.grass_generation_rate)
         if len(self.grass_indices) > 0 and num_new_grass > 0:
-            choices = self.grass_indices[np.random.choice(len(self.grass_indices), num_new_grass, replace=True)]
-            for pt in choices:
-                # Convert image coordinates (row, col) to (x, y)
-                self.grass_points.append([pt[1], pt[0]])
+            if np.random.rand() < config.GRASS_GROWTH_CHANCE:
+                choices = self.grass_indices[np.random.choice(len(self.grass_indices), num_new_grass, replace=True)]
+                for pt in choices:
+                    # Convert image coordinates (row, col) to (x, y)
+                    self.grass_points.append([pt[1], pt[0]])
 
         # Generate new leaf points.
         if len(self.leaf_points) >= config.MAX_LEAVES_NUM:

@@ -31,18 +31,21 @@ STATISTICS_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"statistics_fig_{date_str}.png
 np.random.seed = 0
 NOISE_STD = 0.5
 DT = 1.0  # time passing from frame to frame (relevant when calculating velocities)
-NUM_FRAMES = 600
-NUM_CREATURES = 50
-MAX_NUM_CREATURES = 250
-INIT_MAX_ENERGY = 1200
+NUM_FRAMES = 80
+UPDATE_ANIMATION_INTERVAL = 10  # update the animation every n frames
+UPDATE_KDTREE_INTERVAL = 20  # update the kdtree every n frames
+NUM_CREATURES = 230
+MAX_NUM_CREATURES = 500
+INIT_MAX_ENERGY = 490
 INIT_MAX_AGE = 300
-SIMULATION_SPACE = 1000
+SIMULATION_SPACE = 750
 
 # environment
-ENV_PATH = r"Penvs\Env1.png"
+ENV_PATH = r"Penvs\Env6.png"
 GRASS_GENERATION_RATE = 1  # 5
-LEAVES_GENERATION_RATE = 1  # 3
-MAX_GRASS_NUM = 50
+GRASS_GROWTH_CHANCE = 0.5  # maybe will be useful to create droughts
+LEAVES_GENERATION_RATE = 0  # 3
+MAX_GRASS_NUM = 30
 MAX_LEAVES_NUM = 50
 
 # Define eye parameters: (angle_offset in radians, aperture in radians)
@@ -55,9 +58,9 @@ INPUT_SIZE = 2 + 2 + 3 * len(EYES_PARAMS) * 4
 OUTPUT_SIZE = 2
 
 # For food
-FOOD_DISTANCE_THRESHOLD = 10
+FOOD_DISTANCE_THRESHOLD = 15
 LEAF_HEIGHT = 10
-GRASS_ENERGY = 150
+GRASS_ENERGY = 250
 LEAF_ENERGY = 100
 
 # For reproduction
@@ -70,17 +73,17 @@ MAX_MUTATION_FACTORS = {'max_age': 2,
                         'max_speed': np.array([1, 1]),
                         'color': np.array([0, 0, 0]),  # +-in each RGB color
 
-                        'energy_efficiency': 3,
-                        'speed_efficiency': 2,
-                        'food_efficiency': 2,
-                        'reproduction_energy': 5,
-                        'max_energy': 5,
+                        'energy_efficiency': 0,
+                        'speed_efficiency': 0,
+                        'food_efficiency': 0,
+                        'reproduction_energy': 0,
+                        'max_energy': 0,
 
                         'eyes_params': np.radians(5),  # +-degrees for each eye
                         'vision_limit': 4,
-                        'brain': {'layer_addition': 0.7,
-                                  'modify_weights': 0.8,
-                                  'modify_layer': 0.9},
+                        'brain': {'layer_addition': 1,
+                                  'modify_weights': 1,
+                                  'modify_layer': 1},
 
                         'weight': 3,
                         'height': 3,

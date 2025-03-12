@@ -3,7 +3,7 @@ import numpy as np
 from typing import Callable, Optional
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-
+import config as config
 # TODO: pay attention to activation function and run as main to check the hidden layers
 # Activation functions
 def relu(x: np.ndarray) -> np.ndarray:
@@ -132,6 +132,7 @@ class Brain:
         self.size = sum(layer.size for layer in self.layers)
 
     def forward(self, input_data: np.ndarray) -> np.ndarray:
+        input_data /= config.NORM_INPUT  # normalize the input
         x = np.concatenate([input_data, self.memory_nodes])
         self.neuron_values = [x]
         for weight, activation in zip(self.layers, self.activations):
@@ -198,8 +199,8 @@ class Brain:
         # ax.axis('off')
         max_value = max(np.max(arr) for arr in brain.layers)
         min_value = min(np.min(arr) for arr in brain.layers)
-        plt.title(f'max weight: {max_value:.2f}\n'
-                  f'min weight: {min_value:.2f}')
+        plt.title(f'weight : (max, min) = ({max_value:.2f}, {min_value:.2f})\n'
+                  f'output = [{brain.neuron_values[-1]}]')
         plt.draw()
 
 

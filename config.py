@@ -31,17 +31,17 @@ STATISTICS_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"statistics_fig_{date_str}.png
 np.random.seed = 0
 NOISE_STD = 0.5
 DT = 1.0  # time passing from frame to frame (relevant when calculating velocities)
-NUM_FRAMES = 80
+NUM_FRAMES = 200  # the actual number of frames will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
 UPDATE_ANIMATION_INTERVAL = 10  # update the animation every n frames
 UPDATE_KDTREE_INTERVAL = 20  # update the kdtree every n frames
-NUM_CREATURES = 230
-MAX_NUM_CREATURES = 500
+NUM_CREATURES = 500
+MAX_NUM_CREATURES = 1000
 INIT_MAX_ENERGY = 490
-INIT_MAX_AGE = 300
-SIMULATION_SPACE = 750
+INIT_MAX_AGE = 1500
+SIMULATION_SPACE = 0  # will be updated in Environment class per the map size
 
 # environment
-ENV_PATH = r"Penvs\Env6.png"
+ENV_PATH = r"Penvs\Env4.png"
 GRASS_GENERATION_RATE = 1  # 5
 GRASS_GROWTH_CHANCE = 0.5  # maybe will be useful to create droughts
 LEAVES_GENERATION_RATE = 0  # 3
@@ -50,12 +50,19 @@ MAX_LEAVES_NUM = 50
 
 # Define eye parameters: (angle_offset in radians, aperture in radians)
 # eyes_params = ((np.radians(30), np.radians(45)),(np.radians(-30), np.radians(45)))
+EYE_CHANNEL = ['grass'] #['grass', 'leaves', 'water', 'creatures']
 EYES_PARAMS = ((np.radians(0), np.radians(60)))
+VISION_LIMIT = 200  # maximum distance that the creature can see
 
 # parameters of network
-INPUT_SIZE = 2 + 2 + 3 * len(EYES_PARAMS) * 4
+INPUT_SIZE = 2 + 2 + 3 * len(EYES_PARAMS) * len(EYE_CHANNEL)
 # 2 for hunger and thirst, 2 for speed, 3 (flag, distance, angle) for each eye * 4 channels
 OUTPUT_SIZE = 2
+MAX_D_SPEED = 0.5  # maximum change in speed per frame
+MAX_D_ANGLE = np.radians(2)  # maximum change in angle per frame
+NORM_INPUT = np.array([1,1,1,1])
+for _ in range(len(EYES_PARAMS) * len(EYE_CHANNEL)):
+    NORM_INPUT = np.append(NORM_INPUT, [1, VISION_LIMIT, 1])
 
 # For food
 FOOD_DISTANCE_THRESHOLD = 15

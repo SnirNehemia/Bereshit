@@ -91,7 +91,7 @@ class Simulation:
             reproduction_energy = config.REPRODUCTION_ENERGY
             max_energy = config.INIT_MAX_ENERGY
 
-            vision_limit = 100.0
+            vision_limit = config.VISION_LIMIT
             brain = Brain([input_size, output_size])
 
             # dynamic traits
@@ -136,10 +136,10 @@ class Simulation:
         Returns (distance, signed_angle) if a target is found within half the aperture, else None.
         """
         channel_results = {}
-        channels_order = ['grass', 'leaves', 'water', 'creatures']
+
         channels_list = []
         for i_eye, eye_params in enumerate(creature.eyes_params):
-            for channel in channels_order:
+            for channel in config.EYE_CHANNEL:
                 candidate_points = np.array([])
                 if channel == 'grass':
                     if len(self.env.grass_points) > 0:
@@ -176,8 +176,8 @@ class Simulation:
             ])
             decision = creature.think(brain_input)
             delta_angle, delta_speed = decision
-            delta_angle = np.clip(delta_angle, -0.1, 0.1)
-            delta_speed = np.clip(delta_speed, -1, 1)
+            delta_angle = np.clip(delta_angle, -config.MAX_D_ANGLE, config.MAX_D_ANGLE)
+            delta_speed = np.clip(delta_speed, -config.MAX_D_SPEED, config.MAX_D_SPEED)
 
             current_speed = creature.speed
             current_speed_mag = np.linalg.norm(current_speed)

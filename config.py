@@ -22,11 +22,10 @@ OUTPUT_FOLDER = project_folder.joinpath('outputs')
 OUTPUT_FOLDER.mkdir(exist_ok=True, parents=True)
 now = datetime.now()
 date_str = now.strftime('%d_%m_%Y')
-ANIMATION_FILEPATH = OUTPUT_FOLDER.joinpath(f"simulation_{date_str}.mp4")
-SPECIFIC_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"specific_fig_{date_str}.png")
-STATISTICS_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"statistics_fig_{date_str}.png")
+
 
 # --------------------------------------- CONFIG PARAMETERS -------------------------------------------------------- #
+run_str = 'V5'  # change this to a different string to create a new output file
 # general config params
 np.random.seed = 0
 NOISE_STD = 0.5
@@ -46,7 +45,7 @@ ENV_PATH = r"Penvs\Env8.png"
 GRASS_GENERATION_RATE = 2  # 5
 GRASS_GROWTH_CHANCE = 0.5  # maybe will be useful to create droughts
 LEAVES_GENERATION_RATE = 0  # 3
-MAX_GRASS_NUM = 100
+MAX_GRASS_NUM = 150
 MAX_LEAVES_NUM = 50
 
 # Define eye parameters: (angle_offset in radians, aperture in radians)
@@ -102,3 +101,9 @@ MAX_MUTATION_FACTORS = {'max_age': 2,
                         'hunger': 3,
                         'thirst': 3
                         }
+
+# --------------------------------------- FILEPATHS -------------------------------------------------------- #
+
+ANIMATION_FILEPATH = OUTPUT_FOLDER.joinpath(f"simulation_{date_str}_{run_str}.mp4")
+SPECIFIC_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"specific_fig_{date_str}_{run_str}.png")
+STATISTICS_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"statistics_fig_{date_str}_{run_str}.png")

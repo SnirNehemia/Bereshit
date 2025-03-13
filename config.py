@@ -31,17 +31,18 @@ STATISTICS_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"statistics_fig_{date_str}.png
 np.random.seed = 0
 NOISE_STD = 0.5
 DT = 1.0  # time passing from frame to frame (relevant when calculating velocities)
-NUM_FRAMES = 10  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
-UPDATE_ANIMATION_INTERVAL = 15  # update the animation every n frames
+NUM_FRAMES = 300  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+UPDATE_ANIMATION_INTERVAL = 20  # update the animation every n frames
 UPDATE_KDTREE_INTERVAL = 20  # update the kdtree every n frames
 NUM_CREATURES = 500
 MAX_NUM_CREATURES = 2000
 INIT_MAX_ENERGY = 1500
-INIT_MAX_AGE = 1000
+INIT_MAX_AGE = 3000
 SIMULATION_SPACE = 0  # will be updated in Environment class per the map size
+PURGE_SPEED_THRESHOLD = 0.001  # if the creature's speed is below this threshold at first reproduction, it will be removed
 
 # environment
-ENV_PATH = r"Penvs\Env4.png"
+ENV_PATH = r"Penvs\Env8.png"
 GRASS_GENERATION_RATE = 2  # 5
 GRASS_GROWTH_CHANCE = 0.5  # maybe will be useful to create droughts
 LEAVES_GENERATION_RATE = 0  # 3
@@ -82,7 +83,7 @@ MAX_MUTATION_FACTORS = {'max_age': 2,
                         'color': np.array([0, 0, 0]),  # +-in each RGB color
 
                         'energy_efficiency': 0,
-                        'speed_efficiency': 0,
+                        'motion_efficiency': 0,
                         'food_efficiency': 0,
                         'reproduction_energy': 0,
                         'max_energy': 0,
@@ -96,7 +97,7 @@ MAX_MUTATION_FACTORS = {'max_age': 2,
                         'weight': 3,
                         'height': 3,
                         'position': np.array([5, 5]),
-                        'speed': np.array([2, 2]),
+                        'velocity': np.array([2, 2]),
                         'energy': 3,
                         'hunger': 3,
                         'thirst': 3

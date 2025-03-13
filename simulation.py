@@ -58,6 +58,7 @@ class Simulation:
         self.frame_counter = 0  # Initialize frame counter
         self.id_count = config.NUM_CREATURES-1
         self.focus_ID = 0
+        self.first_gen = True  # flag for first generation elimination
 
     @staticmethod
     def initialize_creatures(num_creatures, simulation_space, input_size, output_size,
@@ -89,7 +90,7 @@ class Simulation:
             color = np.random.rand(3)  # Random RGB color.
 
             energy_efficiency = 0.1  # idle energy
-            speed_efficiency = 0.01  # speed * speed_efficiency
+            motion_efficiency = 0.01  # speed * speed_efficiency
             food_efficiency = 1  # energy from food * food_efficiency
             reproduction_energy = config.REPRODUCTION_ENERGY
             max_energy = config.INIT_MAX_ENERGY
@@ -100,7 +101,7 @@ class Simulation:
             # dynamic traits
             weight = np.random.rand() * max_weight
             height = np.random.rand() * max_height
-            speed = (np.random.rand(2) - 0.5) * max_speed
+            velocity = (np.random.rand(2) - 0.5) * max_speed
             energy = int(config.REPRODUCTION_ENERGY*0.95)
             hunger = np.random.rand() * 10
             thirst = np.random.rand() * 10
@@ -108,12 +109,12 @@ class Simulation:
             # init creature
             creature = Creature(id = id, max_age=max_age, max_weight=max_weight, max_height=max_height,
                                 max_speed=max_speed, color=color,
-                                energy_efficiency=energy_efficiency, speed_efficiency=speed_efficiency,
+                                energy_efficiency=energy_efficiency, motion_efficiency=motion_efficiency,
                                 food_efficiency=food_efficiency, reproduction_energy=reproduction_energy,
                                 max_energy=max_energy,
                                 eyes_params=eyes_params, vision_limit=vision_limit, brain=brain,
                                 weight=weight, height=height,
-                                position=position, speed=speed, energy=energy, hunger=hunger, thirst=thirst)
+                                position=position, velocity=velocity, energy=energy, hunger=hunger, thirst=thirst)
 
             creatures[id] = creature
 
@@ -175,7 +176,7 @@ class Simulation:
                            seek_results.values()]
             brain_input = np.concatenate([
                 np.array([creature.hunger, creature.thirst]),
-                creature.speed,
+                creature.velocity,
                 np.concatenate(eyes_inputs)
             ])
             decision = creature.think(brain_input)
@@ -183,8 +184,8 @@ class Simulation:
             delta_angle = np.clip(delta_angle, -config.MAX_D_ANGLE, config.MAX_D_ANGLE)
             delta_speed = np.clip(delta_speed, -config.MAX_D_SPEED, config.MAX_D_SPEED)
 
-            current_speed = creature.speed
-            current_speed_mag = np.linalg.norm(current_speed)
+            current_speed = creature.velocity
+            current_speed_mag = creature.speed
             if current_speed_mag == 0:
                 current_direction = np.array([1.0, 0.0])
             else:
@@ -197,7 +198,8 @@ class Simulation:
                 current_direction[0] * sin_angle + current_direction[1] * cos_angle
             ])
             new_speed_mag = np.clip(current_speed_mag + delta_speed, 0, creature.max_speed)
-            creature.speed = new_direction * new_speed_mag
+            creature.velocity = new_direction * new_speed_mag
+            creature.calc_speed()
         except Exception as e:
             print(e)
 
@@ -268,6 +270,12 @@ class Simulation:
                 detected_info = (distance, angle)
         return detected_info
 
+
+    def kill(self, sim_id):
+        self.dead_creatures[sim_id] = self.creatures[sim_id]
+        del self.creatures[sim_id]
+
+
     def step(self, dt: float, noise_std: float = 0.0):
         """
         Advances the simulation by one time step.
@@ -286,13 +294,13 @@ class Simulation:
 
         # Collision detection: if a creature's new position would be inside an obstacle, stop it.
         for id, creature in self.creatures.items():
-            new_position = creature.position + creature.speed * dt
+            new_position = creature.position + creature.velocity * dt
             # Convert (x, y) to image indices (col, row).
             col = int(new_position[0])
             row = int(new_position[1])
             height, width = self.env.map_data.shape[:2]
             if col < 0 or col >= width or row < 0 or row >= height or self.env.obstacle_mask[row, col]:
-                creature.speed = np.array([0.0, 0.0])
+                creature.velocity = np.array([0.0, 0.0])
 
         creatures_reproduced = []
         died_creatured_id = []
@@ -309,13 +317,13 @@ class Simulation:
             # check energy
             energy_consumption = 0
             energy_consumption += creature.energy_efficiency  # idle energy
-            energy_consumption += creature.speed_efficiency * np.linalg.norm(creature.speed)  # movement energy
+            energy_consumption += creature.motion_efficiency * creature.speed  # movement energy
 
             # test whether to update or kill creature
             if creature.energy > energy_consumption:
                 # update creature energy and position
                 creature.energy -= energy_consumption
-                creature.position += creature.speed * dt
+                creature.position += creature.velocity * dt
 
                 # check for food (first grass, if not found search for leaf if tall enough)
                 is_found_food = self.eat_food(creature=creature, food_type='grass')
@@ -335,14 +343,19 @@ class Simulation:
                 died_creatured_id.append(id)
             creature.log_energy.append(creature.energy)
 
+        # the purge
+        if self.first_gen and len(creatures_reproduced) > 0:
+            self.first_gen = False
+            for id, creature in self.creatures.items():
+                if creature.speed <= config.PURGE_SPEED_THRESHOLD and id not in died_creatured_id:
+                    died_creatured_id.append(id)
+
         # kill creatures
         dead_ids = []
-        num_dead_creatures = 0
-        for id in died_creatured_id:
-            num_dead_creatures += 1
-            self.dead_creatures[id] = self.creatures[id]
-            del self.creatures[id]
-            dead_ids.append(id)
+        for sim_id in died_creatured_id:
+            self.kill(sim_id)
+            dead_ids.append(sim_id)
+
 
         # Reproduction
         child_ids = []
@@ -357,6 +370,7 @@ class Simulation:
             # clear age and logs for child
             del child_attributes['age']
             del child_attributes['id']
+            del child_attributes['speed']
             attributes_keys = list(child_attributes.keys())
             for key in attributes_keys:
                 if key.startswith('log'):
@@ -520,9 +534,9 @@ class Simulation:
         # Create quiver arrows for creature headings.
         U, V = [], []
         for creature in self.creatures.values():
-            if np.linalg.norm(creature.speed) > 0:
-                U.append(creature.speed[0])
-                V.append(creature.speed[1])
+            if creature.speed > 0:
+                U.append(creature.velocity[0])
+                V.append(creature.velocity[1])
             else:
                 U.append(0)
                 V.append(0)
@@ -601,9 +615,9 @@ class Simulation:
 
                 U, V = [], []
                 for creature in self.creatures.values():
-                    if np.linalg.norm(creature.speed) > 0:
-                        U.append(creature.speed[0])
-                        V.append(creature.speed[1])
+                    if creature.speed > 0:
+                        U.append(creature.velocity[0])
+                        V.append(creature.velocity[1])
                     else:
                         U.append(0)
                         V.append(0)
@@ -654,7 +668,7 @@ class Simulation:
             return scat, quiv, grass_scat, leaves_scat, agent_scat
 
         # ----------------------------------- run simulation and save animation ------------------------------------ #
-        ani = animation.FuncAnimation(fig, update, frames=num_frames, interval=100, blit=True)
+        ani = animation.FuncAnimation(fig, update, frames=num_frames, interval=60, blit=True)
         ani.save(config.ANIMATION_FILEPATH, writer="ffmpeg", dpi=100)
         plt.close(fig)
         print('finished simulation.')

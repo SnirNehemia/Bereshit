@@ -163,6 +163,8 @@ class Brain:
     def plot(brain, ax, debug=False):
         """ plot the brain """
         if debug:
+            import matplotlib
+            matplotlib.use('TkAgg')
             plt.ion()
             fig, ax = plt.subplots(1,1)
         ax.clear()
@@ -204,7 +206,8 @@ class Brain:
         max_value = max(np.max(arr) for arr in brain.layers)
         min_value = min(np.min(arr) for arr in brain.layers)
         ax.set_title(f'weight : (max, min) = ({max_value:.2f}, {min_value:.2f})\n'
-                  f'output = [{brain.neuron_values[-1]}]')
+                     f'input = {np.array2string(brain.neuron_values[0], formatter={"float_kind": lambda x: f"{x:.1f}"})}\n'
+                     f'output = {np.array2string(brain.neuron_values[-1], formatter={"float_kind": lambda x: f"{x:.1f}"})}')
         # plt.draw()
 
 

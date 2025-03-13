@@ -13,7 +13,8 @@ import config as config
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.patches import Circle
-
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes, zoomed_inset_axes, mark_inset
+import matplotlib.gridspec as gridspec
 
 class Simulation:
     """
@@ -55,6 +56,8 @@ class Simulation:
         self.kdtree_update_interval = config.UPDATE_KDTREE_INTERVAL  # Set update interval for KDTree
         self.animation_update_interval = config.UPDATE_ANIMATION_INTERVAL  # Set update interval for animation frames
         self.frame_counter = 0  # Initialize frame counter
+        self.id_count = config.NUM_CREATURES-1
+        self.focus_ID = 0
 
     @staticmethod
     def initialize_creatures(num_creatures, simulation_space, input_size, output_size,
@@ -85,8 +88,8 @@ class Simulation:
             max_speed = [5.0, 5.0]
             color = np.random.rand(3)  # Random RGB color.
 
-            energy_efficiency = 1  # idle energy
-            speed_efficiency = 0.2  # speed * speed_efficiency
+            energy_efficiency = 0.1  # idle energy
+            speed_efficiency = 0.01  # speed * speed_efficiency
             food_efficiency = 1  # energy from food * food_efficiency
             reproduction_energy = config.REPRODUCTION_ENERGY
             max_energy = config.INIT_MAX_ENERGY
@@ -103,8 +106,8 @@ class Simulation:
             thirst = np.random.rand() * 10
 
             # init creature
-            creature = Creature(max_age=max_age, max_weight=max_weight, max_height=max_height, max_speed=max_speed,
-                                color=color,
+            creature = Creature(id = id, max_age=max_age, max_weight=max_weight, max_height=max_height,
+                                max_speed=max_speed, color=color,
                                 energy_efficiency=energy_efficiency, speed_efficiency=speed_efficiency,
                                 food_efficiency=food_efficiency, reproduction_energy=reproduction_energy,
                                 max_energy=max_energy,
@@ -113,6 +116,7 @@ class Simulation:
                                 position=position, speed=speed, energy=energy, hunger=hunger, thirst=thirst)
 
             creatures[id] = creature
+
         return creatures
 
     def build_creatures_kd_tree(self) -> KDTree:
@@ -352,6 +356,7 @@ class Simulation:
 
             # clear age and logs for child
             del child_attributes['age']
+            del child_attributes['id']
             attributes_keys = list(child_attributes.keys())
             for key in attributes_keys:
                 if key.startswith('log'):
@@ -383,8 +388,10 @@ class Simulation:
                         child_attributes[key] += mutation_roll * max_mutation_factor
 
                     # set energy of child
-                    child_attributes['energy'] = np.random.rand() * child_attributes['max_energy']
+                    child_attributes['energy'] = int(config.REPRODUCTION_ENERGY*0.95)
 
+            self.id_count += 1
+            child_attributes['id'] = self.id_count
             # Add child to creatures
             child_creature = Creature(**child_attributes)
             self.creatures[id] = child_creature
@@ -484,27 +491,31 @@ class Simulation:
         noise_std = config.NOISE_STD
         num_frames = config.NUM_FRAMES
 
-        fig, axes = plt.subplots(1,2)
-        ax = axes[0]
-        ax_brain = axes[1]
+        fig = plt.figure(figsize=(16, 8))
+        # Define the grid layout with uneven ratios
+        gs = gridspec.GridSpec(2, 2, width_ratios=[3, 1], height_ratios=[3, 1])  # 2:1 ratio for both axes
+        ax_env = fig.add_subplot(gs[0, 0])  # Large subplot (3/4 of figure)
+        ax_brain = fig.add_subplot(gs[0, 1])  # Smaller subplot (1/4 width, full height)
+        ax_agent_info = fig.add_subplot(gs[1, 0])  # Smaller subplot (1/4 height, full width)
+        ax_zoom = fig.add_subplot(gs[1, 1])  # Smallest subplot (1/4 x 1/4)
         fig.figsize=(16, 8)
         extent = self.env.get_extent()
-        ax.set_xlim(extent[0], extent[1])
-        ax.set_ylim(extent[2], extent[3])
-        ax.set_title("Evolution Simulation")
+        ax_env.set_xlim(extent[0], extent[1])
+        ax_env.set_ylim(extent[2], extent[3])
+        ax_env.set_title("Evolution Simulation")
 
         # Display the environment map with origin='lower' to avoid vertical mirroring.
-        ax.imshow(self.env.map_data, extent=extent, alpha=0.3, origin='lower')  # , aspect='auto')
+        ax_env.imshow(self.env.map_data, extent=extent, alpha=0.3, origin='lower')  # , aspect='auto')
 
         # Draw the water source.
         water_x, water_y, water_r = self.env.water_source
         water_circle = Circle((water_x, water_y), water_r, color='blue', alpha=0.3)
-        ax.add_patch(water_circle)
+        ax_env.add_patch(water_circle)
 
         # Initial creature positions.
         positions = np.array([creature.position for creature in self.creatures.values()])
         colors = [creature.color for creature in self.creatures.values()]
-        scat = ax.scatter(positions[:, 0], positions[:, 1], c=colors, s=config.FOOD_DISTANCE_THRESHOLD)
+        scat = ax_env.scatter(positions[:, 0], positions[:, 1], c=colors, s=config.FOOD_SIZE, transform=ax_env.transData)
 
         # Create quiver arrows for creature headings.
         U, V = [], []
@@ -515,20 +526,20 @@ class Simulation:
             else:
                 U.append(0)
                 V.append(0)
-        quiv = ax.quiver(positions[:, 0], positions[:, 1], U, V,
+        quiv = ax_env.quiver(positions[:, 0], positions[:, 1], U, V,
                          color='black', scale=150, width=0.005)
 
         # Scatter plots for vegetation.
-        grass_scat = ax.scatter([], [], c='lightgreen', edgecolors='black', s=10)
-        leaves_scat = ax.scatter([], [], c='darkgreen', edgecolors='black', s=10)
-        agent_scat = ax.scatter([], [], s=20, facecolors='none', edgecolors='r')
+        grass_scat = ax_env.scatter([], [], c='lightgreen', edgecolors='black', s=10)
+        leaves_scat = ax_env.scatter([], [], c='darkgreen', edgecolors='black', s=10)
+        agent_scat = ax_env.scatter([], [], s=20, facecolors='none', edgecolors='r')
 
         # -------------------------------- function for simulation progress -------------------------------- #
 
         print('starting simulation')
 
         # Initialize the progress bar outside of the update function
-        progress_bar = tqdm(total=num_frames, desc=f"Alive num: {len(self.creatures)}\n"
+        progress_bar = tqdm(total=num_frames*config.UPDATE_ANIMATION_INTERVAL, desc=f"Alive num: {len(self.creatures)}\n"
                                                    f"Total children {self.children_num} \n"
                                                    f"Total dead {len(self.dead_creatures)}"
                                                    f"\nSimulation progress:")
@@ -536,7 +547,7 @@ class Simulation:
             # Skip extra initial calls (because blit=True)
             global quiv, scat, grass_scat, leaves_scat, agent_scat, first_frame
             if len(self.creatures)==0 or self.abort_simulation:
-                ax.set_title(f"Evolution Simulation ({frame=})")
+                ax_env.set_title(f"Evolution Simulation ({frame=})")
                 progress_bar.update(self.animation_update_interval)
                 self.frame_counter += self.animation_update_interval
                 return scat, quiv, grass_scat, leaves_scat, agent_scat
@@ -550,6 +561,12 @@ class Simulation:
 
                 # update debug logs
                 self.update_debug_logs(child_ids, dead_ids, frame)
+
+                # Update the progress bar
+                progress_bar.set_description(f"Alive: {len(self.creatures)} | "
+                                             f"Children: {self.children_num} | "
+                                             f"Dead: {len(self.dead_creatures)} | Progress:")
+                progress_bar.update(1)  # or self.animation_update_interval outside the for loop
 
             # # Track animation update frames
             # if self.frame_counter % self.animation_update_interval != 0:
@@ -579,7 +596,7 @@ class Simulation:
             positions = np.array([creature.position for creature in self.creatures.values()])
             colors = [creature.color for creature in self.creatures.values()]
             if len(positions) > 0:
-                scat = ax.scatter(positions[:, 0], positions[:, 1], c=colors, s=20)
+                scat = ax_env.scatter(positions[:, 0], positions[:, 1], c=colors, s=config.FOOD_SIZE)
                 # scat.set_offsets(positions)
 
                 U, V = [], []
@@ -591,36 +608,45 @@ class Simulation:
                         U.append(0)
                         V.append(0)
 
-                quiv = ax.quiver(positions[:, 0], positions[:, 1], U, V,
+                quiv = ax_env.quiver(positions[:, 0], positions[:, 1], U, V,
                                  color='black', scale=150, width=0.005)
                 # quiv.set_offsets(positions)
                 # quiv.set_UVC(U, V)
             else:
-                scat = ax.scatter([1], [1])
-                quiv = ax.quiver([1], [1], [1], [1])
+                scat = ax_env.scatter([1], [1])
+                quiv = ax_env.quiver([1], [1], [1], [1])
 
             # Update vegetation scatter data.
             if len(self.env.grass_points) > 0:
                 grass_points = np.array(self.env.grass_points)
-                grass_scat = ax.scatter(grass_points[:, 0], grass_points[:, 1], c='lightgreen', edgecolors='black',
-                                        s=20)
+                grass_scat = ax_env.scatter(grass_points[:, 0], grass_points[:, 1], c='lightgreen', edgecolors='black',
+                                        s=10)
                 # grass_scat.set_offsets(np.array(self.env.grass_points))
             if len(self.env.leaf_points) > 0:
                 leaf_points = np.array(self.env.leaf_points)
-                leaves_scat = ax.scatter(leaf_points[:, 0], leaf_points[:, 1], c='darkgreen', edgecolors='black', s=20)
+                leaves_scat = ax_env.scatter(leaf_points[:, 0], leaf_points[:, 1], c='darkgreen', edgecolors='black', s=20)
                 # leaves_scat.set_offsets(np.array(self.env.leaf_points))
-            # Update the progress bar
-            progress_bar.set_description(f"Alive: {len(self.creatures)} | "
-                                         f"Children: {self.children_num} | "
-                                         f"Dead: {len(self.dead_creatures)} | Progress:")
-            progress_bar.update(1)
-            ax.set_title(f"Evolution Simulation ({frame=})")
+
+            ax_env.set_title(f"Evolution Simulation ({frame=})")
             # --------------------- focus on one agent ----------------------------
             if len(self.creatures) > 0:
-                agent = self.creatures[min(self.creatures.keys())]
-                agent_scat = ax.scatter(agent.position[0], agent.position[1], s=15, facecolors='none', edgecolors='k',
+                ids = [creature.id for creature in self.creatures.values()]
+                if self.focus_ID not in ids:
+                    self.focus_ID = self.id_count # np.random.choice(list(self.creatures.keys()))
+                agent = self.creatures[self.focus_ID]
+                agent_scat = ax_env.scatter(agent.position[0], agent.position[1], s=config.FOOD_SIZE*1.5,
+                                        facecolors='none', edgecolors='k', #transform=ax.transData,
                                         linewidth=3)
                 agent.brain.plot(ax_brain)
+                ax_agent_info.clear()
+                agent.plot_status(ax_agent_info)
+                # Create zoomed-in inset
+                # axins = zoomed_inset_axes(ax_env, zoom=100, loc="upper right")  # zoom=2 means 2x zoom
+                # axins = inset_axes(ax_env, width="30%", height="30%", loc="upper right")
+                # axins.set_xlim(agent.position[0] - 100, agent.position[0] + 100)  # Set zoom-in limits
+                # axins.set_ylim(agent.position[1] - 100, agent.position[1] + 100)  # Adjust zoom region
+                # axins.set_xticks([])  # Hide x-axis ticks
+                # axins.set_yticks([])  # Hide y-axis ticks
             return scat, quiv, grass_scat, leaves_scat, agent_scat
 
         # ----------------------------------- run simulation and save animation ------------------------------------ #
@@ -646,24 +672,24 @@ class Simulation:
         print(f'specific fig saved as {config.SPECIFIC_FIG_FILEPATH.stem}.')
 
         # statistics fig
-        fig, ax = plt.subplots(2, 1, sharex='all')
-        ax2 = ax[0].twinx()
+        fig, ax_env = plt.subplots(2, 1, sharex='all')
+        ax2 = ax_env[0].twinx()
         ax2.plot(self.num_creatures_per_frame, 'b.-', label='total')
-        ax[0].plot(self.num_new_creatures_per_frame, 'g.-', label='new')
-        ax[0].plot(self.num_dead_creatures_per_frame, 'r.-', label='dead')
-        ax[0].set_title('num creatures per frame')
-        ax[0].legend()
+        ax_env[0].plot(self.num_new_creatures_per_frame, 'g.-', label='new')
+        ax_env[0].plot(self.num_dead_creatures_per_frame, 'r.-', label='dead')
+        ax_env[0].set_title('num creatures per frame')
+        ax_env[0].legend()
 
-        ax[1].plot(self.min_creature_energy_per_frame, '.-', label='min energy')
-        ax[1].plot(self.max_creature_energy_per_frame, '.-', label='max energy')
-        ax[1].errorbar(x=np.arange(len(self.mean_creature_energy_per_frame)),
+        ax_env[1].plot(self.min_creature_energy_per_frame, '.-', label='min energy')
+        ax_env[1].plot(self.max_creature_energy_per_frame, '.-', label='max energy')
+        ax_env[1].errorbar(x=np.arange(len(self.mean_creature_energy_per_frame)),
                        y=self.mean_creature_energy_per_frame,
                        yerr=self.std_creature_energy_per_frame, linestyle='-', marker='.', label='mean and std energy')
-        ax[1].axhline(y=list(self.dead_creatures.values())[0].reproduction_energy + config.MIN_LIFE_ENERGY,
+        ax_env[1].axhline(y=list(self.dead_creatures.values())[0].reproduction_energy + config.MIN_LIFE_ENERGY,
                       linestyle='--', color='r', label='reproduction threshold')
-        ax[1].set_title('energy statistics per frame')
-        ax[1].set_xlabel('frame number')
-        ax[1].legend()
+        ax_env[1].set_title('energy statistics per frame')
+        ax_env[1].set_xlabel('frame number')
+        ax_env[1].legend()
 
         fig.savefig(fname=config.STATISTICS_FIG_FILEPATH)
         print(f'statistics fig saved as {config.STATISTICS_FIG_FILEPATH.stem}.')

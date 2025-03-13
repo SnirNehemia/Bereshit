@@ -2,7 +2,7 @@
 import numpy as np
 from static_traits import StaticTraits
 from brain import Brain
-
+import config as config
 
 class Creature(StaticTraits):
     """
@@ -10,7 +10,8 @@ class Creature(StaticTraits):
     Inherits static traits and adds dynamic properties such as position, speed, hunger, etc.
     """
 
-    def __init__(self, max_age: int, max_weight: float, max_height: float, max_speed: list[float], color: np.ndarray,
+    def __init__(self,id: int, max_age: int, max_weight: float, max_height: float, max_speed: list[float],
+                 color: np.ndarray,
                  energy_efficiency: float, speed_efficiency: float,
                  food_efficiency: float, reproduction_energy: float,
                     max_energy: float,
@@ -24,7 +25,7 @@ class Creature(StaticTraits):
                          food_efficiency=food_efficiency, reproduction_energy=reproduction_energy,
                          max_energy=max_energy,
                          eyes_params=eyes_params, vision_limit=vision_limit, brain=brain)
-
+        self.id = id
         self.age = 0
         self.weight = weight
         self.height = height
@@ -38,4 +39,17 @@ class Creature(StaticTraits):
         self.log_eat = []
         self.log_reproduce = []
         self.log_energy = []
+
+
+    def plot_status(self, ax):
+        """
+        Plots the agent's status (energy, hunger, thirst) on the given axes.
+        """
+        ax.clear()
+        ax.set_title(f'Agent # {self.id} Status')
+        ax.barh(['Energy', 'Hunger', 'Thirst'], [self.energy, self.hunger, self.thirst], color=['green', 'red', 'blue'])
+        ax.set_xlim(0, self.max_energy)
+        ax.set_xticks([0,self.max_energy/2, self.max_energy])
+        ax.set_yticks(['Energy', 'Hunger', 'Thirst'])
+        ax.scatter([config.REPRODUCTION_ENERGY], ['Energy'], color='black', s=20)
 

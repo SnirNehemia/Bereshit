@@ -160,7 +160,11 @@ class Brain:
                 self.remove_neuron(index)
         return self
 
-    def plot(brain, ax):
+    def plot(brain, ax, debug=False):
+        """ plot the brain """
+        if debug:
+            plt.ion()
+            fig, ax = plt.subplots(1,1)
         ax.clear()
         if len(brain.neuron_values[0].shape) > 1: return # Skip plotting if the neurons are not a list of vector
         # Set up the color map: blue for negative, white for zero, red for positive
@@ -199,9 +203,9 @@ class Brain:
         # ax.axis('off')
         max_value = max(np.max(arr) for arr in brain.layers)
         min_value = min(np.min(arr) for arr in brain.layers)
-        plt.title(f'weight : (max, min) = ({max_value:.2f}, {min_value:.2f})\n'
+        ax.set_title(f'weight : (max, min) = ({max_value:.2f}, {min_value:.2f})\n'
                   f'output = [{brain.neuron_values[-1]}]')
-        plt.draw()
+        # plt.draw()
 
 
 if __name__ == '__main__':

@@ -634,12 +634,16 @@ class Simulation:
                 if self.focus_ID not in ids:
                     self.focus_ID = self.id_count # np.random.choice(list(self.creatures.keys()))
                 agent = self.creatures[self.focus_ID]
-                agent_scat = ax_env.scatter(agent.position[0], agent.position[1], s=config.FOOD_SIZE*1.5,
-                                        facecolors='none', edgecolors='k', #transform=ax.transData,
-                                        linewidth=3)
+                agent_scat = ax_env.scatter(
+                    [agent.position[0]] * 3, [agent.position[1]] * 3,  # Repeat position for multiple rings
+                    s=[20, 25, 100],  # Different sizes for bullseye rings # config.FOOD_SIZE
+                    facecolors=['red','black','yellow'], edgecolors=['red', 'black', 'yellow'],  # Different colors for bullseye rings
+                    linewidth=5, alpha=[0.9,0.9,0.3], marker='*'
+                )
                 agent.brain.plot(ax_brain)
-                ax_agent_info.clear()
-                agent.plot_status(ax_agent_info)
+                # ax_agent_info.clear()
+                agent.plot_live_status(ax_agent_info)
+                agent.plot_acc_status(ax_zoom)
                 # Create zoomed-in inset
                 # axins = zoomed_inset_axes(ax_env, zoom=100, loc="upper right")  # zoom=2 means 2x zoom
                 # axins = inset_axes(ax_env, width="30%", height="30%", loc="upper right")
@@ -650,7 +654,7 @@ class Simulation:
             return scat, quiv, grass_scat, leaves_scat, agent_scat
 
         # ----------------------------------- run simulation and save animation ------------------------------------ #
-        ani = animation.FuncAnimation(fig, update, frames=num_frames, interval=60, blit=True)
+        ani = animation.FuncAnimation(fig, update, frames=num_frames, interval=100, blit=True)
         ani.save(config.ANIMATION_FILEPATH, writer="ffmpeg", dpi=100)
         plt.close(fig)
         print('finished simulation.')

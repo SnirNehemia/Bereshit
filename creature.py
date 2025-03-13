@@ -41,15 +41,47 @@ class Creature(StaticTraits):
         self.log_energy = []
 
 
-    def plot_status(self, ax):
+    def plot_live_status(self, ax, debug=False):
         """
         Plots the agent's status (energy, hunger, thirst) on the given axes.
         """
+        if debug:
+            import matplotlib.pyplot as plt
+            plt.ion()
+            fig, ax = plt.subplots(1,1)
+        # Define attributes dynamically
+        ls = ['energy', 'hunger', 'thirst', 'age']
+        colors = ['green', 'red', 'blue', 'grey']
+        values = [getattr(self, attr) for attr in ls]  # Dynamically get values
         ax.clear()
         ax.set_title(f'Agent # {self.id} Status')
-        ax.barh(['Energy', 'Hunger', 'Thirst'], [self.energy, self.hunger, self.thirst], color=['green', 'red', 'blue'])
+        ax.barh(ls, values, color=colors)
+        # ax.barh(['Energy', 'Hunger', 'Thirst'], [self.energy, self.hunger, self.thirst], color=['green', 'red', 'blue'])
         ax.set_xlim(0, self.max_energy)
         ax.set_xticks([0,self.max_energy/2, self.max_energy])
-        ax.set_yticks(['Energy', 'Hunger', 'Thirst'])
-        ax.scatter([config.REPRODUCTION_ENERGY], ['Energy'], color='black', s=20)
+        ax.set_yticks(ls)
+        if 'energy' in ls:
+            ax.scatter([config.REPRODUCTION_ENERGY], ['energy'], color='black', s=20)
+        if 'age' in ls:
+            ax.scatter([self.max_age], ['age'], color='black', s=20)
+
+
+    def plot_acc_status(self, ax, debug=False):
+        """
+        Plots the agent's accumulated status (logs) on the given axes.
+        """
+        if debug:
+            import matplotlib.pyplot as plt
+            plt.ion()
+            fig, ax = plt.subplots(1,1)
+        # Define attributes dynamically
+        ls = ['log_eat', 'log_reproduce']
+        colors = ['green', 'pink']
+        values = [sum(getattr(self, attr)) for attr in ls]  # Dynamically get values
+        ax.clear()
+        ax.set_title(f'Agent # {self.id} Accumulated Status')
+        ax.barh(ls, values, color=colors)
+        ax.set_xlim(0, 10)
+        ax.set_xticks([0, 5, 10])
+        ax.set_yticks(ls)
 

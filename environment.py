@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import config
-
+from scipy.spatial import KDTree
 
 class Environment:
     """
@@ -42,6 +42,10 @@ class Environment:
         self.grass_points = []
         self.leaf_points = []
 
+        self.new_grass_points = []
+
+        self.grass_kd_tree = self.build_grass_kd_tree()
+
     def update(self):
         """
         Generates new vegetation points (grass and leaves) based on generation rates.
@@ -57,7 +61,7 @@ class Environment:
                 choices = self.grass_indices[np.random.choice(len(self.grass_indices), num_new_grass, replace=True)]
                 for pt in choices:
                     # Convert image coordinates (row, col) to (x, y)
-                    self.grass_points.append([pt[1], pt[0]])
+                    self.new_grass_points.append([pt[1], pt[0]])
 
         # Generate new leaf points.
         if len(self.leaf_points) >= config.MAX_LEAVES_NUM:
@@ -75,3 +79,21 @@ class Environment:
         """
         height, width, _ = self.map_data.shape
         return [0, width, 0, height]
+
+    def build_grass_kd_tree(self) -> KDTree:
+        """
+        Builds a KDTree from the positions of all creatures.
+        """
+        positions = [grass_point for grass_point in self.grass_points]
+        if positions:
+            return KDTree(positions)
+        else:
+            return KDTree([[0, 0]])
+
+    def update_grass_kd_tree(self):
+        """
+        :return: add the new grass points to the grass list and update the KDTree
+        """
+        self.grass_points.extend(self.new_grass_points)
+        self.new_grass_points = []
+        self.grass_kd_tree = self.build_grass_kd_tree()

@@ -1,4 +1,6 @@
 # creature.py
+import copy
+
 import numpy as np
 from static_traits import StaticTraits
 from brain import Brain
@@ -103,3 +105,72 @@ class Creature(StaticTraits):
         Returns the creature's current speed vector.
         """
         self.speed = np.linalg.norm(self.velocity)
+
+
+    # def reproduce(self):
+    #     """
+    #     Returns a new creature with mutated traits.
+    #     """
+    #     # Mutate traits
+    #     new_traits = self.mutate_traits()
+    #     # Reduce energy
+    #     self.energy -= config.REPRODUCTION_ENERGY
+    #     child = Creature(id=0, **new_traits, weight=self.weight, height=self.height,
+    #                     position=self.position, velocity=-self.velocity,
+    #                     energy=config.REPRODUCTION_ENERGY, hunger=self.hunger, thirst=self.thirst)
+    #     child.brain.mutate(config.MUTATION_BRAIN)
+    #     return child
+
+    def reproduce(self):
+        """
+        Returns a new creature with mutated traits.
+        """
+        # Mutate traits
+        child = copy.deepcopy(self)
+        child.mutate(config.MAX_MUTATION_FACTORS)
+        child.brain.mutate(config.MUTATION_BRAIN)
+        child.reset()
+        # Reduce energy
+        self.energy -= config.REPRODUCTION_ENERGY
+        return child
+
+    def reset(self):
+        """
+        Reset the creature to initial state and flip velocity.
+        """
+        self.age = 0
+        self.velocity = -self.velocity
+        self.id = 0
+        self.log_energy = []
+        self.log_eat = []
+        self.log_reproduce = []
+        self.color = np.clip(self.color, 0, 1)
+
+    def mutate(self, max_mutation_factors):
+        """
+        mutate the desired traits.
+        """
+        for key in max_mutation_factors:
+            if np.random.rand(1) < config.MUTATION_CHANCE:
+                if key == 'eyes_params':
+                    # Mutate eyes_params
+                    for i in range(len(self.eyes_params)):
+                        mutation_factor = np.random.uniform(-max_mutation_factors[key], max_mutation_factors[key])
+                        self.eyes_params[i] = self.eyes_params[i] + mutation_factor
+                else:
+                    # Mutate trait
+                    mutation_factor = np.random.uniform(-max_mutation_factors[key], max_mutation_factors[key])
+                    setattr(self, key, getattr(self, key) + mutation_factor)
+
+    def mutate_traits(self):
+        """
+        Returns a dictionary of mutated traits.
+        """
+        new_traits = {}
+        for key, value in self.__dict__.items():
+            if np.random.rand(1) < config.MUTATION_CHANCE and key in config.MAX_MUTATION_FACTORS:
+                # Mutate trait
+                mutation_factor = np.random.uniform(-config.MAX_MUTATION_FACTORS[key], config.MAX_MUTATION_FACTORS[key])
+                new_value = value + mutation_factor
+                new_traits[key] = new_value
+        return new_traits

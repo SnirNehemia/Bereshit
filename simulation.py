@@ -41,7 +41,8 @@ class Simulation:
         self.birthday = {id: 0 for id in self.creatures.keys()}
         # Build a KDTree for creature positions.
         self.creatures_kd_tree = self.build_creatures_kd_tree()
-        self.max_creature_id = len(self.creatures.keys()) - 1
+
+        # self.max_creature_id = len(self.creatures.keys()) - 1
         self.children_num = 0
         # debug run
         self.creatures_energy_per_frame = dict([(id, list()) for id in range(len(self.creatures.keys()))])
@@ -86,7 +87,7 @@ class Simulation:
             max_age = np.random.randint(low=config.INIT_MAX_AGE*0.8, high=config.INIT_MAX_AGE)
             max_weight = 10.0
             max_height = 5.0
-            max_speed = [5.0, 5.0]
+            max_speed = 5.0
             color = np.random.rand(3)  # Random RGB color.
 
             energy_efficiency = 0.1  # idle energy
@@ -148,17 +149,19 @@ class Simulation:
                 candidate_points = np.array([])
                 if channel == 'grass':
                     if len(self.env.grass_points) > 0:
+                        kd_tree = self.env.grass_kd_tree
                         candidate_points = np.array(self.env.grass_points)
-                elif channel == 'leaves':
-                    if len(self.env.leaf_points) > 0:
-                        candidate_points = np.array(self.env.leaf_points)
-                elif channel == 'water':
-                    candidate_points = np.array([[self.env.water_source[0], self.env.water_source[1]]])
+                # elif channel == 'leaves':
+                #     if len(self.env.leaf_points) > 0:
+                #         candidate_points = np.array(self.env.leaf_points)
+                # elif channel == 'water':
+                #     candidate_points = np.array([[self.env.water_source[0], self.env.water_source[1]]])
                 elif channel == 'creatures':
+                    kd_tree = self.creatures_kd_tree
                     candidate_points = np.array([c.position for c in self.creatures.values()])
 
                 if len(candidate_points) > 0:
-                    kd_tree = KDTree(candidate_points)
+                    # kd_tree = KDTree(candidate_points)
                     result = self.detect_target_from_kdtree(creature, kd_tree, candidate_points, noise_std)
                 else:
                     result = None
@@ -287,11 +290,12 @@ class Simulation:
         Then, moves creatures and updates the vegetation.
         """
         # Update each creature's velocity.
+        if config.DEBUG_MODE: print('seek')
         for id, creature in self.creatures.items():
             # print(f'creature {i}: start brain use...')
             self.use_brain(creature=creature, noise_std=noise_std)
             # print(f'creature {i}: completed brain use!')
-
+        if config.DEBUG_MODE: print('collision detection')
         # Collision detection: if a creature's new position would be inside an obstacle, stop it.
         for id, creature in self.creatures.items():
             new_position = creature.position + creature.velocity * dt
@@ -304,7 +308,7 @@ class Simulation:
 
         creatures_reproduced = []
         died_creatured_id = []
-
+        if config.DEBUG_MODE: print('energy consumption')
         # energy consumption
         for id, creature in self.creatures.items():
             # death from age
@@ -356,68 +360,80 @@ class Simulation:
             self.kill(sim_id)
             dead_ids.append(sim_id)
 
-
         # Reproduction
         child_ids = []
         for creature in creatures_reproduced:
-            # update id
-            id = self.max_creature_id + 1
-            self.max_creature_id += 1
-            self.children_num += 1
-            # Copy father attributes to child
-            child_attributes = copy.deepcopy(creature.__dict__)
-
-            # clear age and logs for child
-            del child_attributes['age']
-            del child_attributes['id']
-            del child_attributes['speed']
-            attributes_keys = list(child_attributes.keys())
-            for key in attributes_keys:
-                if key.startswith('log'):
-                    del child_attributes[key]
-
-            # which traits to change
-            mutation_binary_mask = np.random.rand(len(child_attributes)) >= config.MUTATION_CHANCE
-
-            for i, key in enumerate(child_attributes.keys()):
-
-                # mutate static and dynamic traits and brain
-                do_mutate = mutation_binary_mask[i]
-                if do_mutate:
-                    max_mutation_factor = config.MAX_MUTATION_FACTORS[key]
-
-                    # mutate brain separately
-                    if key == "brain":
-                        creature.brain.mutate(brain_mutation_rate=max_mutation_factor)
-
-                    # mutate other attributes
-                    else:
-                        # check if attribute contain number or array
-                        try:
-                            mutation_roll = np.random.rand(len(child_attributes[key])) - 0.5  # so it will be between -0.5 and 0.5
-                        except:
-                            mutation_roll = np.random.rand() - 0.5  # so it will be between -0.5 and 0.5
-
-                        # mutate attribute
-                        child_attributes[key] += mutation_roll * max_mutation_factor
-
-                    # set energy of child
-                    child_attributes['energy'] = int(config.REPRODUCTION_ENERGY*0.95)
-
+            child = creature.reproduce()
             self.id_count += 1
-            child_attributes['id'] = self.id_count
-            # Add child to creatures
-            child_creature = Creature(**child_attributes)
-            self.creatures[id] = child_creature
-            child_ids.append(id)
+            child.id = self.id_count
+            # self.creatures.append(child) # TODO: why do we use dict instead of list?
+            self.creatures[self.id_count] = child
+            child_ids.append(self.id_count)
+            self.children_num += 1
 
+        # # Reproduction
+        # child_ids = []
+        # for creature in creatures_reproduced:
+        #     # update id
+        #     # id = self.max_creature_id + 1
+        #     # self.max_creature_id += 1
+        #     self.children_num += 1
+        #     # Copy father attributes to child
+        #     child_attributes = copy.deepcopy(creature.__dict__)
+        #
+        #     # clear age and logs for child
+        #     del child_attributes['age']
+        #     del child_attributes['id']
+        #     del child_attributes['speed']
+        #     attributes_keys = list(child_attributes.keys())
+        #     for key in attributes_keys:
+        #         if key.startswith('log'):
+        #             del child_attributes[key]
+        #
+        #     # which traits to change
+        #     mutation_binary_mask = np.random.rand(len(child_attributes)) >= config.MUTATION_CHANCE
+        #
+        #     for i, key in enumerate(child_attributes.keys()):
+        #
+        #         # mutate static and dynamic traits and brain
+        #         do_mutate = mutation_binary_mask[i]
+        #         if do_mutate:
+        #             max_mutation_factor = config.MAX_MUTATION_FACTORS[key]
+        #
+        #             # mutate brain separately
+        #             if key == "brain":
+        #                 creature.brain.mutate(brain_mutation_rate=max_mutation_factor)
+        #
+        #             # mutate other attributes
+        #             else:
+        #                 # check if attribute contain number or array
+        #                 try:
+        #                     mutation_roll = np.random.rand(len(child_attributes[key])) - 0.5  # so it will be between -0.5 and 0.5
+        #                 except:
+        #                     mutation_roll = np.random.rand() - 0.5  # so it will be between -0.5 and 0.5
+        #
+        #                 # mutate attribute
+        #                 child_attributes[key] += mutation_roll * max_mutation_factor
+        #
+        #             # set energy of child
+        #             child_attributes['energy'] = int(config.REPRODUCTION_ENERGY*0.95)
+        #
+        #     self.id_count += 1
+        #     child_attributes['id'] = self.id_count
+        #     # Add child to creatures
+        #     child_creature = Creature(**child_attributes)
+        #     self.creatures[id] = child_creature
+        #     child_ids.append(id)
+        if config.DEBUG_MODE: print('update kdtree')
         # **Update KDTree every N frames**
         self.frame_counter += 1
         if self.frame_counter % self.kdtree_update_interval == 0:
             self.update_creatures_kd_tree()
-
+            self.env.update_grass_kd_tree()
+        if config.DEBUG_MODE: print('update environment')
         # Update environment vegetation.
         self.env.update()
+        if config.DEBUG_MODE: print('grass num is:', len(self.env.grass_points))
 
         return child_ids, dead_ids
 
@@ -447,7 +463,8 @@ class Simulation:
                 closest_food_point = self.env.grass_points[np.argmin(food_distances)]
                 self.env.grass_points.remove(closest_food_point)
                 is_found_food = True
-
+        if is_found_food:
+            self.env.update_grass_kd_tree()  # TODO: add here the leaf kd_tree too
         return is_found_food
 
 

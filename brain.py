@@ -147,7 +147,7 @@ class Brain:
         else:
             return x
 
-    def mutate(self, brain_mutation_rate: dict):  # not in use
+    def mutate(self, brain_mutation_rate: dict): # mutation_rate = {'layer_addition': 0.1, 'modify_weights': 0.1, 'modify_layer': 0.1}
         mutation_roll = np.random.rand(len(brain_mutation_rate))
         if mutation_roll[0] < brain_mutation_rate['layer_addition']:
             index = np.random.randint(0, len(self.layers))
@@ -176,6 +176,10 @@ class Brain:
         cmap = plt.cm.bwr
         norm = mcolors.Normalize(vmin=-1, vmax=1)
 
+        if len(brain.neuron_values) != len(brain.layers) + 1:
+            # print('Brain error - neurons and weights mismatch')
+            brain.forward(brain.neuron_values[0])
+
         layer_positions = []
         max_neurons = max(layer.shape[0] for layer in brain.neuron_values)
 
@@ -201,8 +205,6 @@ class Brain:
         # Draw weights (connections between neurons)
         for i, weights in enumerate(brain.layers):
             x_start, y_start = layer_positions[i]
-            if i+1 >= len(layer_positions):
-                print('Brain error - neurons and weights mismatch')
             x_end, y_end = layer_positions[i + 1]
             # weights = next_layer  # Assuming the weights are stored in the 'next' layer
 

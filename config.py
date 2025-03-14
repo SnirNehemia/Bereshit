@@ -22,16 +22,20 @@ OUTPUT_FOLDER = project_folder.joinpath('outputs')
 OUTPUT_FOLDER.mkdir(exist_ok=True, parents=True)
 now = datetime.now()
 date_str = now.strftime('%d_%m_%Y')
+# --------------------------------------- DEBUGGING -------------------------------------------------------- #
 
+DEBUG_MODE = False
+if DEBUG_MODE:
+    np.seterr(all='raise')  # Convert NumPy warnings into exceptions
 
 # --------------------------------------- CONFIG PARAMETERS -------------------------------------------------------- #
-run_str = 'V7'  # change this to a different string to create a new output file
+run_str = 'V8'  # change this to a different string to create a new output file
 # general config params
 np.random.seed = 0
 NOISE_STD = 0.5
 DT = 1.0  # time passing from frame to frame (relevant when calculating velocities)
-NUM_FRAMES = 300  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
-UPDATE_ANIMATION_INTERVAL = 30  # update the animation every n frames
+NUM_FRAMES = 100  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+UPDATE_ANIMATION_INTERVAL = 20  # update the animation every n frames
 FRAME_INTERVAL = 50  # interval between frames in ms
 UPDATE_KDTREE_INTERVAL = 20  # update the kdtree every n frames
 NUM_CREATURES = 500
@@ -46,13 +50,13 @@ ENV_PATH = r"Penvs\Env8.png"
 GRASS_GENERATION_RATE = 2  # 5
 GRASS_GROWTH_CHANCE = 0.5  # maybe will be useful to create droughts
 LEAVES_GENERATION_RATE = 0  # 3
-MAX_GRASS_NUM = 250
+MAX_GRASS_NUM = 100
 MAX_LEAVES_NUM = 50
 
 # Define eye parameters: (angle_offset in radians, aperture in radians)
 # eyes_params = ((np.radians(30), np.radians(45)),(np.radians(-30), np.radians(45)))
 EYE_CHANNEL = ['grass'] #['grass', 'leaves', 'water', 'creatures']
-EYES_PARAMS = ((np.radians(0), np.radians(60)))
+EYES_PARAMS = [np.radians(0), np.radians(60)]     # angle_offset, aperture
 VISION_LIMIT = 400  # maximum distance that the creature can see
 
 # parameters of network
@@ -66,7 +70,7 @@ for _ in range(len(EYES_PARAMS) * len(EYE_CHANNEL)):
     NORM_INPUT = np.append(NORM_INPUT, [1, VISION_LIMIT, 1])
 
 # For food
-FOOD_DISTANCE_THRESHOLD = 30
+FOOD_DISTANCE_THRESHOLD = 50
 FOOD_SIZE = FOOD_DISTANCE_THRESHOLD/2 #3.14*(FOOD_DISTANCE_THRESHOLD/2)**2
 LEAF_HEIGHT = 10
 GRASS_ENERGY = 300
@@ -79,8 +83,8 @@ MUTATION_CHANCE = 0.4  # number between 0-1 indicating chance of trait to be mut
 MAX_MUTATION_FACTORS = {'max_age': 2,
                         'max_weight': 1,
                         'max_height': 1,
-                        'max_speed': np.array([1, 1]),
-                        'color': np.array([0, 0, 0]),  # +-in each RGB color
+                        'max_speed': 1,
+                        'color': np.array([0.01, 0.01, 0.01]),  # +-in each RGB color
 
                         'energy_efficiency': 0,
                         'motion_efficiency': 0,
@@ -88,21 +92,19 @@ MAX_MUTATION_FACTORS = {'max_age': 2,
                         'reproduction_energy': 0,
                         'max_energy': 0,
 
-                        'eyes_params': np.radians(5),  # +-degrees for each eye
+                        'eyes_params': np.radians(5),  # +-degrees for each eye for angle and width
                         'vision_limit': 4,
-                        'brain': {'layer_addition': 1,
-                                  'modify_weights': 1,
-                                  'modify_layer': 1},
-
                         'weight': 3,
-                        'height': 3,
-                        'position': np.array([5, 5]),
-                        'velocity': np.array([2, 2]),
-                        'energy': 3,
-                        'hunger': 3,
-                        'thirst': 3
+                        'height': 3
+                        # 'position': np.array([5, 5]),
+                        # 'velocity': np.array([2, 2]),
+                        # 'energy': 3,
+                        # 'hunger': 3,
+                        # 'thirst': 3
                         }
-
+MUTATION_BRAIN = {'layer_addition': 1,
+                   'modify_weights': 1,
+                   'modify_layer': 1}
 # --------------------------------------- FILEPATHS -------------------------------------------------------- #
 
 ANIMATION_FILEPATH = OUTPUT_FOLDER.joinpath(f"simulation_{date_str}_{run_str}.mp4")

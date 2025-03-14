@@ -33,6 +33,7 @@ class Brain:
         self.input_size = layers_size[0] + len(self.memory_nodes)
         self.output_size = layers_size[-1] + len(self.memory_nodes)
         self.activations = []  # Activation functions for each layer
+        self.activations_str = []  # Activation string for each layer for plotting
 
         # self.memory_values = np.zeros(layers_size[-1])
         # self.activation = ACTIVATION_FUNCTIONS.get(activation)
@@ -44,6 +45,7 @@ class Brain:
             weight = np.random.randn(self.input_size, self.output_size) * self.random_magnitude
             self.layers.insert(0, weight)
             self.activations.insert(0, ACTIVATION_FUNCTIONS.get(activation))
+            self.activations_str.insert(0, activation)
             if len(layers_size) > 2:
                 for i in range(1, len(layers_size) - 1):
                     self.add_layer(i, layers_size[i], activation)
@@ -60,6 +62,7 @@ class Brain:
 
         self.layers.insert(index, weight)
         self.activations.insert(index, ACTIVATION_FUNCTIONS.get(activation, sigmoid))
+        self.activations_str.insert(index, activation)
         # if index < 0 or index > len(self.layers):
         #     # index = len(self.layers)
         #     raise ValueError('Invalid layer index')
@@ -162,13 +165,13 @@ class Brain:
 
     def plot(brain, ax, debug=False):
         """ plot the brain """
+        if len(brain.neuron_values[0].shape) > 1: return  # Skip plotting if the neurons are not a list of vector
         if debug:
             import matplotlib
             matplotlib.use('TkAgg')
             plt.ion()
             fig, ax = plt.subplots(1,1)
         ax.clear()
-        if len(brain.neuron_values[0].shape) > 1: return # Skip plotting if the neurons are not a list of vector
         # Set up the color map: blue for negative, white for zero, red for positive
         cmap = plt.cm.bwr
         norm = mcolors.Normalize(vmin=-1, vmax=1)
@@ -186,6 +189,14 @@ class Brain:
             # Draw neurons with color representing their value
             for y, value in zip(y_positions, brain.neuron_values[i]):
                 ax.scatter(x_position, y, color=cmap(norm(value)), edgecolors='k', s=100, zorder=3, clim=[-1,1])
+
+            # Draw activation function name below each layer (except input layer)
+            if i > 0:  # Skip input layer
+                ax.text(x_position, -max_neurons / 2 - 1, brain.activations_str[i - 1],
+                        ha='center', va='top', fontsize=10, color='black')
+            elif i == 0:
+                ax.text(x_position, -max_neurons / 2 - 1, 'input',
+                        ha='center', va='top', fontsize=10, color='black')
 
         # Draw weights (connections between neurons)
         for i, weights in enumerate(brain.layers):
@@ -208,6 +219,7 @@ class Brain:
         ax.set_title(f'weight : (max, min) = ({max_value:.2f}, {min_value:.2f})\n'
                      f'input = {np.array2string(brain.neuron_values[0], formatter={"float_kind": lambda x: f"{x:.1f}"})}\n'
                      f'output = {np.array2string(brain.neuron_values[-1], formatter={"float_kind": lambda x: f"{x:.1f}"})}')
+        ax.set_ylim(y_positions[0]-2, y_positions[-1]+1)
         # plt.draw()
 
 

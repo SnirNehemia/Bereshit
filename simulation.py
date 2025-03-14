@@ -668,7 +668,7 @@ class Simulation:
             return scat, quiv, grass_scat, leaves_scat, agent_scat
 
         # ----------------------------------- run simulation and save animation ------------------------------------ #
-        ani = animation.FuncAnimation(fig, update, frames=num_frames, interval=60, blit=True)
+        ani = animation.FuncAnimation(fig, update, frames=num_frames, interval=config.FRAME_INTERVAL, blit=True)
         ani.save(config.ANIMATION_FILEPATH, writer="ffmpeg", dpi=100)
         plt.close(fig)
         print('finished simulation.')

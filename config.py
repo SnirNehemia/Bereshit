@@ -25,18 +25,19 @@ date_str = now.strftime('%d_%m_%Y')
 
 
 # --------------------------------------- CONFIG PARAMETERS -------------------------------------------------------- #
-run_str = 'V5'  # change this to a different string to create a new output file
+run_str = 'V7'  # change this to a different string to create a new output file
 # general config params
 np.random.seed = 0
 NOISE_STD = 0.5
 DT = 1.0  # time passing from frame to frame (relevant when calculating velocities)
 NUM_FRAMES = 300  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
-UPDATE_ANIMATION_INTERVAL = 20  # update the animation every n frames
+UPDATE_ANIMATION_INTERVAL = 30  # update the animation every n frames
+FRAME_INTERVAL = 50  # interval between frames in ms
 UPDATE_KDTREE_INTERVAL = 20  # update the kdtree every n frames
 NUM_CREATURES = 500
 MAX_NUM_CREATURES = 2000
-INIT_MAX_ENERGY = 1500
-INIT_MAX_AGE = 3000
+INIT_MAX_ENERGY = 2000
+INIT_MAX_AGE = 4000
 SIMULATION_SPACE = 0  # will be updated in Environment class per the map size
 PURGE_SPEED_THRESHOLD = 0.001  # if the creature's speed is below this threshold at first reproduction, it will be removed
 
@@ -45,14 +46,14 @@ ENV_PATH = r"Penvs\Env8.png"
 GRASS_GENERATION_RATE = 2  # 5
 GRASS_GROWTH_CHANCE = 0.5  # maybe will be useful to create droughts
 LEAVES_GENERATION_RATE = 0  # 3
-MAX_GRASS_NUM = 150
+MAX_GRASS_NUM = 250
 MAX_LEAVES_NUM = 50
 
 # Define eye parameters: (angle_offset in radians, aperture in radians)
 # eyes_params = ((np.radians(30), np.radians(45)),(np.radians(-30), np.radians(45)))
 EYE_CHANNEL = ['grass'] #['grass', 'leaves', 'water', 'creatures']
 EYES_PARAMS = ((np.radians(0), np.radians(60)))
-VISION_LIMIT = 300  # maximum distance that the creature can see
+VISION_LIMIT = 400  # maximum distance that the creature can see
 
 # parameters of network
 INPUT_SIZE = 2 + 2 + 3 * len(EYES_PARAMS) * len(EYE_CHANNEL)
@@ -65,7 +66,7 @@ for _ in range(len(EYES_PARAMS) * len(EYE_CHANNEL)):
     NORM_INPUT = np.append(NORM_INPUT, [1, VISION_LIMIT, 1])
 
 # For food
-FOOD_DISTANCE_THRESHOLD = 25
+FOOD_DISTANCE_THRESHOLD = 30
 FOOD_SIZE = FOOD_DISTANCE_THRESHOLD/2 #3.14*(FOOD_DISTANCE_THRESHOLD/2)**2
 LEAF_HEIGHT = 10
 GRASS_ENERGY = 300
@@ -73,7 +74,7 @@ LEAF_ENERGY = 100
 
 # For reproduction
 REPRODUCTION_ENERGY = 500
-MIN_LIFE_ENERGY = 50  # energy to be left after reproduction
+MIN_LIFE_ENERGY = 100  # energy to be left after reproduction
 MUTATION_CHANCE = 0.4  # number between 0-1 indicating chance of trait to be mutated
 MAX_MUTATION_FACTORS = {'max_age': 2,
                         'max_weight': 1,

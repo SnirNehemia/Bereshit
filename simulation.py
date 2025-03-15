@@ -59,8 +59,8 @@ class Simulation:
         self.frame_counter = 0  # Initialize frame counter
         self.id_count = config.NUM_CREATURES-1
         self.focus_ID = 0
-        self.first_gen = True  # flag for first generation elimination
-        self.creature_history = []
+        self.purge = True  # flag for first generation elimination
+        self.creatures_history = []
 
     @staticmethod
     def initialize_creatures(num_creatures, simulation_space, input_size, output_size,
@@ -290,6 +290,7 @@ class Simulation:
           - Checks for collisions with obstacles (black areas) and stops if necessary.
         Then, moves creatures and updates the vegetation.
         """
+        self.creatures_history.append([getattr(creature, 'id') for creature in self.creatures.values()])
         # Update each creature's velocity.
         if config.DEBUG_MODE: print('seek')
         for id, creature in self.creatures.items():
@@ -349,8 +350,8 @@ class Simulation:
             creature.log_energy.append(creature.energy)
 
         # the purge
-        if (self.first_gen and len(creatures_reproduced) > 0) or len(self.creatures) > config.MAX_NUM_CREATURES * 0.5:
-            self.first_gen = False
+        if (self.purge and len(creatures_reproduced) > 0) or len(self.creatures) > config.MAX_NUM_CREATURES * 0.5:
+            self.purge = False
             for id, creature in self.creatures.items():
                 if creature.speed <= config.PURGE_SPEED_THRESHOLD and id not in died_creatured_id:
                     print('Purging creature:', id)
@@ -601,6 +602,10 @@ class Simulation:
                                              f"Children: {self.children_num} | "
                                              f"Dead: {len(self.dead_creatures)} | Progress:")
                 progress_bar.update(1)  # or self.animation_update_interval outside the for loop
+
+            # Purge every so often to clear static agents
+            if frame%10 == 0:
+                self.purge = True
 
             # # Track animation update frames
             # if self.frame_counter % self.animation_update_interval != 0:

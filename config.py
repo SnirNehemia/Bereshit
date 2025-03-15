@@ -29,13 +29,13 @@ if DEBUG_MODE:
     np.seterr(all='raise')  # Convert NumPy warnings into exceptions
 
 # --------------------------------------- CONFIG PARAMETERS -------------------------------------------------------- #
-run_str = 'V3'  # change this to a different string to create a new output file
+run_str = 'V4'  # change this to a different string to create a new output file
 # general config params
 np.random.seed = 0
 NOISE_STD = 0.5
 DT = 1.0  # time passing from frame to frame (relevant when calculating velocities)
-NUM_FRAMES = 400  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
-UPDATE_ANIMATION_INTERVAL = 30  # update the animation every n frames
+NUM_FRAMES = 40  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+UPDATE_ANIMATION_INTERVAL = 50  # update the animation every n frames
 FRAME_INTERVAL = 25  # interval between frames in ms
 UPDATE_KDTREE_INTERVAL = 20  # update the kdtree every n frames
 NUM_CREATURES = 500
@@ -104,7 +104,8 @@ MAX_MUTATION_FACTORS = {'max_age': 2,
                         }
 MUTATION_BRAIN = {'layer_addition': 0.5,
                    'modify_weights': 0.2,
-                   'modify_layer': 0.2}
+                   'modify_layer': 0.2,
+                  'modify_activation': 0.1}
 # --------------------------------------- FILEPATHS -------------------------------------------------------- #
 
 ANIMATION_FILEPATH = OUTPUT_FOLDER.joinpath(f"simulation_{date_str}_{run_str}.mp4")

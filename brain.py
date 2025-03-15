@@ -162,6 +162,9 @@ class Brain:
                 self.add_neuron(index)
             elif self.layers[index].shape[1] > 1:
                 self.remove_neuron(index)
+        if mutation_roll[3] < brain_mutation_rate['modify_activation']:
+            index = np.random.randint(0, len(self.layers))
+            self.set_activation(index, np.random.choice(list(ACTIVATION_FUNCTIONS.keys())))
         return self
 
     def plot(brain, ax, debug=False):

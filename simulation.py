@@ -60,6 +60,7 @@ class Simulation:
         self.id_count = config.NUM_CREATURES-1
         self.focus_ID = 0
         self.first_gen = True  # flag for first generation elimination
+        self.creature_history = []
 
     @staticmethod
     def initialize_creatures(num_creatures, simulation_space, input_size, output_size,
@@ -348,10 +349,11 @@ class Simulation:
             creature.log_energy.append(creature.energy)
 
         # the purge
-        if self.first_gen and len(creatures_reproduced) > 0:
+        if (self.first_gen and len(creatures_reproduced) > 0) or len(self.creatures) > config.MAX_NUM_CREATURES * 0.5:
             self.first_gen = False
             for id, creature in self.creatures.items():
                 if creature.speed <= config.PURGE_SPEED_THRESHOLD and id not in died_creatured_id:
+                    print('Purging creature:', id)
                     died_creatured_id.append(id)
 
         # kill creatures
@@ -452,6 +454,7 @@ class Simulation:
             food_energy = config.LEAF_ENERGY
 
         if len(food_points) > 0:
+            # candidate_indices = kd_tree.query_ball_point(eye_position, creature.vision_limit) TODO: use the kd_tree here too!
             food_distances = [np.linalg.norm(food_point - creature.position)
                               for food_point in food_points]
 

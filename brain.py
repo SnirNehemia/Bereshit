@@ -135,7 +135,8 @@ class Brain:
         self.size = sum(layer.size for layer in self.layers)
 
     def forward(self, input_data: np.ndarray) -> np.ndarray:
-        input_data /= config.NORM_INPUT  # normalize the input
+        input_data /= config.NORM_INPUT  # normalize the input with prior knowledge
+        input_data = np.tanh(input_data)  # normalize the input further
         x = np.concatenate([input_data, self.memory_nodes])
         self.neuron_values = [x]
         for weight, activation in zip(self.layers, self.activations):

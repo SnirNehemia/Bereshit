@@ -33,11 +33,11 @@ class Creature(StaticTraits):
         self.height = height
         self.position = position
         self.velocity = velocity  # 2D velocity vector.
+        self.max_speed_exp = 0
         self.calc_speed()
         self.energy = energy
         self.hunger = hunger
         self.thirst = thirst
-
         # logs for debugging
         self.log_eat = []
         self.log_reproduce = []
@@ -105,6 +105,8 @@ class Creature(StaticTraits):
         Returns the creature's current speed vector.
         """
         self.speed = np.linalg.norm(self.velocity)
+        if self.speed > self.max_speed_exp:
+            self.max_speed_exp = self.speed
 
 
     # def reproduce(self):

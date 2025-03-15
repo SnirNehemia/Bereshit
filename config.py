@@ -34,23 +34,23 @@ run_str = 'V4'  # change this to a different string to create a new output file
 np.random.seed = 0
 NOISE_STD = 0.5
 DT = 1.0  # time passing from frame to frame (relevant when calculating velocities)
-NUM_FRAMES = 40  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
-UPDATE_ANIMATION_INTERVAL = 50  # update the animation every n frames
-FRAME_INTERVAL = 25  # interval between frames in ms
+NUM_FRAMES = 200  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+UPDATE_ANIMATION_INTERVAL = 20  # update the animation every n frames
+FRAME_INTERVAL = 50  # interval between frames in ms
 UPDATE_KDTREE_INTERVAL = 20  # update the kdtree every n frames
 NUM_CREATURES = 500
 MAX_NUM_CREATURES = 1100
 INIT_MAX_ENERGY = 2000
 INIT_MAX_AGE = 4000
 SIMULATION_SPACE = 0  # will be updated in Environment class per the map size
-PURGE_SPEED_THRESHOLD = 0.01  # if the creature's speed is below this threshold at first reproduction, it will be removed
+PURGE_SPEED_THRESHOLD = 0.0001  # if the creature's speed is below this threshold at first reproduction, it will be removed
 
 # environment
 ENV_PATH = r"Penvs\Env8.png"
 GRASS_GENERATION_RATE = 2  # 5
 GRASS_GROWTH_CHANCE = 0.5  # maybe will be useful to create droughts
 LEAVES_GENERATION_RATE = 0  # 3
-MAX_GRASS_NUM = 100
+MAX_GRASS_NUM = 50
 MAX_LEAVES_NUM = 50
 
 # Define eye parameters: (angle_offset in radians, aperture in radians)

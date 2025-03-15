@@ -59,7 +59,8 @@ class Simulation:
         self.frame_counter = 0  # Initialize frame counter
         self.id_count = config.NUM_CREATURES-1
         self.focus_ID = 0
-        self.purge = True  # flag for first generation elimination
+        # TODO: maybe add to the creature class a flag indicating if it survived a purge event and if so, it will be immune in the future
+        self.purge = True  # flag for purge events
         self.creatures_history = []
 
     @staticmethod
@@ -353,7 +354,7 @@ class Simulation:
         if (self.purge and len(creatures_reproduced) > 0) or len(self.creatures) > config.MAX_NUM_CREATURES * 0.5:
             self.purge = False
             for id, creature in self.creatures.items():
-                if creature.speed <= config.PURGE_SPEED_THRESHOLD and id not in died_creatured_id:
+                if creature.max_speed_exp <= config.PURGE_SPEED_THRESHOLD and id not in died_creatured_id:
                     print('Purging creature:', id)
                     died_creatured_id.append(id)
 
@@ -604,7 +605,7 @@ class Simulation:
                 progress_bar.update(1)  # or self.animation_update_interval outside the for loop
 
             # Purge every so often to clear static agents
-            if frame%10 == 0:
+            if frame%50 == 0:
                 self.purge = True
 
             # # Track animation update frames

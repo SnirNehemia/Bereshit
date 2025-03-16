@@ -29,13 +29,13 @@ if DEBUG_MODE:
     np.seterr(all='raise')  # Convert NumPy warnings into exceptions
 
 # --------------------------------------- CONFIG PARAMETERS -------------------------------------------------------- #
-run_str = 'V2'  # change this to a different string to create a new output file
+run_str = 'V3'  # change this to a different string to create a new output file
 # general config params
 np.random.seed = 0
 NOISE_STD = 0.5
-DT = 1.0  # time passing from frame to frame (relevant when calculating velocities)
-NUM_FRAMES = 200  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
-UPDATE_ANIMATION_INTERVAL = 30  # update the animation every n frames
+DT = 2.0  # time passing from frame to frame (relevant when calculating velocities)
+NUM_FRAMES = 10  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+UPDATE_ANIMATION_INTERVAL = 50  # update the animation every n frames
 FRAME_INTERVAL = 50  # interval between frames in ms
 UPDATE_KDTREE_INTERVAL = 20  # update the kdtree every n frames
 NUM_CREATURES = 500
@@ -43,7 +43,7 @@ MAX_NUM_CREATURES = 1100
 INIT_MAX_ENERGY = 2000
 INIT_MAX_AGE = 4000
 SIMULATION_SPACE = 0  # will be updated in Environment class per the map size
-PURGE_SPEED_THRESHOLD = 1  # if the creature's speed is below this threshold at first reproduction, it will be removed
+PURGE_SPEED_THRESHOLD = 0.2  # if the creature's speed is below this threshold at first reproduction, it will be removed
 
 # environment
 ENV_PATH = r"Penvs\Env8.png"
@@ -56,7 +56,7 @@ MAX_LEAVES_NUM = 50
 # Define eye parameters: (angle_offset in radians, aperture in radians)
 # eyes_params = ((np.radians(30), np.radians(45)),(np.radians(-30), np.radians(45)))
 EYE_CHANNEL = ['grass'] #['grass', 'leaves', 'water', 'creatures']
-EYES_PARAMS = [np.radians(0), np.radians(60)]     # angle_offset, aperture
+EYES_PARAMS = [np.radians(0), np.radians(90)]     # angle_offset, aperture
 VISION_LIMIT = 2000  # maximum distance that the creature can see
 
 # parameters of network
@@ -73,7 +73,7 @@ for _ in range(len(EYES_PARAMS) * len(EYE_CHANNEL)):
 FOOD_DISTANCE_THRESHOLD = 75
 FOOD_SIZE = FOOD_DISTANCE_THRESHOLD/2 #3.14*(FOOD_DISTANCE_THRESHOLD/2)**2
 LEAF_HEIGHT = 10
-GRASS_ENERGY = 300
+GRASS_ENERGY = 100
 LEAF_ENERGY = 100
 
 # For reproduction
@@ -83,7 +83,7 @@ MUTATION_CHANCE = 0.4  # number between 0-1 indicating chance of trait to be mut
 MAX_MUTATION_FACTORS = {'max_age': 2,
                         'max_weight': 1,
                         'max_height': 1,
-                        'max_speed': 1,
+                        'max_speed': 2,
                         'color': np.array([0.01, 0.01, 0.01]),  # +-in each RGB color
 
                         'energy_efficiency': 0,

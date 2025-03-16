@@ -105,8 +105,8 @@ class Creature(StaticTraits):
         Returns the creature's current speed vector.
         """
         self.speed = np.linalg.norm(self.velocity)
-        if self.speed > self.max_speed_exp:
-            self.max_speed_exp = self.speed
+        # self.max_speed_exp = max(self.max_speed_exp, self.speed)
+        self.max_speed_exp = (self.max_speed_exp + self.speed)/2
 
 
     # def reproduce(self):
@@ -133,7 +133,7 @@ class Creature(StaticTraits):
         child.brain.mutate(config.MUTATION_BRAIN)
         child.reset()
         # Reduce energy
-        self.energy -= config.REPRODUCTION_ENERGY
+        self.energy -= self.reproduction_energy
         return child
 
     def reset(self):
@@ -149,7 +149,7 @@ class Creature(StaticTraits):
         self.color = np.clip(self.color, 0, 1)
         self.max_speed_exp = 0
 
-    def mutate(self, max_mutation_factors):
+    def mutate(self, max_mutation_factors, mutation_chance=config.MUTATION_CHANCE):
         """
         mutate the desired traits.
         """
@@ -162,8 +162,9 @@ class Creature(StaticTraits):
                         self.eyes_params[i] = self.eyes_params[i] + mutation_factor
                 else:
                     # Mutate trait
-                    mutation_factor = np.random.uniform(-max_mutation_factors[key], max_mutation_factors[key])
-                    setattr(self, key, getattr(self, key) + mutation_factor)
+                    if np.random.rand(1) < config.MUTATION_CHANCE:
+                        mutation_factor = np.random.uniform(-max_mutation_factors[key], max_mutation_factors[key])
+                        setattr(self, key, getattr(self, key) + mutation_factor)
 
     def mutate_traits(self):
         """

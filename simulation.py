@@ -340,7 +340,7 @@ class Simulation:
 
                 # reproduce
                 if creature.energy > creature.reproduction_energy + config.MIN_LIFE_ENERGY:
-                    creature.energy -= creature.reproduction_energy
+                    # creature.energy -= creature.reproduction_energy
                     creatures_reproduced.append(creature)
                     creature.log_reproduce.append(1)
                 else:
@@ -351,7 +351,7 @@ class Simulation:
             creature.log_energy.append(creature.energy)
 
         # the purge
-        if (self.purge and len(creatures_reproduced) > 0) or len(self.creatures) > config.MAX_NUM_CREATURES * 0.5:
+        if (self.purge and len(creatures_reproduced) > 0) or len(self.creatures) > config.MAX_NUM_CREATURES * 0.9:
             self.purge = False
             for id, creature in self.creatures.items():
                 if creature.max_speed_exp <= config.PURGE_SPEED_THRESHOLD and id not in died_creatured_id:

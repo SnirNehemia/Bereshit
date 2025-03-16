@@ -147,6 +147,7 @@ class Creature(StaticTraits):
         self.log_eat = []
         self.log_reproduce = []
         self.color = np.clip(self.color, 0, 1)
+        self.max_speed_exp = 0
 
     def mutate(self, max_mutation_factors):
         """

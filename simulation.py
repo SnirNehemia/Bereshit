@@ -563,7 +563,7 @@ class Simulation:
                 U.append(0)
                 V.append(0)
         quiv = ax_env.quiver(positions[:, 0], positions[:, 1], U, V,
-                         color='black', scale=150, width=0.005)
+                         color=colors, scale=150, width=0.005)  # 'black'
 
         # Scatter plots for vegetation.
         grass_scat = ax_env.scatter([], [], c='lightgreen', edgecolors='black', s=10)
@@ -649,7 +649,7 @@ class Simulation:
                         V.append(0)
 
                 quiv = ax_env.quiver(positions[:, 0], positions[:, 1], U, V,
-                                 color='black', scale=150, width=0.005)
+                                 color=colors, scale=150, width=0.005)
                 # quiv.set_offsets(positions)
                 # quiv.set_UVC(U, V)
             else:
@@ -672,13 +672,16 @@ class Simulation:
             if len(self.creatures) > 0:
                 ids = [creature.id for creature in self.creatures.values()]
                 if self.focus_ID not in ids:
-                    self.focus_ID = self.id_count # np.random.choice(list(self.creatures.keys()))
+                    if self.id_count in ids:
+                        self.focus_ID = self.id_count
+                    else:
+                        self.focus_ID = np.random.choice(list(self.creatures.keys()))
                 agent = self.creatures[self.focus_ID]
                 agent_scat = ax_env.scatter(
                     [agent.position[0]] * 3, [agent.position[1]] * 3,  # Repeat position for multiple rings
-                    s=[20, 25, 100],  # Different sizes for bullseye rings # config.FOOD_SIZE
-                    facecolors=['red','black','yellow'], edgecolors=['red', 'black', 'yellow'],  # Different colors for bullseye rings
-                    linewidth=5, alpha=[0.9,0.9,0.3], marker='*'
+                    s=[50, 20, 500],  # Different sizes for bullseye rings # config.FOOD_SIZE
+                    facecolors=['black','red','black'], edgecolors=['black', 'red', 'yellow'],  # Different colors for bullseye rings
+                    linewidth=5, alpha=[0.9,1,0.5], marker='*'
                 )
                 agent.brain.plot(ax_brain)
                 # ax_agent_info.clear()

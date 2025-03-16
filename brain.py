@@ -201,10 +201,10 @@ class Brain:
             # Draw activation function name below each layer (except input layer)
             if i > 0:  # Skip input layer
                 ax.text(x_position, -max_neurons / 2 - 1, brain.activations_str[i - 1],
-                        ha='center', va='top', fontsize=10, color='black')
+                        ha='center', va='top', fontsize=5, color='black')
             elif i == 0:
                 ax.text(x_position, -max_neurons / 2 - 1, 'input',
-                        ha='center', va='top', fontsize=10, color='black')
+                        ha='center', va='top', fontsize=8, color='black')
 
         # Draw weights (connections between neurons)
         for i, weights in enumerate(brain.layers):

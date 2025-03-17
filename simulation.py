@@ -381,59 +381,7 @@ class Simulation:
             child_ids.append(self.id_count)
             self.children_num += 1
 
-        # # Reproduction
-        # child_ids = []
-        # for creature in creatures_reproduced:
-        #     # update id
-        #     # id = self.max_creature_id + 1
-        #     # self.max_creature_id += 1
-        #     self.children_num += 1
-        #     # Copy father attributes to child
-        #     child_attributes = copy.deepcopy(creature.__dict__)
-        #
-        #     # clear age and logs for child
-        #     del child_attributes['age']
-        #     del child_attributes['id']
-        #     del child_attributes['speed']
-        #     attributes_keys = list(child_attributes.keys())
-        #     for key in attributes_keys:
-        #         if key.startswith('log'):
-        #             del child_attributes[key]
-        #
-        #     # which traits to change
-        #     mutation_binary_mask = np.random.rand(len(child_attributes)) >= config.MUTATION_CHANCE
-        #
-        #     for i, key in enumerate(child_attributes.keys()):
-        #
-        #         # mutate static and dynamic traits and brain
-        #         do_mutate = mutation_binary_mask[i]
-        #         if do_mutate:
-        #             max_mutation_factor = config.MAX_MUTATION_FACTORS[key]
-        #
-        #             # mutate brain separately
-        #             if key == "brain":
-        #                 creature.brain.mutate(brain_mutation_rate=max_mutation_factor)
-        #
-        #             # mutate other attributes
-        #             else:
-        #                 # check if attribute contain number or array
-        #                 try:
-        #                     mutation_roll = np.random.rand(len(child_attributes[key])) - 0.5  # so it will be between -0.5 and 0.5
-        #                 except:
-        #                     mutation_roll = np.random.rand() - 0.5  # so it will be between -0.5 and 0.5
-        #
-        #                 # mutate attribute
-        #                 child_attributes[key] += mutation_roll * max_mutation_factor
-        #
-        #             # set energy of child
-        #             child_attributes['energy'] = int(config.REPRODUCTION_ENERGY*0.95)
-        #
-        #     self.id_count += 1
-        #     child_attributes['id'] = self.id_count
-        #     # Add child to creatures
-        #     child_creature = Creature(**child_attributes)
-        #     self.creatures[id] = child_creature
-        #     child_ids.append(id)
+
         if config.DEBUG_MODE: print('update kdtree')
         # **Update KDTree every N frames**
         self.frame_counter += 1

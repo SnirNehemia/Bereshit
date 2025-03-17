@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import platform
 from pathlib import Path
+import os, sys
 
 # make sure we can plot for debugging (did not test on debugger mode)
 import matplotlib
@@ -34,8 +35,8 @@ run_str = 'V_' + now.strftime('%H_%M')  # change this to a different string to c
 np.random.seed = 0
 NOISE_STD = 0.5
 DT = 2.0  # time passing from frame to frame (relevant when calculating velocities)
-NUM_FRAMES = 300  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
-UPDATE_ANIMATION_INTERVAL = 35  # update the animation every n steps
+NUM_FRAMES = 400  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+UPDATE_ANIMATION_INTERVAL = 30  # update the animation every n steps
 FRAME_INTERVAL = 75  # interval between frames in ms
 UPDATE_KDTREE_INTERVAL = 50  # update the kdtree every n steps
 NUM_CREATURES = 500
@@ -53,14 +54,14 @@ ENV_PATH = r"Penvs\Env8.png"
 GRASS_GENERATION_RATE = 2  # 5
 GRASS_GROWTH_CHANCE = 0.5  # maybe will be useful to create droughts
 LEAVES_GENERATION_RATE = 0  # 3
-MAX_GRASS_NUM = 100
+MAX_GRASS_NUM = 70
 MAX_LEAVES_NUM = 50
 
 # Define eye parameters: (angle_offset in radians, aperture in radians)
 # eyes_params = ((np.radians(30), np.radians(45)),(np.radians(-30), np.radians(45)))
 EYE_CHANNEL = ['grass'] #['grass', 'leaves', 'water', 'creatures']
 EYES_PARAMS = [np.radians(0), np.radians(90)]     # angle_offset, aperture
-VISION_LIMIT = 2000  # maximum distance that the creature can see
+VISION_LIMIT = 1000  # maximum distance that the creature can see
 
 # parameters of network
 INPUT_SIZE = 2 + 2 + 3 * len(EYES_PARAMS) * len(EYE_CHANNEL)
@@ -76,7 +77,7 @@ for _ in range(len(EYES_PARAMS) * len(EYE_CHANNEL)):
 FOOD_DISTANCE_THRESHOLD = 75
 FOOD_SIZE = FOOD_DISTANCE_THRESHOLD/2 #3.14*(FOOD_DISTANCE_THRESHOLD/2)**2
 LEAF_HEIGHT = 10
-GRASS_ENERGY = 50
+GRASS_ENERGY = 100
 LEAF_ENERGY = 100
 
 # For reproduction
@@ -110,6 +111,16 @@ MUTATION_BRAIN = {'layer_addition': 0.1,
                    'modify_layer': 0.2,
                   'modify_activation': 0.1}
 # --------------------------------------- FILEPATHS -------------------------------------------------------- #
+OUTPUT_FOLDER = OUTPUT_FOLDER.joinpath(date_str)
+if not os.path.exists(OUTPUT_FOLDER):
+    try:
+        os.makedirs(OUTPUT_FOLDER)
+        print(f"Directory '{OUTPUT_FOLDER}' created successfully.")
+    except Exception as e:
+        print(f"Error creating directory '{OUTPUT_FOLDER}': {e}")
+        sys.exit(1)
+else:
+    print(f"Directory '{OUTPUT_FOLDER}' already exists.")
 
 ANIMATION_FILEPATH = OUTPUT_FOLDER.joinpath(f"simulation_{date_str}_{run_str}.mp4")
 SPECIFIC_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"specific_fig_{date_str}_{run_str}.png")

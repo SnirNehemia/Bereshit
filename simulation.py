@@ -535,11 +535,13 @@ class Simulation:
 
         fig = plt.figure(figsize=(16, 8))
         # Define the grid layout with uneven ratios
-        gs = gridspec.GridSpec(2, 2, width_ratios=[3, 1], height_ratios=[3, 1])  # 2:1 ratio for both axes
-        ax_env = fig.add_subplot(gs[0, 0])  # Large subplot (3/4 of figure)
-        ax_brain = fig.add_subplot(gs[0, 1])  # Smaller subplot (1/4 width, full height)
-        ax_agent_info = fig.add_subplot(gs[1, 0])  # Smaller subplot (1/4 height, full width)
-        ax_zoom = fig.add_subplot(gs[1, 1])  # Smallest subplot (1/4 x 1/4)
+        gs = gridspec.GridSpec(3, 2, width_ratios=[1, 2, 1], height_ratios=[2, 1])  # 2:1 ratio for both axes
+        ax_ancestors = fig.add_subplot([0, 0])  # ancestor tree?
+        ax_env = fig.add_subplot(gs[0, 1])  # Large subplot (3/4 of figure)
+        ax_brain = fig.add_subplot(gs[0, 2])  # Smaller subplot (1/4 width, full height)
+        ax_pass = fig.add_subplot(gs[1, 0])  # placeholder
+        ax_agent_info = fig.add_subplot(gs[1, 1])  # Smaller subplot (1/4 height, full width)
+        ax_zoom = fig.add_subplot(gs[1, 2])  # Smallest subplot (1/4 x 1/4)
         fig.figsize=(16, 8)
         extent = self.env.get_extent()
         ax_env.set_xlim(extent[0], extent[1])

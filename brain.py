@@ -215,8 +215,19 @@ class Brain:
             for j, start_y in enumerate(y_start):
                 for k, end_y in enumerate(y_end):
                     weight = weights.T[k, j] if weights.ndim > 1 else weights[j]
-                    ax.plot([x_start, x_end], [start_y, end_y], color=cmap(np.clip(norm(weight),-1,1)), zorder=1,
-                            alpha=min(norm(weight), 1))
+                    try:
+                        ax.plot([x_start, x_end], [start_y, end_y], color=cmap(np.clip(norm(weight),-1,1)), zorder=1,
+                                alpha=min(norm(weight), 1))
+                    except:
+                        print(' ----- Error in plotting -----')
+                        print('weight:', weight)
+                        print('norm:', norm(weight))
+                        print('cmap:', cmap(np.clip(norm(weight),-1,1)))
+                        print('zorder:', 1)
+                        print('alpha:', min(norm(weight), 1))
+                        print('x_start, x_end:', x_start, x_end)
+                        print('start_y, end_y:', start_y, end_y)
+                        print('---------------------------------')
 
         # ax.axis('equal')
         # ax.axis('off')
@@ -251,7 +262,7 @@ if __name__ == '__main__':
     print('after add layer:', brain.layers[0].shape, brain.layers[1].shape, brain.layers[2].shape)
     brain.remove_neuron(1)  # 0<=X< len(layers)
     print('after remove:', brain.layers[0].shape, brain.layers[1].shape, brain.layers[2].shape)
-    brain.add_memory_node()  # still doesn't work
+    brain.add_memory_node()
     print('after add memory:', brain.layers[0].shape, brain.layers[1].shape, brain.layers[2].shape)
     print(brain.memory_nodes.shape)
     brain.add_memory_node()  # still doesn't work

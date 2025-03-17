@@ -89,7 +89,7 @@ class Simulation:
             max_age = np.random.randint(low=config.INIT_MAX_AGE*0.8, high=config.INIT_MAX_AGE)
             max_weight = 10.0
             max_height = 5.0
-            max_speed = 5.0
+            max_speed = config.MAX_SPEED
             color = np.random.rand(3)  # Random RGB color.
 
             energy_efficiency = 0.1  # idle energy
@@ -105,9 +105,7 @@ class Simulation:
             weight = np.random.rand() * max_weight
             height = np.random.rand() * max_height
             velocity = (np.random.rand(2) - 0.5) * max_speed
-            energy = int(config.REPRODUCTION_ENERGY*0.95)
-            hunger = np.random.rand() * 10
-            thirst = np.random.rand() * 10
+
 
             # init creature
             creature = Creature(id = id, max_age=max_age, max_weight=max_weight, max_height=max_height,
@@ -117,7 +115,7 @@ class Simulation:
                                 max_energy=max_energy,
                                 eyes_params=eyes_params, vision_limit=vision_limit, brain=brain,
                                 weight=weight, height=height,
-                                position=position, velocity=velocity, energy=energy, hunger=hunger, thirst=thirst)
+                                position=position, velocity=velocity)
 
             creatures[id] = creature
 
@@ -336,28 +334,34 @@ class Simulation:
                 is_found_food = self.eat_food(creature=creature, food_type='grass')
                 if not is_found_food and creature.height >= config.LEAF_HEIGHT:
                     _ = self.eat_food(creature=creature, food_type='leaf')
-                creature.log_eat.append(is_found_food)
+                if is_found_food:
+                    creature.log_eat.append(self.frame_counter)
 
                 # reproduce
                 if creature.energy > creature.reproduction_energy + config.MIN_LIFE_ENERGY:
                     # creature.energy -= creature.reproduction_energy
                     creatures_reproduced.append(creature)
-                    creature.log_reproduce.append(1)
-                else:
-                    creature.log_reproduce.append(0)
+                # else:
+                #     creature.log_reproduce.append(0)
             else:
                 # death from energy
                 died_creatured_id.append(id)
             creature.log_energy.append(creature.energy)
 
         # the purge
-        if (self.purge and len(creatures_reproduced) > 0) or len(self.creatures) > config.MAX_NUM_CREATURES * 0.9:
+        # if (self.purge and len(creatures_reproduced) > 0) or len(self.creatures) > config.MAX_NUM_CREATURES * 0.75:
+        if self.purge  or len(self.creatures) > config.MAX_NUM_CREATURES * 0.75:
+            purge_count = 0
             self.purge = False
             for id, creature in self.creatures.items():
-                if creature.max_speed_exp <= config.PURGE_SPEED_THRESHOLD and id not in died_creatured_id:
-                    print('Purging creature:', id)
+                if (len(self.creatures) > config.MAX_NUM_CREATURES * 0.95 and np.random.rand(1) < 0.1
+                        and id not in died_creatured_id):
+                    purge_count += 1
                     died_creatured_id.append(id)
-
+                if creature.max_speed_exp <= config.PURGE_SPEED_THRESHOLD and id not in died_creatured_id:
+                    purge_count += 1
+                    died_creatured_id.append(id)
+            print(f'Purging {purge_count} creatures.')
         # kill creatures
         dead_ids = []
         for sim_id in died_creatured_id:
@@ -368,6 +372,8 @@ class Simulation:
         child_ids = []
         for creature in creatures_reproduced:
             child = creature.reproduce()
+            creature.log_reproduce.append(self.frame_counter)
+            child.frame_born = self.frame_counter
             self.id_count += 1
             child.id = self.id_count
             # self.creatures.append(child) # TODO: why do we use dict instead of list?
@@ -480,7 +486,7 @@ class Simulation:
         # ------------------------- update debug parameters ------------------------- #
         current_num_creatures = len(self.creatures.keys())
         if current_num_creatures > config.MAX_NUM_CREATURES:
-            print(f'{frame=}: Too many creatures, simulation is stuck.')
+            print(f'{frame=}: Too many creatures, simulation is too slow.')
             self.abort_simulation = True
         if current_num_creatures > 0:
             # update total/new/dead number of creatures
@@ -686,7 +692,7 @@ class Simulation:
                 agent.brain.plot(ax_brain)
                 # ax_agent_info.clear()
                 agent.plot_live_status(ax_agent_info)
-                agent.plot_acc_status(ax_zoom)
+                agent.plot_acc_status(ax_zoom, plot_type=1, curr_frame = self.frame_counter)
                 # Create zoomed-in inset
                 # axins = zoomed_inset_axes(ax_env, zoom=100, loc="upper right")  # zoom=2 means 2x zoom
                 # axins = inset_axes(ax_env, width="30%", height="30%", loc="upper right")

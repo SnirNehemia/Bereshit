@@ -19,8 +19,7 @@ class Creature(StaticTraits):
                     max_energy: float,
                  eyes_params: list[tuple], vision_limit: float, brain: Brain,
                  weight: float, height: float,
-                 position: np.ndarray, velocity: np.ndarray,
-                 energy: float, hunger: float, thirst: float):
+                 position: np.ndarray, velocity: np.ndarray):
         super().__init__(max_age=max_age, max_weight=max_weight, max_height=max_height, max_speed=max_speed,
                          color=color,
                          energy_efficiency=energy_efficiency, motion_efficiency=motion_efficiency,
@@ -35,13 +34,21 @@ class Creature(StaticTraits):
         self.velocity = velocity  # 2D velocity vector.
         self.max_speed_exp = 0
         self.calc_speed()
-        self.energy = energy
-        self.hunger = hunger
-        self.thirst = thirst
+        self.init_state()
+        self.anscestors = []  # list of creature ids that are anscestors
+        self.frame_born = 0
         # logs for debugging
         self.log_eat = []
         self.log_reproduce = []
         self.log_energy = []
+
+    def init_state(self):
+        """
+        :return:
+        """
+        self.energy = int(self.reproduction_energy*0.95)
+        self.hunger = 100
+        self.thirst = 100
 
 
     def plot_live_status(self, ax, debug=False):
@@ -57,7 +64,7 @@ class Creature(StaticTraits):
         colors = ['green', 'red', 'blue', 'grey']
         values = [getattr(self, attr) for attr in ls]  # Dynamically get values
         ax.clear()
-        ax.set_title(f'Agent # {self.id} Status')
+        ax.set_title(f'Agent # {self.id} Status | ancestors = {self.anscestors}')
         ax.barh(ls, values, color=colors)
         # ax.barh(['Energy', 'Hunger', 'Thirst'], [self.energy, self.hunger, self.thirst], color=['green', 'red', 'blue'])
         ax.set_xlim(0, max(config.REPRODUCTION_ENERGY, self.max_age))
@@ -69,24 +76,45 @@ class Creature(StaticTraits):
             ax.scatter([self.max_age], ['age'], color='black', s=20)
 
 
-    def plot_acc_status(self, ax, debug=False):
+    def plot_acc_status(self, ax, debug=False, plot_type=1, curr_frame = -1):
         """
         Plots the agent's accumulated status (logs) on the given axes.
         """
         if debug:
+            print('debug_mode')
             import matplotlib.pyplot as plt
             plt.ion()
             fig, ax = plt.subplots(1,1)
         # Define attributes dynamically
         ls = ['log_eat', 'log_reproduce']
         colors = ['green', 'pink']
-        values = [sum(getattr(self, attr)) for attr in ls]  # Dynamically get values
-        ax.clear()
-        ax.set_title(f'Agent # {self.id} Accumulated Status')
-        ax.bar(ls, values, color=colors)
-        ax.set_ylim(0, 10)
-        ax.set_yticks([0, 5, 10])
-        ax.set_xticks(ls)
+        if plot_type == 0:
+            #option 1
+            values = [len(getattr(self, attr)) for attr in ls]  # Dynamically get values
+            ax.clear()
+            ax.set_title(f'Agent # {self.id} Accumulated Status')
+            ax.bar(ls, values, color=colors, width=0.2)
+            ax.set_ylim(0, 10)
+            ax.set_yticks([0, 5, 10, 100])
+            ax.set_xticks(ls)
+        if plot_type == 1:
+            # option 2
+            if curr_frame == -1: curr_frame = self.max_age+self.frame_born
+            # values = [getattr(self, attr) for attr in ls]  # Dynamically get values
+            eating_frames = self.log_eat
+            reproducing_frames = self.log_reproduce
+            ax.clear()
+            ax.scatter(eating_frames, [1] * len(eating_frames), color='green', marker='o', s=100, label='Eating')
+            ax.scatter(reproducing_frames, [2] * len(reproducing_frames), color='red', marker='D', s=100,
+                       label='Reproducing')
+            ax.set_yticks([1, 2])
+            ax.set_yticklabels(['Eating', 'Reproducing'])
+            # Label x-axis and add a title
+            ax.set_xlabel('Frame Number')
+            ax.set_title('Event Timeline: Eating & Reproducing')
+            ax.set_xlim([self.frame_born-1, curr_frame+1])
+            ax.set_ylim([0.5, 2.5])
+            ax.legend()
 
 
     def get_heading(self):
@@ -132,6 +160,7 @@ class Creature(StaticTraits):
         child.mutate(config.MAX_MUTATION_FACTORS)
         child.brain.mutate(config.MUTATION_BRAIN)
         child.reset()
+        child.anscestors.append(self.id)
         # Reduce energy
         self.energy -= self.reproduction_energy
         return child
@@ -146,8 +175,8 @@ class Creature(StaticTraits):
         self.log_energy = []
         self.log_eat = []
         self.log_reproduce = []
-        self.color = np.clip(self.color, 0, 1)
         self.max_speed_exp = 0
+        self.init_state()
 
     def mutate(self, max_mutation_factors, mutation_chance=config.MUTATION_CHANCE):
         """
@@ -165,6 +194,7 @@ class Creature(StaticTraits):
                     if np.random.rand(1) < config.MUTATION_CHANCE:
                         mutation_factor = np.random.uniform(-max_mutation_factors[key], max_mutation_factors[key])
                         setattr(self, key, getattr(self, key) + mutation_factor)
+        self.color = np.clip(self.color, 0, 1)
 
     def mutate_traits(self):
         """

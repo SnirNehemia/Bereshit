@@ -1,8 +1,9 @@
 # brain.py
 import numpy as np
 from typing import Callable, Optional
-
-
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+import config as config
 # TODO: pay attention to activation function and run as main to check the hidden layers
 # Activation functions
 def relu(x: np.ndarray) -> np.ndarray:
@@ -32,24 +33,26 @@ class Brain:
         self.input_size = layers_size[0] + len(self.memory_nodes)
         self.output_size = layers_size[-1] + len(self.memory_nodes)
         self.activations = []  # Activation functions for each layer
+        self.activations_str = []  # Activation string for each layer for plotting
 
         # self.memory_values = np.zeros(layers_size[-1])
         # self.activation = ACTIVATION_FUNCTIONS.get(activation)
         self.size = 0  # Effective network size
-        self.random_magnitude = 0.1
+        self.random_magnitude = 0.2
         self.layers = []
         # Initialize a simple two-layer network
         if no_lineage:
             weight = np.random.randn(self.input_size, self.output_size) * self.random_magnitude
             self.layers.insert(0, weight)
             self.activations.insert(0, ACTIVATION_FUNCTIONS.get(activation))
+            self.activations_str.insert(0, activation)
             if len(layers_size) > 2:
                 for i in range(1, len(layers_size) - 1):
                     self.add_layer(i, layers_size[i], activation)
         else:
             raise ValueError('No lineage')
 
-    def add_layer(self, index: int, activation: str = 'relu'):
+    def add_layer(self, index: int, activation: str = 'tanh'):
         if index < 0 or index >= len(self.layers):
             # index = len(self.layers)
             raise ValueError('Invalid layer index')
@@ -59,6 +62,7 @@ class Brain:
 
         self.layers.insert(index, weight)
         self.activations.insert(index, ACTIVATION_FUNCTIONS.get(activation, sigmoid))
+        self.activations_str.insert(index, activation)
         # if index < 0 or index > len(self.layers):
         #     # index = len(self.layers)
         #     raise ValueError('Invalid layer index')
@@ -131,6 +135,8 @@ class Brain:
         self.size = sum(layer.size for layer in self.layers)
 
     def forward(self, input_data: np.ndarray) -> np.ndarray:
+        input_data /= config.NORM_INPUT  # normalize the input with prior knowledge
+        input_data = np.tanh(input_data)  # normalize the input further
         x = np.concatenate([input_data, self.memory_nodes])
         self.neuron_values = [x]
         for weight, activation in zip(self.layers, self.activations):
@@ -142,62 +148,96 @@ class Brain:
         else:
             return x
 
-    def mutate_brain(self, brain_mutation_rate: dict):  # not in use
-        # mutation_roll = np.random.rand(len(brain_mutation_rate))
-        # if mutation_roll[0] < brain_mutation_rate['layer_addition']:
-        #     index = np.random.randint(0, len(self.layers))
-        #     self.add_layer(index)
-        # if mutation_roll[1] < brain_mutation_rate['modify_weights']:
-        #     index = np.random.randint(0, len(self.layers))
-        #     self.change_connectivity(index)
-        # if mutation_roll[2] < brain_mutation_rate['modify_layer']:
-        #     index = np.random.randint(0, len(self.layers))
-        #     if np.random.rand() < 0.5:
-        #         self.add_neuron(index)
-        #     else:
-        #         self.remove_neuron(index)
+    def mutate(self, brain_mutation_rate: dict): # mutation_rate = {'layer_addition': 0.1, 'modify_weights': 0.1, 'modify_layer': 0.1}
+        mutation_roll = np.random.rand(len(brain_mutation_rate))
+        if mutation_roll[0] < brain_mutation_rate['layer_addition']:
+            index = np.random.randint(0, len(self.layers))
+            self.add_layer(index)
+        if mutation_roll[1] < brain_mutation_rate['modify_weights']:
+            index = np.random.randint(0, len(self.layers))
+            self.change_layer(index)
+        if mutation_roll[2] < brain_mutation_rate['modify_layer'] and len(self.layers) > 2:
+            index = np.random.randint(1, len(self.layers)-1)
+            if np.random.rand() < 0.5:
+                self.add_neuron(index)
+            elif self.layers[index].shape[1] > 1:
+                self.remove_neuron(index)
+        if mutation_roll[3] < brain_mutation_rate['modify_activation']:
+            index = np.random.randint(0, len(self.layers))
+            self.set_activation(index, np.random.choice(list(ACTIVATION_FUNCTIONS.keys())))
         return self
 
+    def plot(brain, ax, debug=False):
+        """ plot the brain """
+        if len(brain.neuron_values[0].shape) > 1: return  # Skip plotting if the neurons are not a list of vector
+        if debug:
+            import matplotlib
+            matplotlib.use('TkAgg')
+            plt.ion()
+            fig, ax = plt.subplots(1,1)
+        ax.clear()
+        # Set up the color map: blue for negative, white for zero, red for positive
+        cmap = plt.cm.bwr
+        norm = mcolors.Normalize(vmin=-1, vmax=1)
 
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
+        if len(brain.neuron_values) != len(brain.layers) + 1:
+            # print('Brain error - neurons and weights mismatch')
+            brain.forward(brain.neuron_values[0])
 
-def visualize_brain(brain, ax):
-    ax.clear()
+        layer_positions = []
+        max_neurons = max(layer.shape[0] for layer in brain.neuron_values)
 
-    # Set up the color map: blue for negative, white for zero, red for positive
-    cmap = plt.cm.bwr
-    norm = mcolors.Normalize(vmin=-1, vmax=1)
+        # Draw neurons
+        for i, neuron in enumerate(brain.neuron_values):
+            layer_neurons = neuron.shape[0]
+            y_positions = np.linspace(-max_neurons / 2, max_neurons / 2, layer_neurons)
+            x_position = i * 2
+            layer_positions.append((x_position, y_positions))
 
-    layer_positions = []
-    max_neurons = max(layer.shape[0] for layer in brain.neuron_values)
+            # Draw neurons with color representing their value
+            for y, value in zip(y_positions, brain.neuron_values[i]):
+                ax.scatter(x_position, y, color=cmap(norm(value)), edgecolors='k', s=100, zorder=3, clim=[-1,1])
 
-    # Draw neurons
-    for i, neuron in enumerate(brain.neuron_values):
-        layer_neurons = neuron.shape[0]
-        y_positions = np.linspace(-max_neurons / 2, max_neurons / 2, layer_neurons)
-        x_position = i * 2
-        layer_positions.append((x_position, y_positions))
+            # Draw activation function name below each layer (except input layer)
+            if i > 0:  # Skip input layer
+                ax.text(x_position, -max_neurons / 2 - 1, brain.activations_str[i - 1],
+                        ha='center', va='top', fontsize=7, color='black')
+            elif i == 0:
+                ax.text(x_position, -max_neurons / 2 - 1, 'input',
+                        ha='center', va='top', fontsize=7, color='black')
 
-        # Draw neurons with color representing their value
-        for y, value in zip(y_positions, brain.neuron_values[i]):
-            ax.scatter(x_position, y, color=cmap(norm(value)), edgecolors='k', s=100, zorder=3)
+        # Draw weights (connections between neurons)
+        for i, weights in enumerate(brain.layers):
+            x_start, y_start = layer_positions[i]
+            x_end, y_end = layer_positions[i + 1]
+            # weights = next_layer  # Assuming the weights are stored in the 'next' layer
 
-    # Draw weights (connections between neurons)
-    for i, weights in enumerate(brain.layers):
-        x_start, y_start = layer_positions[i]
-        x_end, y_end = layer_positions[i + 1]
-        # weights = next_layer  # Assuming the weights are stored in the 'next' layer
+            for j, start_y in enumerate(y_start):
+                for k, end_y in enumerate(y_end):
+                    weight = weights.T[k, j] if weights.ndim > 1 else weights[j]
+                    try:
+                        ax.plot([x_start, x_end], [start_y, end_y], color=cmap(np.clip(norm(weight),-1,1)), zorder=1,
+                                alpha=min(norm(weight), 1))
+                    except:
+                        print(' ----- Error in plotting -----')
+                        print('weight:', weight)
+                        print('norm:', norm(weight))
+                        print('cmap:', cmap(np.clip(norm(weight),-1,1)))
+                        print('zorder:', 1)
+                        print('alpha:', min(norm(weight), 1))
+                        print('x_start, x_end:', x_start, x_end)
+                        print('start_y, end_y:', start_y, end_y)
+                        print('---------------------------------')
 
-        for j, start_y in enumerate(y_start):
-            for k, end_y in enumerate(y_end):
-                weight = weights.T[k, j] if weights.ndim > 1 else weights[j]
-                ax.plot([x_start, x_end], [start_y, end_y], color=cmap(norm(weight)), zorder=1)
-
-    ax.axis('equal')
-    ax.axis('off')
-    plt.draw()
+        # ax.axis('equal')
+        # ax.axis('off')
+        max_value = max(np.max(arr) for arr in brain.layers)
+        min_value = min(np.min(arr) for arr in brain.layers)
+        ax.set_title(f'weight : (max, min) = ({max_value:.2f}, {min_value:.2f})\n'
+                     f'input = {np.array2string(brain.neuron_values[0], formatter={"float_kind": lambda x: f"{x:.1f}"})}\n'
+                     f'output = {np.array2string(brain.neuron_values[-1], formatter={"float_kind": lambda x: f"{x:.1f}"})}')
+        ax.set_ylim(y_positions[0]-2, y_positions[-1]+1)
+        # plt.draw()
 
 
 if __name__ == '__main__':
@@ -222,7 +262,7 @@ if __name__ == '__main__':
     print('after add layer:', brain.layers[0].shape, brain.layers[1].shape, brain.layers[2].shape)
     brain.remove_neuron(1)  # 0<=X< len(layers)
     print('after remove:', brain.layers[0].shape, brain.layers[1].shape, brain.layers[2].shape)
-    brain.add_memory_node()  # still doesn't work
+    brain.add_memory_node()
     print('after add memory:', brain.layers[0].shape, brain.layers[1].shape, brain.layers[2].shape)
     print(brain.memory_nodes.shape)
     brain.add_memory_node()  # still doesn't work
@@ -243,6 +283,6 @@ if __name__ == '__main__':
     print('Output:', output)
     print('Effective size:', brain.size)
     fig, ax = plt.subplots()
-    visualize_brain(brain, ax)
+    brain.plot(ax)
     plt.show()
 

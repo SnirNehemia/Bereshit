@@ -60,7 +60,7 @@ class Simulation:
         self.kdtree_update_interval = config.UPDATE_KDTREE_INTERVAL  # Set update interval for KDTree
         self.animation_update_interval = config.UPDATE_ANIMATION_INTERVAL  # Set update interval for animation frames
         self.frame_counter = 0  # Initialize frame counter
-        self.id_count = config.NUM_CREATURES-1
+        self.id_count = config.NUM_CREATURES - 1
         self.focus_ID = 0
         # TODO: maybe add to the creature class a flag indicating if it survived a purge event and if so, it will be immune in the future
         self.purge = True  # flag for purge events
@@ -92,7 +92,7 @@ class Simulation:
             gen = 0
             parent_id = None
             birth_frame = 0
-            max_age = np.random.randint(low=config.INIT_MAX_AGE*0.8, high=config.INIT_MAX_AGE)
+            max_age = np.random.randint(low=config.INIT_MAX_AGE * 0.8, high=config.INIT_MAX_AGE)
             max_weight = 10.0
             max_height = 5.0
             max_energy = config.INIT_MAX_ENERGY
@@ -111,7 +111,6 @@ class Simulation:
             weight = np.random.rand() * max_weight
             height = np.random.rand() * max_height
             velocity = (np.random.rand(2) - 0.5) * max_speed
-
 
             # init creature
             creature = Creature(
@@ -279,11 +278,9 @@ class Simulation:
                 detected_info = (distance, angle)
         return detected_info
 
-
     def kill(self, sim_id):
         self.dead_creatures[sim_id] = self.creatures[sim_id]
         del self.creatures[sim_id]
-
 
     def step(self, dt: float, noise_std: float = 0.0, frame: int = 0):
         """
@@ -358,7 +355,7 @@ class Simulation:
 
         # the purge
         # if (self.purge and len(creatures_reproduced) > 0) or len(self.creatures) > config.MAX_NUM_CREATURES * 0.75:
-        if self.purge  or len(self.creatures) > config.MAX_NUM_CREATURES * 0.75:
+        if self.purge or len(self.creatures) > config.MAX_NUM_CREATURES * 0.75:
             purge_count = 0
             self.purge = False
             for id, creature in self.creatures.items():
@@ -389,7 +386,6 @@ class Simulation:
             self.creatures[self.id_count] = child
             child_ids.append(self.id_count)
             self.children_num += 1
-
 
         if config.DEBUG_MODE: print('update kdtree')
         # **Update KDTree every N frames**
@@ -434,7 +430,6 @@ class Simulation:
         if is_found_food:
             self.env.update_grass_kd_tree()  # TODO: add here the leaf kd_tree too
         return is_found_food
-
 
     def update_debug_logs(self, child_ids, dead_ids, frame):
         # update birthdays
@@ -487,14 +482,15 @@ class Simulation:
 
         fig = plt.figure(figsize=(16, 8))
         # Define the grid layout with uneven ratios
-        gs = gridspec.GridSpec(3, 2, width_ratios=[1, 2, 1], height_ratios=[2, 1])  # 2:1 ratio for both axes
-        ax_ancestors = fig.add_subplot([0, 0])  # ancestor tree?
+        gs = gridspec.GridSpec(nrows=2, ncols=3,
+                               width_ratios=[1, 2, 1], height_ratios=[2, 1])  # 2:1 ratio for both axes
+        ax_ancestors = fig.add_subplot(gs[0, 0])  # ancestor tree?
         ax_env = fig.add_subplot(gs[0, 1])  # Large subplot (3/4 of figure)
         ax_brain = fig.add_subplot(gs[0, 2])  # Smaller subplot (1/4 width, full height)
         ax_pass = fig.add_subplot(gs[1, 0])  # placeholder
         ax_agent_info = fig.add_subplot(gs[1, 1])  # Smaller subplot (1/4 height, full width)
         ax_zoom = fig.add_subplot(gs[1, 2])  # Smallest subplot (1/4 x 1/4)
-        fig.figsize=(16, 8)
+        fig.figsize = (16, 8)
         extent = self.env.get_extent()
         ax_env.set_xlim(extent[0], extent[1])
         ax_env.set_ylim(extent[2], extent[3])
@@ -515,7 +511,8 @@ class Simulation:
         # Initial creature positions.
         positions = np.array([creature.position for creature in self.creatures.values()])
         colors = [creature.color for creature in self.creatures.values()]
-        scat = ax_env.scatter(positions[:, 0], positions[:, 1], c=colors, s=config.FOOD_SIZE, transform=ax_env.transData)
+        scat = ax_env.scatter(positions[:, 0], positions[:, 1], c=colors, s=config.FOOD_SIZE,
+                              transform=ax_env.transData)
 
         # Create quiver arrows for creature headings.
         U, V = [], []
@@ -527,7 +524,7 @@ class Simulation:
                 U.append(0)
                 V.append(0)
         quiv = ax_env.quiver(positions[:, 0], positions[:, 1], U, V,
-                         color=colors, scale=150, width=0.005)  # 'black'
+                             color=colors, scale=150, width=0.005)  # 'black'
 
         # Scatter plots for vegetation.
         grass_scat = ax_env.scatter([], [], c='lightgreen', edgecolors='black', s=10)
@@ -538,18 +535,17 @@ class Simulation:
             return scat, quiv, grass_scat, leaves_scat
 
         # -------------------------------- function for simulation progress -------------------------------- #
-
-        print('starting simulation')
-
         # Initialize the progress bar outside of the update function
-        progress_bar = tqdm(total=config.NUM_FRAMES*config.UPDATE_ANIMATION_INTERVAL, desc=f"Alive num: {len(self.creatures)}\n"
-                                                   f"Total children {self.children_num} \n"
-                                                   f"Total dead {len(self.dead_creatures)}"
-                                                   f"\nSimulation progress:")
+        progress_bar = tqdm(total=config.NUM_FRAMES * config.UPDATE_ANIMATION_INTERVAL,
+                            desc=f"Alive num: {len(self.creatures)}\n"
+                                 f"Total children {self.children_num} \n"
+                                 f"Total dead {len(self.dead_creatures)}"
+                                 f"\nSimulation progress:")
+
         def update(frame):
             # Skip extra initial calls (because blit=True)
             global quiv, scat, grass_scat, leaves_scat, agent_scat
-            if len(self.creatures)==0 or self.abort_simulation:
+            if len(self.creatures) == 0 or self.abort_simulation:
                 ax_env.set_title(f"Evolution Simulation ({frame=})")
                 progress_bar.update(self.animation_update_interval)
                 self.frame_counter += self.animation_update_interval
@@ -569,7 +565,7 @@ class Simulation:
                 progress_bar.update(1)  # or self.animation_update_interval outside the for loop
 
             # Purge every so often to clear static agents
-            if frame%50 == 0:
+            if frame % 50 == 0:
                 self.purge = True
 
             for creature_id, creature in self.creatures.items():
@@ -620,7 +616,7 @@ class Simulation:
                         V.append(0)
 
                 quiv = ax_env.quiver(positions[:, 0], positions[:, 1], U, V,
-                                 color=colors, scale=150, width=0.005)
+                                     color=colors, scale=150, width=0.005)
                 # quiv.set_offsets(positions)
                 # quiv.set_UVC(U, V)
             else:
@@ -631,17 +627,18 @@ class Simulation:
             if len(self.env.grass_points) > 0:
                 grass_points = np.array(self.env.grass_points)
                 grass_scat = ax_env.scatter(grass_points[:, 0], grass_points[:, 1], c='lightgreen', edgecolors='black',
-                                        s=10)
+                                            s=10)
                 # grass_scat.set_offsets(np.array(self.env.grass_points))
             if len(self.env.leaf_points) > 0:
                 leaf_points = np.array(self.env.leaf_points)
-                leaves_scat = ax_env.scatter(leaf_points[:, 0], leaf_points[:, 1], c='darkgreen', edgecolors='black', s=20)
+                leaves_scat = ax_env.scatter(leaf_points[:, 0], leaf_points[:, 1], c='darkgreen', edgecolors='black',
+                                             s=20)
                 # leaves_scat.set_offsets(np.array(self.env.leaf_points))
 
             ax_env.set_title(f"Evolution Simulation ({frame=})")
             # --------------------- focus on one agent ----------------------------
             if len(self.creatures) > 0:
-                ids = [creature.id for creature in self.creatures.values()]
+                ids = [creature.creature_id for creature in self.creatures.values()]
                 if self.focus_ID not in ids:
                     if self.id_count in ids:
                         self.focus_ID = self.id_count
@@ -651,13 +648,14 @@ class Simulation:
                 agent_scat = ax_env.scatter(
                     [agent.position[0]] * 3, [agent.position[1]] * 3,  # Repeat position for multiple rings
                     s=[50, 20, 500],  # Different sizes for bullseye rings # config.FOOD_SIZE
-                    facecolors=['black','red','black'], edgecolors=['black', 'red', 'yellow'],  # Different colors for bullseye rings
-                    linewidth=5, alpha=[0.9,1,0.5], marker='*'
+                    facecolors=['black', 'red', 'black'], edgecolors=['black', 'red', 'yellow'],
+                    # Different colors for bullseye rings
+                    linewidth=5, alpha=[0.9, 1, 0.5], marker='*'
                 )
                 agent.brain.plot(ax_brain)
                 # ax_agent_info.clear()
                 agent.plot_live_status(ax_agent_info)
-                agent.plot_acc_status(ax_zoom, plot_type=1, curr_frame = self.frame_counter)
+                agent.plot_acc_status(ax_zoom, plot_type=1, curr_frame=self.frame_counter)
                 # Create zoomed-in inset
                 # axins = zoomed_inset_axes(ax_env, zoom=100, loc="upper right")  # zoom=2 means 2x zoom
                 # axins = inset_axes(ax_env, width="30%", height="30%", loc="upper right")
@@ -705,10 +703,11 @@ class Simulation:
         ax_env[1].plot(self.min_creature_energy_per_frame, '.-', label='min energy')
         ax_env[1].plot(self.max_creature_energy_per_frame, '.-', label='max energy')
         ax_env[1].errorbar(x=np.arange(len(self.mean_creature_energy_per_frame)),
-                       y=self.mean_creature_energy_per_frame,
-                       yerr=self.std_creature_energy_per_frame, linestyle='-', marker='.', label='mean and std energy')
+                           y=self.mean_creature_energy_per_frame,
+                           yerr=self.std_creature_energy_per_frame, linestyle='-', marker='.',
+                           label='mean and std energy')
         ax_env[1].axhline(y=list(self.dead_creatures.values())[0].reproduction_energy + config.MIN_LIFE_ENERGY,
-                      linestyle='--', color='r', label='reproduction threshold')
+                          linestyle='--', color='r', label='reproduction threshold')
         ax_env[1].set_title('energy statistics per frame')
         ax_env[1].set_xlabel('frame number')
         ax_env[1].legend()

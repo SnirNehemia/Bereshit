@@ -28,10 +28,6 @@ class Creature(StaticTraits):
                          food_efficiency=food_efficiency, reproduction_energy=reproduction_energy,
                          eyes_params=eyes_params, vision_limit=vision_limit, brain=brain)
 
-        self.creature_id = creature_id
-        self.gen = gen
-        self.parent_id = parent_id
-        self.birth_frame = birth_frame
         self.age = 0
         self.weight = weight
         self.height = height
@@ -67,7 +63,7 @@ class Creature(StaticTraits):
         colors = ['green', 'red', 'blue', 'grey']
         values = [getattr(self, attr) for attr in ls]  # Dynamically get values
         ax.clear()
-        ax.set_title(f'Agent # {self.id} Status | ancestors = {self.anscestors}')
+        ax.set_title(f'Agent # {self.creature_id} Status | ancestors = {self.anscestors}')
         ax.barh(ls, values, color=colors)
         # ax.barh(['Energy', 'Hunger', 'Thirst'], [self.energy, self.hunger, self.thirst], color=['green', 'red', 'blue'])
         ax.set_xlim(0, max(config.REPRODUCTION_ENERGY, self.max_age))
@@ -94,7 +90,7 @@ class Creature(StaticTraits):
             # option 1
             values = [len(getattr(self, attr)) for attr in ls]  # Dynamically get values
             ax.clear()
-            ax.set_title(f'Agent # {self.id} Accumulated Status')
+            ax.set_title(f'Agent # {self.creature_id} Accumulated Status')
             ax.bar(ls, values, color=colors, width=0.2)
             ax.set_ylim(0, 10)
             ax.set_yticks([0, 5, 10, 100])
@@ -144,7 +140,7 @@ class Creature(StaticTraits):
     #     new_traits = self.mutate_traits()
     #     # Reduce energy
     #     self.energy -= config.REPRODUCTION_ENERGY
-    #     child = Creature(id=0, **new_traits, weight=self.weight, height=self.height,
+    #     child = Creature(creature_id=0, **new_traits, weight=self.weight, height=self.height,
     #                     position=self.position, velocity=-self.velocity,
     #                     energy=config.REPRODUCTION_ENERGY, hunger=self.hunger, thirst=self.thirst)
     #     child.brain.mutate(config.MUTATION_BRAIN)
@@ -159,7 +155,7 @@ class Creature(StaticTraits):
         child.mutate(config.MAX_MUTATION_FACTORS)
         child.brain.mutate(config.MUTATION_BRAIN)
         child.reset()
-        child.anscestors.append(self.id)
+        child.anscestors.append(self.creature_id)
         # Reduce energy
         self.energy -= self.reproduction_energy
         return child
@@ -170,7 +166,7 @@ class Creature(StaticTraits):
         """
         self.age = 0
         self.velocity = -self.velocity
-        self.id = 0
+        self.creature_id = 0
         self.log_energy = []
         self.log_eat = []
         self.log_reproduce = []

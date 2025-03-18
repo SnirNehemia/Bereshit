@@ -59,7 +59,7 @@ class Simulation:
         self.abort_simulation = False
         self.kdtree_update_interval = config.UPDATE_KDTREE_INTERVAL  # Set update interval for KDTree
         self.animation_update_interval = config.UPDATE_ANIMATION_INTERVAL  # Set update interval for animation frames
-        self.frame_counter = 0  # Initialize frame counter
+        self.frame_counter = 0  # Initialize frame counter  # TODO - should be steps_counter?
         self.id_count = config.NUM_CREATURES - 1
         self.focus_ID = 0
         # TODO: maybe add to the creature class a flag indicating if it survived a purge event and if so, it will be immune in the future
@@ -282,7 +282,7 @@ class Simulation:
         self.dead_creatures[sim_id] = self.creatures[sim_id]
         del self.creatures[sim_id]
 
-    def step(self, dt: float, noise_std: float = 0.0, frame: int = 0):
+    def step(self, dt: float, noise_std: float = 0.0):
         """
         Advances the simulation by one time step.
         For each creature:
@@ -379,9 +379,9 @@ class Simulation:
         for creature in creatures_reproduced:
             child = creature.reproduce()
             creature.log_reproduce.append(self.frame_counter)
-            child.frame_born = self.frame_counter
+            child.birth_frame = self.frame_counter
             self.id_count += 1
-            child.id = self.id_count
+            child.creature_id = self.id_count
             # self.creatures.append(child) # TODO: why do we use dict instead of list?
             self.creatures[self.id_count] = child
             child_ids.append(self.id_count)
@@ -553,7 +553,7 @@ class Simulation:
 
             # --------------------------- run frame --------------------------- #
             for _ in range(self.animation_update_interval):
-                child_ids, dead_ids = self.step(dt=config.DT, noise_std=config.NOISE_STD, frame=frame)
+                child_ids, dead_ids = self.step(dt=config.DT, noise_std=config.NOISE_STD)
 
                 # update debug logs
                 self.update_debug_logs(child_ids, dead_ids, frame)
@@ -674,8 +674,8 @@ class Simulation:
         print(f'Simulation animation saved as {config.ANIMATION_FILEPATH.stem}.')
 
         # ----------------------------------- Plot graphs after simulation ended ----------------------------------- #
-        all_creatures = {**self.creatures, **self.dead_creatures}
-        plot_lineage_tree(all_creatures)
+        # all_creatures = {**self.creatures, **self.dead_creatures}
+        plot_lineage_tree(self.creatures)
 
         # specific fig
         plt.figure()

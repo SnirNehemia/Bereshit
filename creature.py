@@ -164,6 +164,8 @@ class Creature(StaticTraits):
         """
         Reset the creature to initial state and flip velocity.
         """
+        self.gen += 1
+        self.parent_id = self.creature_id
         self.age = 0
         self.velocity = -self.velocity
         self.creature_id = 0

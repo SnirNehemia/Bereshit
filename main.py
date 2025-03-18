@@ -1,5 +1,4 @@
 # main.py
-import config
 import time
 from simulation import Simulation
 

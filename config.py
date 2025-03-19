@@ -37,14 +37,14 @@ np.random.seed = 0
 
 # run time
 DT = 2.0  # time passing from frame to frame (relevant when calculating velocities)
-NUM_FRAMES = 150  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+NUM_FRAMES = 500  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
 UPDATE_ANIMATION_INTERVAL = 30  # update the animation every n steps
 FRAME_INTERVAL = 75  # interval between frames in ms
 STATUS_EVERY_STEP = True  # choose of to update every step or every frame
 UPDATE_KDTREE_INTERVAL = 90  # update the kdtree every n steps
 
 # environment
-ENV_PATH = r"Penvs\Env8.png"
+ENV_PATH = r"Penvs\Env10.png"
 BOUNDARY_CONDITION = 'mirror'  # what to do with the velocity on the boundaries - 'mirror' or 'zero'
 MAX_GRASS_NUM = 75
 GRASS_GENERATION_RATE = 2  # 5

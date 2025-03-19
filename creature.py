@@ -19,8 +19,7 @@ class Creature(StaticTraits):
                  energy_efficiency: float, motion_efficiency: float,
                  food_efficiency: float, reproduction_energy: float,
                  eyes_params: list[tuple], vision_limit: float, brain: Brain,
-                 weight: float, height: float,
-                 position: np.ndarray, velocity: np.ndarray):
+                 position: np.ndarray):
         super().__init__(creature_id=creature_id, gen=gen, parent_id=parent_id, birth_frame=birth_frame,
                          max_age=max_age, max_weight=max_weight, max_height=max_height,
                          max_speed=max_speed, max_energy=max_energy, color=color,

@@ -488,8 +488,8 @@ class Simulation:
         global quiv, scat, grass_scat, leaves_scat, agent_scat, first_frame
 
         # first_frame = True
-        # dt = config.DT
-        # noise_std = config.NOISE_STD
+        dt = config.DT
+        noise_std = config.NOISE_STD
         num_frames = config.NUM_FRAMES
 
         fig = plt.figure(figsize=(16, 8))
@@ -559,7 +559,7 @@ class Simulation:
             # Skip extra initial calls (because blit=True)
             global quiv, scat, grass_scat, leaves_scat, agent_scat
             if len(self.creatures) == 0 or self.abort_simulation:
-                ax_env.set_title(f"Evolution Simulation ({frame=})")
+                ax_env.set_title(f"Evolution Simulation ({frame=}, step={self.frame_counter})")
                 progress_bar.update(self.animation_update_interval)
                 self.frame_counter += self.animation_update_interval
                 return scat, quiv, grass_scat, leaves_scat, agent_scat

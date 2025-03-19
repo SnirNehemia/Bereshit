@@ -39,6 +39,7 @@ def plot_lineage_tree(creatures: dict[int, Creature]):
     unique_gens = sorted(set(generations.values()))
     colormap = cm.Set2(np.linspace(0, 1, len(unique_gens)))  # Gradient colors
     gen_color_map = {gen: colormap[i] for i, gen in enumerate(unique_gens)}
+    print(G)
     node_colors = [gen_color_map[generations[node]] for node in G.nodes]
 
     # Extract birth frame labels for edges
@@ -66,8 +67,8 @@ if __name__ == '__main__':
 
     # Example data
     creatures = {
-        "0": Creature(gen=0, parent_id=None, birth_frame=0),
-        "1": Creature(gen=0, parent_id=None, birth_frame=0),
+        # "0": Creature(gen=0, parent_id=None, birth_frame=0),
+        # "1": Creature(gen=0, parent_id=None, birth_frame=0),
         "2": Creature(gen=1, parent_id="0", birth_frame=10),
         "3": Creature(gen=1, parent_id="0", birth_frame=10),
         "4": Creature(gen=1, parent_id="0", birth_frame=10),

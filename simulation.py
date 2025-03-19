@@ -31,18 +31,15 @@ class Simulation:
 
         # Initialize creatures (ensuring they are not in forbidden areas).
         self.creatures = self.initialize_creatures(num_creatures=config.NUM_CREATURES,
-                                                   simulation_space=config.SIMULATION_SPACE,
+                                                   simulation_space=self.env.size,
                                                    input_size=config.INPUT_SIZE,
                                                    output_size=config.OUTPUT_SIZE,
                                                    eyes_params=config.EYES_PARAMS,
                                                    env=self.env)
         self.dead_creatures = dict()
 
-        self.birthday = {id: 0 for id in self.creatures.keys()}
         # Build a KDTree for creature positions.
         self.creatures_kd_tree = self.build_creatures_kd_tree()
-
-        # self.max_creature_id = len(self.creatures.keys()) - 1
         self.children_num = 0
         # debug run
         self.creatures_energy_per_frame = dict([(id, list()) for id in range(len(self.creatures.keys()))])
@@ -70,16 +67,18 @@ class Simulation:
         Initializes creatures ensuring they are not placed in a forbidden (black) area.
         """
         creatures = dict()
+
         for id in range(num_creatures):
+            # get a valid position.
             position = []
             valid_position = False
             while not valid_position:
                 position = np.random.rand(2) * simulation_space
                 # Convert (x, y) to indices (col, row)
                 col, row = int(position[0]), int(position[1])
-                height, width = env.map_data.shape[:2]
+                # height, width = env.map_data.shape[:2]
                 # Check bounds and obstacle mask.
-                if col < 0 or col >= width or row < 0 or row >= height:
+                if col < 0 or col >= env.width or row < 0 or row >= env.height:
                     continue
                 if env.obstacle_mask[row, col]:
                     continue
@@ -87,24 +86,21 @@ class Simulation:
 
             # static traits
             max_age = np.random.randint(low=config.INIT_MAX_AGE*0.8, high=config.INIT_MAX_AGE)
-            max_weight = 10.0
-            max_height = 5.0
+            max_weight = config.INIT_MAX_WEIGHT  # np.random.randint(low=config.INIT_MAX_WEIGHT*0.8, high=config.INIT_MAX_WEIGHT)
+            max_height = config.INIT_MAX_HEIGHT  # np.random.randint(low=config.INIT_MAX_HEIGHT*0.8, high=config.INIT_MAX_HEIGHT)
             max_speed = config.MAX_SPEED
             color = np.random.rand(3)  # Random RGB color.
 
-            energy_efficiency = 0.1  # idle energy
-            motion_efficiency = 0.01  # speed * speed_efficiency
-            food_efficiency = 1  # energy from food * food_efficiency
+            energy_efficiency = config.IDLE_ENERGY  # idle energy
+            motion_efficiency = config.MOTION_ENERGY  # speed * speed_efficiency
+            food_efficiency = config.DIGEST_EFFICIENCY
             reproduction_energy = config.REPRODUCTION_ENERGY
             max_energy = config.INIT_MAX_ENERGY
 
             vision_limit = config.VISION_LIMIT
             brain = Brain([input_size, output_size])
 
-            # dynamic traits
-            weight = np.random.rand() * max_weight
-            height = np.random.rand() * max_height
-            velocity = (np.random.rand(2) - 0.5) * max_speed
+
 
 
             # init creature
@@ -114,8 +110,7 @@ class Simulation:
                                 food_efficiency=food_efficiency, reproduction_energy=reproduction_energy,
                                 max_energy=max_energy,
                                 eyes_params=eyes_params, vision_limit=vision_limit, brain=brain,
-                                weight=weight, height=height,
-                                position=position, velocity=velocity)
+                                position=position)
 
             creatures[id] = creature
 
@@ -162,7 +157,7 @@ class Simulation:
 
                 if len(candidate_points) > 0:
                     # kd_tree = KDTree(candidate_points)
-                    result = self.detect_target_from_kdtree(creature, kd_tree, candidate_points, noise_std)
+                    result = self.detect_target_from_kdtree(creature, eye_params, kd_tree, candidate_points, noise_std)
                 else:
                     result = None
 
@@ -190,7 +185,11 @@ class Simulation:
             current_speed = creature.velocity
             current_speed_mag = creature.speed
             if current_speed_mag == 0:
-                current_direction = np.array([1.0, 0.0])
+                if config.BOUNDARY_CONDITION == 'zero':
+                    theta = np.random.uniform(0, 2*np.pi)
+                    current_direction = np.array([np.cos(theta), np.sin(theta)])
+                else:
+                    current_direction = np.array([0, 0])
             else:
                 current_direction = current_speed / current_speed_mag
 
@@ -204,7 +203,7 @@ class Simulation:
             creature.velocity = new_direction * new_speed_mag
             creature.calc_speed()
         except Exception as e:
-            print(e)
+            print(f'exceptiom in use_brain for creature: {creature.id}\n{e}')
 
     @staticmethod
     def prepare_eye_input(detection_result, vision_limit):
@@ -219,7 +218,7 @@ class Simulation:
             return np.array([1, distance, angle])
 
     @staticmethod
-    def detect_target_from_kdtree(creature: Creature, kd_tree: KDTree, candidate_points: np.ndarray,
+    def detect_target_from_kdtree(creature: Creature, eye, kd_tree: KDTree, candidate_points: np.ndarray,
                                   noise_std: float = 0.0):
         """
         Generic function to detect the closest target from candidate_points using a KDTree.
@@ -236,7 +235,7 @@ class Simulation:
         """
         eye_position = creature.position
         heading = creature.get_heading()
-        angle_offset, aperture = creature.eyes_params
+        angle_offset, aperture = eye
         # Compute the eye's viewing direction by rotating the heading by angle_offset.
         cos_offset = np.cos(angle_offset)
         sin_offset = np.sin(angle_offset)
@@ -290,13 +289,17 @@ class Simulation:
         Then, moves creatures and updates the vegetation.
         """
         self.creatures_history.append([getattr(creature, 'id') for creature in self.creatures.values()])
-        # Update each creature's velocity.
-        if config.DEBUG_MODE: print('seek')
+
+        # -------------------- Use brain and update creature velocities --------------------------
+
+        if config.DEBUG_MODE: print('\nseek')
         for id, creature in self.creatures.items():
-            # print(f'creature {i}: start brain use...')
+            # print(f'creature {id}: start brain use...')
             self.use_brain(creature=creature, noise_std=noise_std)
-            # print(f'creature {i}: completed brain use!')
-        if config.DEBUG_MODE: print('collision detection')
+            # print(f'creature {id}: completed brain use!')
+
+        # -------------------- Update creature positions --------------------------
+
         # Collision detection: if a creature's new position would be inside an obstacle, stop it.
         for id, creature in self.creatures.items():
             new_position = creature.position + creature.velocity * dt
@@ -305,29 +308,32 @@ class Simulation:
             row = int(new_position[1])
             height, width = self.env.map_data.shape[:2]
             if col < 0 or col >= width or row < 0 or row >= height or self.env.obstacle_mask[row, col]:
-                creature.velocity = np.array([0.0, 0.0])
+                # choose if the velocity is set to zero or get mirrored
+                if config.BOUNDARY_CONDITION == 'zero':
+                    creature.velocity = np.array([0.0, 0.0])
+                elif config.BOUNDARY_CONDITION == 'mirror':
+                    creature.velocity = -creature.velocity
 
-        creatures_reproduced = []
-        died_creatured_id = []
+        # ------------------------ create list of creatures to die or reproduce ----------------------------
+
+        list_creatures_reproduce = []
+        list_creature_die = []
         if config.DEBUG_MODE: print('energy consumption')
         # energy consumption
         for id, creature in self.creatures.items():
             # death from age
             if creature.age >= creature.max_age:
-                died_creatured_id.append(id)
+                list_creature_die.append(id)
                 continue
             else:
                 creature.age += 1
 
-            # check energy
-            energy_consumption = 0
-            energy_consumption += creature.energy_efficiency  # idle energy
-            energy_consumption += creature.motion_efficiency * creature.speed  # movement energy
+            # use energy
+            creature.consume_energy()
 
             # test whether to update or kill creature
-            if creature.energy > energy_consumption:
-                # update creature energy and position
-                creature.energy -= energy_consumption
+            if creature.energy > 0:
+                # update creature position
                 creature.position += creature.velocity * dt
 
                 # check for food (first grass, if not found search for leaf if tall enough)
@@ -337,40 +343,42 @@ class Simulation:
                 if is_found_food:
                     creature.log_eat.append(self.frame_counter)
 
-                # reproduce
+                # add to reproduce list
                 if creature.energy > creature.reproduction_energy + config.MIN_LIFE_ENERGY:
-                    # creature.energy -= creature.reproduction_energy
-                    creatures_reproduced.append(creature)
-                # else:
-                #     creature.log_reproduce.append(0)
+                    list_creatures_reproduce.append(creature)
             else:
                 # death from energy
-                died_creatured_id.append(id)
+                list_creature_die.append(id)
             creature.log_energy.append(creature.energy)
 
-        # the purge
-        # if (self.purge and len(creatures_reproduced) > 0) or len(self.creatures) > config.MAX_NUM_CREATURES * 0.75:
+        # ------------------------ add the purge to the killing list ----------------------------
+
         if self.purge  or len(self.creatures) > config.MAX_NUM_CREATURES * 0.75:
             purge_count = 0
             self.purge = False
             for id, creature in self.creatures.items():
                 if (len(self.creatures) > config.MAX_NUM_CREATURES * 0.95 and np.random.rand(1) < 0.1
-                        and id not in died_creatured_id):
+                        and id not in list_creature_die):
                     purge_count += 1
-                    died_creatured_id.append(id)
-                if creature.max_speed_exp <= config.PURGE_SPEED_THRESHOLD and id not in died_creatured_id:
+                    list_creature_die.append(id)
+                if creature.max_speed_exp <= config.PURGE_SPEED_THRESHOLD and id not in list_creature_die:
                     purge_count += 1
-                    died_creatured_id.append(id)
-            print(f'Purging {purge_count} creatures.')
+                    list_creature_die.append(id)
+            print(f'\nPurging {purge_count} creatures.')
+
+        # ------------------------ use the list to kill ----------------------------
+
         # kill creatures
         dead_ids = []
-        for sim_id in died_creatured_id:
+        for sim_id in list_creature_die:
             self.kill(sim_id)
             dead_ids.append(sim_id)
 
+        # ------------------------ use the list to reproduce ----------------------------
+
         # Reproduction
         child_ids = []
-        for creature in creatures_reproduced:
+        for creature in list_creatures_reproduce:
             child = creature.reproduce()
             creature.log_reproduce.append(self.frame_counter)
             child.frame_born = self.frame_counter
@@ -381,6 +389,7 @@ class Simulation:
             child_ids.append(self.id_count)
             self.children_num += 1
 
+        # ------------------------ Update KDtree (in some frames) ----------------------------
 
         if config.DEBUG_MODE: print('update kdtree')
         # **Update KDTree every N frames**
@@ -415,8 +424,8 @@ class Simulation:
                               for food_point in food_points]
 
             if np.min(food_distances) <= config.FOOD_DISTANCE_THRESHOLD:
-                # update creature energy
-                creature.energy += creature.food_efficiency * food_energy
+                # creature eats
+                creature.eat(food_energy)
 
                 # remove food from board
                 closest_food_point = self.env.grass_points[np.argmin(food_distances)]
@@ -428,9 +437,6 @@ class Simulation:
 
 
     def update_debug_logs(self, child_ids, dead_ids, frame):
-        # update birthdays
-        for child_id in child_ids:
-            self.birthday[child_id] = frame
         # ------------------------- update debug parameters ------------------------- #
         current_num_creatures = len(self.creatures.keys())
         if current_num_creatures > config.MAX_NUM_CREATURES:
@@ -460,8 +466,9 @@ class Simulation:
             #       f'(+{len(child_ids)}, -{len(dead_ids)}), '
             #       f'max energy = {round(self.max_creature_energy_per_frame[-1], 2)}.')
         else:
-            print(f'{frame=}: all creatures are dead :(.')
-            self.abort_simulation = True
+            if not self.abort_simulation:
+                print(f'\n{frame=}: all creatures are dead :(.')
+                self.abort_simulation = True
 
     def run_and_visualize(self):
         """
@@ -483,8 +490,8 @@ class Simulation:
 
         fig = plt.figure(figsize=(16, 8))
         # Define the grid layout with uneven ratios
-        gs = gridspec.GridSpec(3, 2, width_ratios=[1, 2, 1], height_ratios=[2, 1])  # 2:1 ratio for both axes
-        ax_ancestors = fig.add_subplot([0, 0])  # ancestor tree?
+        gs = gridspec.GridSpec(2, 3, width_ratios=[1, 2, 1], height_ratios=[2, 1])  # 2:1 ratio for both axes
+        ax_lineage = fig.add_subplot(gs[0, 0])  # ancestor tree?
         ax_env = fig.add_subplot(gs[0, 1])  # Large subplot (3/4 of figure)
         ax_brain = fig.add_subplot(gs[0, 2])  # Smaller subplot (1/4 width, full height)
         ax_pass = fig.add_subplot(gs[1, 0])  # placeholder
@@ -531,7 +538,11 @@ class Simulation:
         print('starting simulation')
 
         # Initialize the progress bar outside of the update function
-        progress_bar = tqdm(total=num_frames*config.UPDATE_ANIMATION_INTERVAL, desc=f"Alive num: {len(self.creatures)}\n"
+        if config.STATUS_EVERY_STEP:
+            update_num = num_frames*config.UPDATE_ANIMATION_INTERVAL
+        else:
+            update_num = num_frames
+        progress_bar = tqdm(total=update_num, desc=f"Alive num: {len(self.creatures)}\n"
                                                    f"Total children {self.children_num} \n"
                                                    f"Total dead {len(self.dead_creatures)}"
                                                    f"\nSimulation progress:")
@@ -555,11 +566,16 @@ class Simulation:
                 self.update_debug_logs(child_ids, dead_ids, frame)
 
                 # Update the progress bar
+                if config.STATUS_EVERY_STEP:
+                    progress_bar.set_description(f"Alive: {len(self.creatures)} | "
+                                                 f"Children: {self.children_num} | "
+                                                 f"Dead: {len(self.dead_creatures)} | Progress:")
+                    progress_bar.update(1)  # or self.animation_update_interval outside the for loop
+            if not config.STATUS_EVERY_STEP:
                 progress_bar.set_description(f"Alive: {len(self.creatures)} | "
                                              f"Children: {self.children_num} | "
                                              f"Dead: {len(self.dead_creatures)} | Progress:")
                 progress_bar.update(1)  # or self.animation_update_interval outside the for loop
-
             # Purge every so often to clear static agents
             if frame%50 == 0:
                 self.purge = True
@@ -590,9 +606,10 @@ class Simulation:
 
             # Update creature positions.
             positions = np.array([creature.position for creature in self.creatures.values()])
+            sizes = np.array([creature.height for creature in self.creatures.values()])
             colors = [creature.color for creature in self.creatures.values()]
             if len(positions) > 0:
-                scat = ax_env.scatter(positions[:, 0], positions[:, 1], c=colors, s=config.FOOD_SIZE)
+                scat = ax_env.scatter(positions[:, 0], positions[:, 1], c=colors, s=config.FOOD_SIZE*sizes/100)
                 # scat.set_offsets(positions)
 
                 U, V = [], []
@@ -634,10 +651,12 @@ class Simulation:
                         self.focus_ID = np.random.choice(list(self.creatures.keys()))
                 agent = self.creatures[self.focus_ID]
                 agent_scat = ax_env.scatter(
-                    [agent.position[0]] * 3, [agent.position[1]] * 3,  # Repeat position for multiple rings
-                    s=[50, 20, 500],  # Different sizes for bullseye rings # config.FOOD_SIZE
-                    facecolors=['black','red','black'], edgecolors=['black', 'red', 'yellow'],  # Different colors for bullseye rings
-                    linewidth=5, alpha=[0.9,1,0.5], marker='*'
+                    [agent.position[0]] * 2, [agent.position[1]] * 2,  # Repeat position for N=2 rings
+                    s=[60, 500],  # Different sizes for bullseye rings # config.FOOD_SIZE
+                    facecolors=['none', 'none'],
+                    edgecolors=['black', 'black'],
+                    linewidth=2.5,
+                    marker='o' # or 'x'
                 )
                 agent.brain.plot(ax_brain)
                 # ax_agent_info.clear()
@@ -660,26 +679,28 @@ class Simulation:
         print(f'Simulation animation saved as {config.ANIMATION_FILEPATH.stem}.')
 
         # ----------------------------------- Plot graphs after simulation ended ----------------------------------- #
-        # specific fig
-        plt.figure()
-        creature_ids_to_plot = [0, 1, 2, 3, 4, 5]
-        for id in creature_ids_to_plot:
-            plt.plot(self.creatures_energy_per_frame[id], '.-', label=f'{id=}')
-        plt.axhline(y=config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY,
-                    linestyle='--', color='r', label='reproduction threshold')
-        plt.legend()
-        plt.title('creature energy per frame')
-        plt.ylabel('creature energy')
-        plt.xlabel('frame number')
-        plt.savefig(fname=config.SPECIFIC_FIG_FILEPATH)
-        print(f'specific fig saved as {config.SPECIFIC_FIG_FILEPATH.stem}.')
+        # # specific fig
+        # plt.figure()
+        # creature_ids_to_plot = [0, 1, 2, 3, 4, 5]
+        # for id in creature_ids_to_plot:
+        #     plt.plot(self.creatures_energy_per_frame[id], '.-', label=f'{id=}')
+        # plt.axhline(y=config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY,
+        #             linestyle='--', color='r', label='reproduction threshold')
+        # plt.legend()
+        # plt.title('creature energy per frame')
+        # plt.ylabel('creature energy')
+        # plt.xlabel('frame number')
+        # plt.savefig(fname=config.SPECIFIC_FIG_FILEPATH)
+        # print(f'specific fig saved as {config.SPECIFIC_FIG_FILEPATH.stem}.')
 
         # statistics fig
         fig, ax_env = plt.subplots(2, 1, sharex='all')
         ax2 = ax_env[0].twinx()
         ax2.plot(self.num_creatures_per_frame, 'b.-', label='total')
+        ax2.tick_params(axis='y', colors='b')
+        ax2.set_ylim([0, config.MAX_NUM_CREATURES])
         ax_env[0].plot(self.num_new_creatures_per_frame, 'g.-', label='new')
-        ax_env[0].plot(self.num_dead_creatures_per_frame, 'r.-', label='dead')
+        ax_env[0].plot(self.num_dead_creatures_per_frame, 'k.-', label='dead')
         ax_env[0].set_title('num creatures per frame')
         ax_env[0].legend()
 

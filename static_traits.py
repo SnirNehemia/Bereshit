@@ -8,7 +8,7 @@ class StaticTraits:
     Contains constant traits for a creature (e.g., maximum size, vision parameters).
     """
 
-    def __init__(self, max_age: int, max_weight: float, max_height: float, max_speed: list[float], color: np.ndarray,
+    def __init__(self, id: int, max_age: int, max_weight: float, max_height: float, max_speed: list[float], color: np.ndarray,
                  energy_efficiency: float, motion_efficiency: float,
                  food_efficiency: float, reproduction_energy: float,
                  max_energy: float,
@@ -17,6 +17,7 @@ class StaticTraits:
         eyes_params is a list of tuples: (angle_offset, aperture)
         where angle_offset (in radians) is relative to the creature's heading.
         """
+        self.id = id
         self.max_age = max_age
         self.max_weight = max_weight
         self.max_height = max_height

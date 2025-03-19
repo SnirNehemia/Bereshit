@@ -63,23 +63,6 @@ class Brain:
         self.layers.insert(index, weight)
         self.activations.insert(index, ACTIVATION_FUNCTIONS.get(activation, sigmoid))
         self.activations_str.insert(index, activation)
-        # if index < 0 or index > len(self.layers):
-        #     # index = len(self.layers)
-        #     raise ValueError('Invalid layer index')
-        #
-        # input_size = self.layers[index - 1].shape[1] if index > 0 else self.input_size
-        # weight = np.random.randn(input_size, size) * self.random_magnitude
-        #
-        # self.layers.insert(index, weight)
-        # self.activations.insert(index, ACTIVATION_FUNCTIONS.get(activation, relu))
-        #
-        # # Adjust output connections of the new layer to match the next layer
-        # if index < len(self.layers) - 1:
-        #     next_layer = self.layers[index + 1]
-        #     new_input_size = size
-        #     new_next_layer = np.random.randn(new_input_size, next_layer.shape[1]) * self.random_magnitude
-        #     self.layers[index + 1] = new_next_layer
-
         self.update_size()
 
     def add_neuron(self, index: int):  # 0 <= index< len(layers)
@@ -230,7 +213,7 @@ class Brain:
                         print('---------------------------------')
 
         # ax.axis('equal')
-        # ax.axis('off')
+        ax.axis('off')
         max_value = max(np.max(arr) for arr in brain.layers)
         min_value = min(np.min(arr) for arr in brain.layers)
         ax.set_title(f'weight : (max, min) = ({max_value:.2f}, {min_value:.2f})\n'

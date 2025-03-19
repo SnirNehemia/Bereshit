@@ -18,23 +18,19 @@ class Creature(StaticTraits):
                  food_efficiency: float, reproduction_energy: float,
                     max_energy: float,
                  eyes_params: list[tuple], vision_limit: float, brain: Brain,
-                 weight: float, height: float,
-                 position: np.ndarray, velocity: np.ndarray):
-        super().__init__(max_age=max_age, max_weight=max_weight, max_height=max_height, max_speed=max_speed,
+                 position: np.ndarray):
+        super().__init__(id=id, max_age=max_age, max_weight=max_weight, max_height=max_height, max_speed=max_speed,
                          color=color,
                          energy_efficiency=energy_efficiency, motion_efficiency=motion_efficiency,
                          food_efficiency=food_efficiency, reproduction_energy=reproduction_energy,
                          max_energy=max_energy,
                          eyes_params=eyes_params, vision_limit=vision_limit, brain=brain)
-        self.id = id
+
         self.age = 0
-        self.weight = weight
-        self.height = height
         self.position = position
-        self.velocity = velocity  # 2D velocity vector.
         self.max_speed_exp = 0
+        self.init_state() # init height, weight, velocity, energy, hunger and thirst
         self.calc_speed()
-        self.init_state()
         self.anscestors = []  # list of creature ids that are anscestors
         self.frame_born = 0
         # logs for debugging
@@ -46,6 +42,10 @@ class Creature(StaticTraits):
         """
         :return:
         """
+        # dynamic traits
+        self.weight = np.random.randint(low=self.max_weight * 0.01, high=self.max_weight * 0.1)
+        self.height = np.random.randint(low=self.max_height * 0.01, high=self.max_height * 0.1)
+        self.velocity = (np.random.rand(2) - 0.5) * self.max_speed
         self.energy = int(self.reproduction_energy*0.95)
         self.hunger = 100
         self.thirst = 100
@@ -88,10 +88,13 @@ class Creature(StaticTraits):
         # Define attributes dynamically
         ls = ['log_eat', 'log_reproduce']
         colors = ['green', 'pink']
+        ax.clear()
+        if max(self.color)>1 or min(self.color)<0:
+            raise('color exceed [0, 1] range')
+        ax.set_facecolor(list(self.color) + [0.3])
         if plot_type == 0:
             #option 1
             values = [len(getattr(self, attr)) for attr in ls]  # Dynamically get values
-            ax.clear()
             ax.set_title(f'Agent # {self.id} Accumulated Status')
             ax.bar(ls, values, color=colors, width=0.2)
             ax.set_ylim(0, 10)
@@ -103,7 +106,6 @@ class Creature(StaticTraits):
             # values = [getattr(self, attr) for attr in ls]  # Dynamically get values
             eating_frames = self.log_eat
             reproducing_frames = self.log_reproduce
-            ax.clear()
             ax.scatter(eating_frames, [1] * len(eating_frames), color='green', marker='o', s=100, label='Eating')
             ax.scatter(reproducing_frames, [2] * len(reproducing_frames), color='red', marker='D', s=100,
                        label='Reproducing')
@@ -122,7 +124,7 @@ class Creature(StaticTraits):
         Returns the creature's current heading (unit vector).
         If the creature is stationary, defaults to (1, 0).
         """
-        if hasattr(self, 'velocity') and self.speed > 0:
+        if hasattr(self, 'velocity') and self.speed > 1e-3:
             return self.velocity / self.speed
         else:
             return np.array([1.0, 0.0])
@@ -135,21 +137,6 @@ class Creature(StaticTraits):
         self.speed = np.linalg.norm(self.velocity)
         # self.max_speed_exp = max(self.max_speed_exp, self.speed)
         self.max_speed_exp = (self.max_speed_exp + self.speed)/2
-
-
-    # def reproduce(self):
-    #     """
-    #     Returns a new creature with mutated traits.
-    #     """
-    #     # Mutate traits
-    #     new_traits = self.mutate_traits()
-    #     # Reduce energy
-    #     self.energy -= config.REPRODUCTION_ENERGY
-    #     child = Creature(id=0, **new_traits, weight=self.weight, height=self.height,
-    #                     position=self.position, velocity=-self.velocity,
-    #                     energy=config.REPRODUCTION_ENERGY, hunger=self.hunger, thirst=self.thirst)
-    #     child.brain.mutate(config.MUTATION_BRAIN)
-    #     return child
 
     def reproduce(self):
         """
@@ -187,8 +174,9 @@ class Creature(StaticTraits):
                 if key == 'eyes_params':
                     # Mutate eyes_params
                     for i in range(len(self.eyes_params)):
-                        mutation_factor = np.random.uniform(-max_mutation_factors[key], max_mutation_factors[key])
-                        self.eyes_params[i] = self.eyes_params[i] + mutation_factor
+                        for j in range(2):
+                            mutation_factor = np.random.uniform(-max_mutation_factors[key], max_mutation_factors[key])
+                            self.eyes_params[i][j] = self.eyes_params[i][j] + mutation_factor
                 else:
                     # Mutate trait
                     if np.random.rand(1) < config.MUTATION_CHANCE:
@@ -196,15 +184,14 @@ class Creature(StaticTraits):
                         setattr(self, key, getattr(self, key) + mutation_factor)
         self.color = np.clip(self.color, 0, 1)
 
-    def mutate_traits(self):
-        """
-        Returns a dictionary of mutated traits.
-        """
-        new_traits = {}
-        for key, value in self.__dict__.items():
-            if np.random.rand(1) < config.MUTATION_CHANCE and key in config.MAX_MUTATION_FACTORS:
-                # Mutate trait
-                mutation_factor = np.random.uniform(-config.MAX_MUTATION_FACTORS[key], config.MAX_MUTATION_FACTORS[key])
-                new_value = value + mutation_factor
-                new_traits[key] = new_value
-        return new_traits
+    def eat(self, food_energy):
+        self.energy += self.food_efficiency * food_energy
+        self.height += (self.max_height - self.height) * food_energy / config.GROWTH_RATE
+        self.weight += (self.max_weight - self.weight) * food_energy / config.GROWTH_RATE
+
+    def consume_energy(self):
+        energy_consumption = 0
+        energy_consumption += self.energy_efficiency  # idle energy
+        energy_consumption += self.motion_efficiency * self.speed  # movement energy
+        self.energy -= energy_consumption
+

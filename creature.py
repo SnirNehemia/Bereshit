@@ -6,24 +6,26 @@ from static_traits import StaticTraits
 from brain import Brain
 import config as config
 
+
 class Creature(StaticTraits):
     """
     A dynamic creature in the simulation.
     Inherits static traits and adds dynamic properties such as position, speed, hunger, etc.
     """
 
-    def __init__(self,id: int, max_age: int, max_weight: float, max_height: float, max_speed: list[float],
-                 color: np.ndarray,
+    def __init__(self, creature_id: int, gen: int, parent_id: str | None, birth_frame: int,
+                 max_age: int, max_weight: float, max_height: float,
+                 max_speed: list[float], max_energy: float, color: np.ndarray,
                  energy_efficiency: float, motion_efficiency: float,
                  food_efficiency: float, reproduction_energy: float,
-                    max_energy: float,
                  eyes_params: list[tuple], vision_limit: float, brain: Brain,
-                 position: np.ndarray):
-        super().__init__(id=id, max_age=max_age, max_weight=max_weight, max_height=max_height, max_speed=max_speed,
-                         color=color,
+                 weight: float, height: float,
+                 position: np.ndarray, velocity: np.ndarray):
+        super().__init__(creature_id=creature_id, gen=gen, parent_id=parent_id, birth_frame=birth_frame,
+                         max_age=max_age, max_weight=max_weight, max_height=max_height,
+                         max_speed=max_speed, max_energy=max_energy, color=color,
                          energy_efficiency=energy_efficiency, motion_efficiency=motion_efficiency,
                          food_efficiency=food_efficiency, reproduction_energy=reproduction_energy,
-                         max_energy=max_energy,
                          eyes_params=eyes_params, vision_limit=vision_limit, brain=brain)
 
         self.age = 0
@@ -32,7 +34,7 @@ class Creature(StaticTraits):
         self.init_state() # init height, weight, velocity, energy, hunger and thirst
         self.calc_speed()
         self.anscestors = []  # list of creature ids that are anscestors
-        self.frame_born = 0
+        # self.frame_born = 0
         # logs for debugging
         self.log_eat = []
         self.log_reproduce = []
@@ -50,7 +52,6 @@ class Creature(StaticTraits):
         self.hunger = 100
         self.thirst = 100
 
-
     def plot_live_status(self, ax, debug=False):
         """
         Plots the agent's status (energy, hunger, thirst) on the given axes.
@@ -58,13 +59,13 @@ class Creature(StaticTraits):
         if debug:
             import matplotlib.pyplot as plt
             plt.ion()
-            fig, ax = plt.subplots(1,1)
+            fig, ax = plt.subplots(1, 1)
         # Define attributes dynamically
         ls = ['energy', 'hunger', 'thirst', 'age']
         colors = ['green', 'red', 'blue', 'grey']
         values = [getattr(self, attr) for attr in ls]  # Dynamically get values
         ax.clear()
-        ax.set_title(f'Agent # {self.id} Status | ancestors = {self.anscestors}')
+        ax.set_title(f'Agent # {self.creature_id} Status | ancestors = {self.anscestors}')
         ax.barh(ls, values, color=colors)
         # ax.barh(['Energy', 'Hunger', 'Thirst'], [self.energy, self.hunger, self.thirst], color=['green', 'red', 'blue'])
         ax.set_xlim(0, max(config.REPRODUCTION_ENERGY, self.max_age))
@@ -75,8 +76,7 @@ class Creature(StaticTraits):
         if 'age' in ls:
             ax.scatter([self.max_age], ['age'], color='black', s=20)
 
-
-    def plot_acc_status(self, ax, debug=False, plot_type=1, curr_frame = -1):
+    def plot_acc_status(self, ax, debug=False, plot_type=1, curr_frame=-1):
         """
         Plots the agent's accumulated status (logs) on the given axes.
         """
@@ -84,7 +84,7 @@ class Creature(StaticTraits):
             print('debug_mode')
             import matplotlib.pyplot as plt
             plt.ion()
-            fig, ax = plt.subplots(1,1)
+            fig, ax = plt.subplots(1, 1)
         # Define attributes dynamically
         ls = ['log_eat', 'log_reproduce']
         colors = ['green', 'pink']
@@ -93,7 +93,7 @@ class Creature(StaticTraits):
             raise('color exceed [0, 1] range')
         ax.set_facecolor(list(self.color) + [0.3])
         if plot_type == 0:
-            #option 1
+            # option 1
             values = [len(getattr(self, attr)) for attr in ls]  # Dynamically get values
             ax.set_title(f'Agent # {self.id} Accumulated Status')
             ax.bar(ls, values, color=colors, width=0.2)
@@ -102,7 +102,7 @@ class Creature(StaticTraits):
             ax.set_xticks(ls)
         if plot_type == 1:
             # option 2
-            if curr_frame == -1: curr_frame = self.max_age+self.frame_born
+            if curr_frame == -1: curr_frame = self.max_age + self.birth_frame
             # values = [getattr(self, attr) for attr in ls]  # Dynamically get values
             eating_frames = self.log_eat
             reproducing_frames = self.log_reproduce
@@ -114,10 +114,9 @@ class Creature(StaticTraits):
             # Label x-axis and add a title
             ax.set_xlabel('Frame Number')
             ax.set_title('Event Timeline: Eating & Reproducing')
-            ax.set_xlim([self.frame_born-1, curr_frame+1])
+            ax.set_xlim([self.birth_frame - 1, curr_frame + 1])
             ax.set_ylim([0.5, 2.5])
             ax.legend()
-
 
     def get_heading(self):
         """
@@ -129,14 +128,13 @@ class Creature(StaticTraits):
         else:
             return np.array([1.0, 0.0])
 
-
     def calc_speed(self):
         """
         Returns the creature's current speed vector.
         """
         self.speed = np.linalg.norm(self.velocity)
         # self.max_speed_exp = max(self.max_speed_exp, self.speed)
-        self.max_speed_exp = (self.max_speed_exp + self.speed)/2
+        self.max_speed_exp = (self.max_speed_exp + self.speed) / 2
 
     def reproduce(self):
         """
@@ -147,7 +145,7 @@ class Creature(StaticTraits):
         child.mutate(config.MAX_MUTATION_FACTORS)
         child.brain.mutate(config.MUTATION_BRAIN)
         child.reset()
-        child.anscestors.append(self.id)
+        child.anscestors.append(self.creature_id)
         # Reduce energy
         self.energy -= self.reproduction_energy
         return child
@@ -156,9 +154,11 @@ class Creature(StaticTraits):
         """
         Reset the creature to initial state and flip velocity.
         """
+        self.gen += 1
+        self.parent_id = self.creature_id
         self.age = 0
         self.velocity = -self.velocity
-        self.id = 0
+        self.creature_id = 0
         self.log_energy = []
         self.log_eat = []
         self.log_reproduce = []

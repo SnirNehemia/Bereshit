@@ -584,7 +584,8 @@ class Simulation:
                 progress_bar.update(1)  # or self.animation_update_interval outside the for loop
             # Purge every so often to clear static agents
             if frame % 50 == 0:
-                self.purge = True
+                if len(self.creatures) > config.MAX_NUM_CREATURES * 0.1:
+                    self.purge = True
 
             for creature_id, creature in self.creatures.items():
                 if creature_id not in self.creatures_energy_per_frame.keys():
@@ -654,7 +655,7 @@ class Simulation:
                                              s=20)
                 # leaves_scat.set_offsets(np.array(self.env.leaf_points))
 
-            ax_env.set_title(f"Evolution Simulation ({frame=})")
+            ax_env.set_title(f"Evolution Simulation ({frame=}, step={self.frame_counter})")
             # --------------------- focus on one agent ----------------------------
             if len(self.creatures) > 0:
                 ids = [creature.creature_id for creature in self.creatures.values()]

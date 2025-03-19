@@ -37,7 +37,7 @@ np.random.seed = 0
 
 # run time
 DT = 2.0  # time passing from frame to frame (relevant when calculating velocities)
-NUM_FRAMES = 500  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+NUM_FRAMES = 400  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
 UPDATE_ANIMATION_INTERVAL = 30  # update the animation every n steps
 FRAME_INTERVAL = 75  # interval between frames in ms
 STATUS_EVERY_STEP = True  # choose of to update every step or every frame
@@ -45,8 +45,8 @@ UPDATE_KDTREE_INTERVAL = 90  # update the kdtree every n steps
 
 # environment
 ENV_PATH = r"Penvs\Env10.png"
-BOUNDARY_CONDITION = 'mirror'  # what to do with the velocity on the boundaries - 'mirror' or 'zero'
-MAX_GRASS_NUM = 75
+BOUNDARY_CONDITION = 'zero'  # what to do with the velocity on the boundaries - 'mirror' or 'zero'
+MAX_GRASS_NUM = 125
 GRASS_GENERATION_RATE = 2  # 5
 GRASS_GROWTH_CHANCE = 0.5  # maybe will be useful to create droughts
 MAX_LEAVES_NUM = 50
@@ -59,17 +59,17 @@ FOOD_SIZE = FOOD_DISTANCE_THRESHOLD/2 #3.14*(FOOD_DISTANCE_THRESHOLD/2)**2 for d
 LEAF_HEIGHT = 10
 
 # energy balance:
-GRASS_ENERGY = 150
+GRASS_ENERGY = 200
 LEAF_ENERGY = 100
 IDLE_ENERGY = 0.1  # idle energy
 MOTION_ENERGY = 0.01  # speed * speed_efficiency
 DIGEST_EFFICIENCY = 1  # energy from food * food_efficiency
 REPRODUCTION_ENERGY = 700  # energy cost of reproduction
-MIN_LIFE_ENERGY = 150  # energy to be left after reproduction
+MIN_LIFE_ENERGY = 200  # energy to be left after reproduction
 
 # creatures
-NUM_CREATURES = 700  # init size of population
-MAX_NUM_CREATURES = 1100
+NUM_CREATURES = 900  # init size of population
+MAX_NUM_CREATURES = 1250
 # creature parameters
 INIT_MAX_AGE = 4000
 INIT_MAX_WEIGHT = 100

@@ -1,10 +1,9 @@
-# creature.py
 import copy
 
 import numpy as np
 from static_traits import StaticTraits
 from brain import Brain
-import config as config
+from config import Config as config
 
 
 class Creature(StaticTraits):
@@ -15,7 +14,7 @@ class Creature(StaticTraits):
 
     def __init__(self, creature_id: int, gen: int, parent_id: str | None, birth_frame: int,
                  max_age: int, max_weight: float, max_height: float,
-                 max_speed: list[float], max_energy: float, color: np.ndarray,
+                 max_speed: float, max_energy: float, color: np.ndarray,
                  energy_efficiency: float, motion_efficiency: float,
                  food_efficiency: float, reproduction_energy: float,
                  eyes_params: list[tuple], vision_limit: float, brain: Brain,
@@ -30,10 +29,10 @@ class Creature(StaticTraits):
         self.age = 0
         self.position = position
         self.max_speed_exp = 0
-        self.init_state() # init height, weight, velocity, energy, hunger and thirst
+        self.init_state()  # init height, weight, velocity, energy, hunger and thirst
         self.calc_speed()
-        self.anscestors = []  # list of creature ids that are anscestors
-        # self.frame_born = 0
+        self.ancestors = []  # list of creature ids that are ancestors
+
         # logs for debugging
         self.log_eat = []
         self.log_reproduce = []
@@ -47,7 +46,7 @@ class Creature(StaticTraits):
         self.weight = np.random.randint(low=self.max_weight * 0.01, high=self.max_weight * 0.1)
         self.height = np.random.randint(low=self.max_height * 0.01, high=self.max_height * 0.1)
         self.velocity = (np.random.rand(2) - 0.5) * self.max_speed
-        self.energy = int(self.reproduction_energy*0.95)
+        self.energy = int(self.reproduction_energy * 0.95)
         self.hunger = 100
         self.thirst = 100
 
@@ -64,7 +63,7 @@ class Creature(StaticTraits):
         colors = ['green', 'red', 'blue', 'grey']
         values = [getattr(self, attr) for attr in ls]  # Dynamically get values
         ax.clear()
-        ax.set_title(f'Agent # {self.creature_id} Status | ancestors = {self.anscestors}')
+        ax.set_title(f'Agent # {self.creature_id} Status | ancestors = {self.ancestors}')
         ax.barh(ls, values, color=colors)
         # ax.barh(['Energy', 'Hunger', 'Thirst'], [self.energy, self.hunger, self.thirst], color=['green', 'red', 'blue'])
         ax.set_xlim(0, max(config.REPRODUCTION_ENERGY, self.max_age))
@@ -88,8 +87,8 @@ class Creature(StaticTraits):
         ls = ['log_eat', 'log_reproduce']
         colors = ['green', 'pink']
         ax.clear()
-        if max(self.color)>1 or min(self.color)<0:
-            raise('color exceed [0, 1] range')
+        if max(self.color) > 1 or min(self.color) < 0:
+            raise ('color exceed [0, 1] range')
         ax.set_facecolor(list(self.color) + [0.3])
         if plot_type == 0:
             # option 1
@@ -144,7 +143,7 @@ class Creature(StaticTraits):
         child.mutate(config.MAX_MUTATION_FACTORS)
         child.brain.mutate(config.MUTATION_BRAIN)
         child.reset()
-        child.anscestors.append(self.creature_id)
+        child.ancestors.append(self.creature_id)
         # Reduce energy
         self.energy -= self.reproduction_energy
         return child
@@ -193,4 +192,3 @@ class Creature(StaticTraits):
         energy_consumption += self.energy_efficiency  # idle energy
         energy_consumption += self.motion_efficiency * self.speed  # movement energy
         self.energy -= energy_consumption
-

@@ -1,4 +1,3 @@
-# static_traits.py
 import numpy as np
 from brain import Brain
 
@@ -10,7 +9,7 @@ class StaticTraits:
 
     def __init__(self, creature_id: int, gen: int, parent_id: str | None, birth_frame: int,
                  max_age: int, max_weight: float, max_height: float,
-                 max_speed: list[float], max_energy: float, color: np.ndarray,
+                 max_speed: float, max_energy: float, color: np.ndarray,
                  energy_efficiency: float, motion_efficiency: float,
                  food_efficiency: float, reproduction_energy: float,
                  eyes_params: list[tuple], vision_limit: float, brain: Brain):
@@ -27,7 +26,7 @@ class StaticTraits:
         self.max_height = max_height
         self.max_speed = max_speed
         self.max_energy = max_energy
-        self.color = color      # Creature's color as an RGB vector.
+        self.color = color  # Creature's color as an RGB vector.
 
         self.energy_efficiency = energy_efficiency
         self.motion_efficiency = motion_efficiency  # number between 0 and 1
@@ -37,7 +36,6 @@ class StaticTraits:
         self.eyes_params = eyes_params
         self.vision_limit = vision_limit
         self.brain = brain
-
 
     def think(self, input_vector: np.ndarray) -> np.ndarray:
         """

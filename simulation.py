@@ -529,9 +529,7 @@ class Simulation:
             else:
                 update_num = config.NUM_FRAMES
 
-            progress_bar = tqdm(total=update_num, desc=f"Frame: 0 | "
-                                                       f"Step: {self.step_counter} | "
-                                                       f"Alive: {len(self.creatures)} | "
+            progress_bar = tqdm(total=update_num, desc=f"Alive: {len(self.creatures)} | "
                                                        f"Children: {self.children_num} | "
                                                        f"Dead: {len(self.dead_creatures)} | "
                                                        f"Progress:")
@@ -545,6 +543,8 @@ class Simulation:
             :return:
             """
             global quiv, scat, grass_scat, leaves_scat, agent_scat
+            global fig, ax_env, ax_brain, ax_agent_info, ax_zoom, progress_bar
+
             return scat, quiv, grass_scat, leaves_scat, agent_scat
 
         # Function for simulation progress
@@ -565,8 +565,7 @@ class Simulation:
                 progress_bar.update(self.animation_update_interval)
                 self.step_counter += self.animation_update_interval
 
-                return scat, quiv, grass_scat, leaves_scat, agent_scat, \
-                    fig, ax_env, ax_brain, ax_agent_info, ax_zoom
+                return scat, quiv, grass_scat, leaves_scat, agent_scat
 
             # Run steps of frame
             for step in range(self.animation_update_interval):
@@ -578,9 +577,7 @@ class Simulation:
 
                 # Update the progress bar every step
                 if config.STATUS_EVERY_STEP:
-                    progress_bar.set_description(f"Frame: {frame} | "
-                                                 f"Step: {self.step_counter} | "
-                                                 f"Alive: {len(self.creatures)} | "
+                    progress_bar.set_description(f"Alive: {len(self.creatures)} | "
                                                  f"Children: {self.children_num} | "
                                                  f"Dead: {len(self.dead_creatures)} | "
                                                  f"Progress")
@@ -588,9 +585,7 @@ class Simulation:
 
             # update the progress bar every frame
             if not config.STATUS_EVERY_STEP:
-                progress_bar.set_description(f"Frame: {frame} | "
-                                             f"Step: {self.step_counter} | "
-                                             f"Alive: {len(self.creatures)} | "
+                progress_bar.set_description(f"Alive: {len(self.creatures)} | "
                                              f"Children: {self.children_num} | "
                                              f"Dead: {len(self.dead_creatures)} | "
                                              f"Progress")
@@ -687,8 +682,7 @@ class Simulation:
                 # axins.set_xticks([])  # Hide x-axis ticks
                 # axins.set_yticks([])  # Hide y-axis ticks
 
-            return scat, quiv, grass_scat, leaves_scat, agent_scat, \
-                fig, ax_env, ax_brain, ax_agent_info, ax_zoom
+            return scat, quiv, grass_scat, leaves_scat, agent_scat
 
         def plot_statistics_graph():
             """
@@ -717,24 +711,30 @@ class Simulation:
                                       label='mean and std energy')
             statistics_ax[1].axhline(y=config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY,
                                      linestyle='--', color='r', label='reproduction threshold')
-            statistics_ax[1].set_title('energy statistics per frame')
+            statistics_ax[1].set_title('energy statistics per step')
             statistics_ax[1].set_xlabel('step number')
             statistics_ax[1].legend()
 
-            # save and show fig
-            statistics_fig.savefig(fname=config.STATISTICS_FIG_FILEPATH)
-            print(f'statistics fig saved as {config.STATISTICS_FIG_FILEPATH.stem}.')
-            plt.show()
+            return statistics_fig
 
         # Run simulation
-        init_fig()
-        ani = animation.FuncAnimation(fig=fig, func=update_func, init_func=init_func, blit=True,
+        try:
+            init_fig()
+            ani = animation.FuncAnimation(fig=fig, func=update_func, init_func=init_func, blit=True,
                                       frames=config.NUM_FRAMES, interval=config.FRAME_INTERVAL)
+            print('Simulation completed successfully. saving progress...')
 
-        # Save animation
-        ani.save(config.ANIMATION_FILEPATH, writer="ffmpeg", dpi=100)
-        plt.close(fig)
-        print(f'Simulation animation saved as {config.ANIMATION_FILEPATH.stem}.')
+        except KeyboardInterrupt:
+            print('Simulation interrupted. saving progress...')
 
-        # Plot statistics summary graph
-        plot_statistics_graph()
+        finally:
+            # Save animation
+            ani.save(config.ANIMATION_FILEPATH, writer="ffmpeg", dpi=100)
+            plt.close(fig)
+            print(f'Simulation animation saved as {config.ANIMATION_FILEPATH.stem}.')
+
+            # Plot statistics summary graph
+            statistics_fig = plot_statistics_graph()
+            statistics_fig.savefig(fname=config.STATISTICS_FIG_FILEPATH)
+            print(f'statistics fig saved as {config.STATISTICS_FIG_FILEPATH.stem}.')
+            # plt.show()

@@ -25,13 +25,18 @@ np.random.seed = 0
 class Config:
     # Simulation parameters
     DT = 2.0  # time passing from frame to frame (relevant when calculating velocities)
-    NUM_FRAMES = 20  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+    NUM_FRAMES = 100  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
     UPDATE_ANIMATION_INTERVAL = 30  # update the animation every n steps
-    FRAME_INTERVAL = 75  # interval between frames in ms
-    STATUS_EVERY_STEP = False  # choose if to update every step or every frame
+    FRAME_INTERVAL = 75  # interval between frames in animation [in ms]
+    STATUS_EVERY_STEP = True  # choose if to update every step or every frame
     UPDATE_KDTREE_INTERVAL = 90  # update the kdtree every n steps
     DEBUG_MODE = False
     STUCK_PERCENTAGE = 0.75  # percentage of MAX_NUM_CREATURES to stuck simulation
+
+    # Purge parameters
+    PURGE_PERCENTAGE = 0.1  # percentage out of MAX_NUM_CREATURES to do purge
+    PURGE_SPEED_THRESHOLD = 1  # if the creature's speed is below this threshold at first reproduction, it will be removed
+    PURGE_FRAME_FREQUENCY = 50  # do purge every PURGE_FRAME_FREQUENCY frames
 
     # Environment parameters
     ENV_PATH = r"Penvs\Env8.png"
@@ -67,11 +72,6 @@ class Config:
     GROWTH_RATE = GRASS_ENERGY * 2  # the rate for creature growth (it grow every time it eats)
     INIT_MAX_ENERGY = 2e3  # maybe useful for maturity test before reproduction
     MAX_SPEED = 5.0  # maximum speed of the creature
-
-    # Purge parameters
-    PURGE_PERCENTAGE = 0.1  # percentage out of MAX_NUM_CREATURES to do purge
-    PURGE_SPEED_THRESHOLD = 1  # if the creature's speed is below this threshold at first reproduction, it will be removed
-    PURGE_FRAME_FREQUENCY = 50  # do purge every PURGE_FRAME_FREQUENCY frames
 
     # Eyes parameters
     # Define eye parameters: (angle_offset in radians, aperture in radians)
@@ -123,12 +123,11 @@ class Config:
 
     # Filepaths
     now = datetime.now()
-    date_str = now.strftime('%d_%m_%Y')
-    run_str = 'V_' + now.strftime('%H_%M')  # change this to a different string to create a new output file
-
+    date_str = now.strftime('%Y-%m-%d')
     OUTPUT_FOLDER = project_folder.joinpath('outputs').joinpath(date_str)
     OUTPUT_FOLDER.mkdir(exist_ok=True, parents=True)
 
-    ANIMATION_FILEPATH = OUTPUT_FOLDER.joinpath(f"simulation_{date_str}_{run_str}.mp4")
-    SPECIFIC_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"specific_fig_{date_str}_{run_str}.png")
-    STATISTICS_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"statistics_fig_{date_str}_{run_str}.png")
+    hour_str = now.strftime('%H-%M-%S')  # change this to a different string to create a new output file
+    ANIMATION_FILEPATH = OUTPUT_FOLDER.joinpath(f"simulation_{date_str}T{hour_str}.mp4")
+    SPECIFIC_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"specific_fig_{date_str}T{hour_str}.png")
+    STATISTICS_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"statistics_fig_{date_str}T{hour_str}.png")

@@ -3,9 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# costum
-*.mp4
-*.png
+# custom
+/outputs
 
 # C extensions
 *.so

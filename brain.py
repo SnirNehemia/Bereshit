@@ -1,9 +1,9 @@
-# brain.py
 import numpy as np
-from typing import Callable, Optional
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-import config as config
+from config import Config as config
+
+
 # TODO: pay attention to activation function and run as main to check the hidden layers
 # Activation functions
 def relu(x: np.ndarray) -> np.ndarray:

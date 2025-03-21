@@ -1,9 +1,10 @@
 # environment.py
 import numpy as np
 import matplotlib.pyplot as plt
-
-import config
 from scipy.spatial import KDTree
+
+from config import Config as config
+
 
 class Environment:
     """
@@ -19,13 +20,13 @@ class Environment:
         self.map_data = plt.imread(map_filename)
         self.size = self.map_data.shape[0:2]
         # Create an obstacle mask: black areas where all channels are very low.
-        self.obstacle_mask = np.all(self.map_data[:,:,:3] < 0.1, axis=2)
+        self.obstacle_mask = np.all(self.map_data[:, :, :3] < 0.1, axis=2)
         # Grass regions: yellow (red and green high, blue low). Adjust thresholds as needed.
         self.grass_mask = (self.map_data[:, :, 0] > 0.7) & (self.map_data[:, :, 1] > 0.7) & (
-                    self.map_data[:, :, 2] < 0.3)
+                self.map_data[:, :, 2] < 0.3)
         # Tree regions: green (green high, red and blue low). Adjust thresholds as needed.
         self.tree_mask = (self.map_data[:, :, 0] < 0.2) & (self.map_data[:, :, 1] > 0.6) & (
-                    self.map_data[:, :, 2] < 0.5)
+                self.map_data[:, :, 2] < 0.5)
 
         # Define a water source as a blue circle in the center of the map.
         self.height, self.width, _ = self.map_data.shape

@@ -2,7 +2,7 @@ import copy
 
 import numpy as np
 from static_traits import StaticTraits
-from brain import Brain
+from brain_models.fully_connected_brain import Brain
 from config import Config as config
 
 

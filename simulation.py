@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.spatial import KDTree
 
-from brain import Brain
+from brain_models.fully_connected_brain import Brain
 from creature import Creature
 from environment import Environment
 from tqdm import tqdm

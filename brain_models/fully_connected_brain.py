@@ -1,4 +1,4 @@
-# brain.py
+# fully_connected_brain.py
 import numpy as np
 from typing import Callable, Optional
 import matplotlib.pyplot as plt

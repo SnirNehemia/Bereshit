@@ -1,10 +1,9 @@
 # simulation.py
-import copy
 
 import numpy as np
 from scipy.spatial import KDTree
 
-from brain import Brain
+from brain_models.fully_connected_brain import Brain
 from creature import Creature
 from environment import Environment
 from tqdm import tqdm
@@ -13,7 +12,6 @@ import config as config
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.patches import Circle
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes, zoomed_inset_axes, mark_inset
 import matplotlib.gridspec as gridspec
 
 from lineage_tree import plot_lineage_tree
@@ -676,7 +674,7 @@ class Simulation:
                 agent.brain.plot(ax_brain)
                 # ax_agent_info.clear()
                 agent.plot_live_status(ax_agent_info)
-                agent.plot_acc_status(ax_zoom, plot_type=1, curr_frame=self.frame_counter)
+                agent.plot_acc_status (ax_zoom, plot_type=1, curr_frame=self.frame_counter)
                 # Create zoomed-in inset
                 # axins = zoomed_inset_axes(ax_env, zoom=100, loc="upper right")  # zoom=2 means 2x zoom
                 # axins = inset_axes(ax_env, width="30%", height="30%", loc="upper right")

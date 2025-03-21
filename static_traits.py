@@ -1,6 +1,6 @@
 # static_traits.py
 import numpy as np
-from brain import Brain
+from brain_models.fully_connected_brain import Brain
 
 
 class StaticTraits:

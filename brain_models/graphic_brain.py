@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 from matplotlib.patches import FancyArrowPatch, Circle
 import platform, matplotlib
+import random
+
+
 if platform.system() == 'Darwin':
     matplotlib.use('MacOSX')
 else:
@@ -30,26 +33,48 @@ ACTIVATION_FUNCTIONS = {'relu': relu, 'sigmoid': sigmoid, 'tanh': tanh, 'I': ide
 class Brain:
     def __init__(self, layers_size: list, activation = 'tanh'):
         # Create a directed graph.
+        self.input_counter = 0
+        self.output_counter = 0
+        self.hidden_counter = 0
         input_size = layers_size[0]
         output_size = layers_size[1]
         self.graph = nx.DiGraph()
         for i_in in range(input_size):
-            self.add_node(f'I{i_in}', 'input', 'I')
+            self.add_node('input', 'I')
         for i_out in range(output_size):
-            self.add_node(f'O{i_out}', 'output', activation)
+            self.add_node( 'output', activation)
         for i_in in range(input_size):
             for i_out in range(output_size):
                 self.add_connection(f'I{i_in}', f'O{i_out}', weight=np.random.randn())
+        self.pos = 'none'
+        self.random_magnitude = 0.2  # TODO: change to something from config
 
-    def add_node(self, node_id, node_type='internal', activation='tanh'):
-        """Add a node with a given type (input, output, or internal) and initial value."""
-        if node_id in self.graph:
-            print(f"Node '{node_id}' already exists.")
+    def add_node(self, node_type='hidden', activation='tanh'):
+        """Add a node with a given type (input, output, or hidden) and initial value."""
+        self.pos = 'none'
+        if node_type[0].capitalize() == 'H':
+            ind = self.hidden_counter
+        elif node_type[0].capitalize() == 'I':
+            ind = self.input_counter
+        elif node_type[0].capitalize() == 'O':
+            ind = self.output_counter
         else:
-            self.graph.add_node(node_id, type=node_type, activation=activation, value=0.0)
+            raise 'invalid node type'
+        node_name = f'{node_type[0].capitalize()}{ind}'
+        if node_name in self.graph:
+            print(f"Node '{node_name}' already exists.")
+        else:
+            self.graph.add_node(node_name, type=node_type, activation=activation, value=0.0)
+        if node_type[0].capitalize() == 'H':
+            self.hidden_counter += 1
+        elif node_type[0].capitalize() == 'I':
+            self.input_counter += 1
+        elif node_type[0].capitalize() == 'O':
+            self.output_counter += 1
 
     def remove_node(self, node_id):
         """Remove a node and all its connections."""
+        self.pos = 'none'
         if node_id in self.graph:
             self.graph.remove_node(node_id)
         else:
@@ -72,12 +97,80 @@ class Brain:
         else:
             print(f"Connection from '{from_node}' to '{to_node}' does not exist.")
 
-    def adjust_weight(self, from_node, to_node, new_weight):
+    def adjust_weight(self, from_node, to_node):
         """Adjust the weight of an existing connection."""
         if self.graph.has_edge(from_node, to_node):
-            self.graph[from_node][to_node]['weight'] = new_weight
+            self.graph[from_node][to_node]['weight'] += np.random.randn() * self.random_magnitude
         else:
             print(f"Connection from '{from_node}' to '{to_node}' does not exist.")
+
+    def set_activation(self, node_id, activation):
+        if node_id in self.graph:
+            self.graph.nodes[node_id]['activation'] = activation
+        else:
+            print(f"Node '{node_id}' does not exist.")
+
+    def forget(self, forget_magnitude=0):
+        # forget_magnitude is the amplitude of forget
+        if forget_magnitude == 0:
+            for node, data in self.graph.nodes(data=True):
+                if 'value' in data:
+                    data['value'] = 0
+        else:
+            for node, data in self.graph.nodes(data=True):
+                if 'value' in data:
+                    data['value'] /= forget_magnitude
+
+    def mutate(self, brain_mutation_rate: dict):
+        # mutation_rate = {'add_node': 0.7, 'remove_node': 0.1, 'modify_edges': 0.7,
+        # 'add_edge': 0.2, 'remove_edge': 0.1, 'change_activation': 0.1}
+        mutation_roll = np.random.rand(len(brain_mutation_rate))
+        self.pos = 'none'
+
+        if mutation_roll[0] < brain_mutation_rate['add_node']:
+            self.add_node('hidden', 'tanh')
+
+        if mutation_roll[1] < brain_mutation_rate['remove_node']:
+            ind = np.random.choice(len(self.graph.nodes))
+            node_name = list(self.graph.nodes)[ind]
+            if node_name[0].capitalize() == 'H':
+                self.remove_node(node_name)
+
+        if mutation_roll[2] < brain_mutation_rate['modify_edges']:
+            ind = np.random.choice(len(self.graph.edges))
+            self.adjust_weight(list(self.graph.edges)[ind][0], list(self.graph.edges)[ind][1])
+
+        if mutation_roll[3] < brain_mutation_rate['add_edge']:
+            # Build the set of all possible directed edges (excluding self-loops if desired)
+            all_possible = {(i, o) for i in self.graph.nodes for o in self.graph.nodes
+                            if i != o or not i[0] == 'O' or not o[0] == 'I'} # ignore possible input\output non sensible connections
+            # Get the set of existing edges
+            existing = set(self.graph.edges())
+            # Missing edges are those in 'all_possible' but not in 'existing'
+            missing = list(all_possible - existing)
+            if len(missing) > 0:
+                self.add_connection(*random.choice(missing))
+            else:
+                print('all connections are there!')
+
+        if mutation_roll[4] < brain_mutation_rate['remove_edge']:
+            if len(list(self.graph.edges)) > 2:
+                ind = np.random.choice(len(self.graph.edges))
+                connection = list(self.graph.edges)[ind]
+                print(connection)
+                # if not (connection[0][0] == 'I' and connection[1][0] == 'O'):  # to make sure the input has direct path to output
+                self.remove_connection(*connection)
+            else:
+                print('too few connections to disconnect')
+
+        if mutation_roll[5] < brain_mutation_rate['change_activation']:
+            ind = np.random.choice(len(self.graph.nodes))
+            node_name = list(self.graph.nodes)[ind]
+            if node_name[0].capitalize() == 'H':
+                self.set_activation(node_name, np.random.choice(list(ACTIVATION_FUNCTIONS.keys())))
+
+        self.forget()
+        return self
 
     def forward(self, start='input', activation_func=np.tanh):
         """
@@ -98,52 +191,42 @@ class Brain:
             return None
 
         new_values = {}
-        if start == 'input':
-            # Keep input nodes fixed; update every other node based on their predecessors.
-            for node in self.graph.nodes():
-                if self.graph.nodes[node].get('type') == 'input':
-                    new_values[node] = self.graph.nodes[node]['value']
-                else:
-                    if self.graph.nodes[node].get('type') == 'output':
-                        total = 0.0
-                    else:
-                        total = self.graph.nodes[node]['value']  # or set to zero
-                    for pred in self.graph.predecessors(node):
-                        total += self.graph.nodes[pred]['value'] * self.graph[pred][node]['weight']
-                    new_values[node] = activation_func(total)
-        else:  # start == 'output'
-            # Keep output nodes fixed; update every other node based on their successors.
-            for node in self.graph.nodes():
+        # Keep input nodes fixed; update every other node based on their predecessors.
+        for node in self.graph.nodes():
+            if self.graph.nodes[node].get('type') == 'input':
+                new_values[node] = self.graph.nodes[node]['value']
+            else:
                 if self.graph.nodes[node].get('type') == 'output':
-                    new_values[node] = self.graph.nodes[node]['value']
-                else:
                     total = 0.0
-                    for succ in self.graph.successors(node):
-                        total += self.graph.nodes[succ]['value'] * self.graph[node][succ]['weight']
-                    new_values[node] = activation_func(total)
+                else:
+                    total = self.graph.nodes[node]['value']  # to remain memory. alternatively, set to zero or multiply by forget coefficient (<1)
+                for pred in self.graph.predecessors(node):
+                    total += self.graph.nodes[pred]['value'] * self.graph[pred][node]['weight']
+                new_values[node] = activation_func(total)
 
         # Update all nodes with their new computed values.
         for node, val in new_values.items():
             self.graph.nodes[node]['value'] = val
 
-        if start == 'input':
-            # Return the values of output nodes.
-            return {n: self.graph.nodes[n]['value']
-                    for n, d in self.graph.nodes(data=True) if d.get('type') == 'output'}
-        else:
-            # Return the values of input nodes.
-            return {n: self.graph.nodes[n]['value']
-                    for n, d in self.graph.nodes(data=True) if d.get('type') == 'input'}
+        # Return the values of output nodes.
+        return {n: self.graph.nodes[n]['value']
+                for n, d in self.graph.nodes(data=True) if d.get('type') == 'output'}
 
-    def plot(self):
+    def plot(self, ax='none', debug=False, plot_activatino=True):
         """
         Plot the brain graph:
           - Nodes are drawn as circles with colors according to their current value.
           - Connections are drawn as arrows colored on a red-white-blue scale (red: negative, blue: positive).
         """
-        fig, ax = plt.subplots(figsize=(8, 6))
-        pos = nx.spring_layout(self.graph, seed=1)  # Consistent layout
-
+        if debug:
+            import matplotlib
+            matplotlib.use('TkAgg')
+            plt.ion()
+            fig, ax = plt.subplots(figsize=(8, 6))
+        ax.clear()
+        if self.pos == 'none':
+            self.pos = nx.spring_layout(self.graph, seed=1)  # Consistent layout
+        # pos = nx.nx_agraph.graphviz_layout(self.graph, prog="dot")
         # Setup colormap for nodes.
         node_abs_max = max([abs(self.graph.nodes[n]['value']) for n in self.graph.nodes()])
         if node_abs_max:
@@ -153,15 +236,25 @@ class Brain:
         node_cmap = plt.get_cmap('bwr_r')  # Reversed so that negative=red, positive=blue
 
         # Draw nodes as circles.
-        color_dict = {'input': 'black', 'internal': 'none', 'output': 'darkgreen'}
-        for node, (x, y) in pos.items():
+        color_dict = {'input': 'black', 'hidden': 'none', 'output': 'darkgreen'}
+        for node, (x, y) in self.pos.items():
             val = self.graph.nodes[node]['value']
             color = node_cmap(norm(val))
-            circle = Circle((x, y), radius=0.05, facecolor=color, alpha=0.5,
-                            edgecolor=color_dict[self.graph.nodes[node].get('type')], linewidth=2.5, zorder=3)
-            ax.add_patch(circle)
+            # circle = Circle((x, y), radius=0.05, facecolor=color, alpha=0.5,
+            #                 edgecolor=color_dict[self.graph.nodes[node].get('type')], linewidth=2.5, zorder=3)
+            # ax.add_patch(circle)
+            ax.scatter(x,y,s=300, facecolor=color, alpha=0.5, edgecolor=color_dict[self.graph.nodes[node].get('type')],
+                       linewidth=2.5, zorder=3)
+            if not self.graph.nodes[node].get('type') == 'hidden':
+                ax.scatter(x, y, s=600, facecolor='none', edgecolor=color_dict[self.graph.nodes[node].get('type')],
+                           linewidth=2.5, zorder=3)
             ax.text(x, y, str(np.round(self.graph.nodes[node]['value'],1)),
                     fontsize=8, ha='center', va='center', zorder=4)
+            # ax.text(x, y, self.graph.nodes[node]['activation'],
+            #         fontsize=8, ha='center', va='top', zorder=4)
+            if plot_activatino:
+                ax.annotate(self.graph.nodes[node]['activation'], xy=(x, y),
+                         xytext=(0, -30), textcoords="offset points", ha='center')
 
         # Setup colormap for edges.
         weights_abs_max = max([abs(self.graph[u][v]['weight']) for u, v in self.graph.edges()])
@@ -173,14 +266,11 @@ class Brain:
 
         # Draw edges with arrowheads.
         for u, v in self.graph.edges():
-            start_point = pos[u]
-            end_point = pos[v]
+            start_point = self.pos[u]
+            end_point = self.pos[v]
             weight = self.graph[u][v]['weight']
             color = edge_cmap(w_norm(weight))
             if (v, u) in self.graph.edges():
-                # We pick one sign for one direction, the opposite sign for the other.
-                # This example uses a simple numeric comparison on node IDs to choose rad.
-                # Adjust logic as needed if your node IDs are not numeric or you want different behavior.
                 rad = 0.4
                 # if str(u) < str(v):
                 #     rad = 0.2
@@ -201,7 +291,8 @@ class Brain:
         plt.axis('off')
         plt.title("Brain Graph")
         ax.relim()
-        ax.autoscale_view()
+        ax.margins(0.15)
+        ax.autoscale_view(tight=True)
         plt.show()
 
     def __str__(self):
@@ -219,18 +310,18 @@ if __name__ == '__main__':
     # Add nodes.
     # brain.add_node("I1", "input")
     # brain.add_node("I2", "input")
-    brain.add_node("H1", "internal")
-    # brain.add_node("H2", "internal")
-    # brain.add_node("H12", "internal")
+    brain.add_node("hidden")
+    brain.add_node("hidden")
+    brain.add_node("hidden")
     # brain.add_node("O1", "output")
     #
     # # Add connections.
     brain.add_connection("I1", "H1", weight=0.5)
     brain.add_connection("I2", "H1", weight=-0.8)
     brain.add_connection("H1", "O1", weight=-1.2)
-    # brain.add_connection("H1", "H2", weight=np.random.randn())
-    # brain.add_connection("I1", "O1", weight=np.random.randn())
-    # brain.add_connection("H1", "H12", weight=np.random.randn())
+    brain.add_connection("H1", "H2", weight=np.random.randn())
+    brain.add_connection("I1", "O1", weight=np.random.randn())
+    brain.add_connection("H1", "H0", weight=np.random.randn())
     # # Introduce a cycle (for demonstration).
     # brain.add_connection("H2", "H1", weight=0.3)
 
@@ -241,7 +332,7 @@ if __name__ == '__main__':
     outputs = brain.forward(start='input')
     print("Output node values:", outputs)
     # Plot the brain.
-    brain.plot()
+    brain.plot(debug=True)
     # # Now set an initial value for outputs and propagate backward.
     # brain.graph.nodes["O1"]['value'] = 1.0
     # print("\nForward pass (starting from outputs):")
@@ -249,9 +340,10 @@ if __name__ == '__main__':
     # print("Input node values:", inputs)
 
     # second forward pass
-    brain.graph.nodes["I1"]['value'] = 1.0
-    brain.graph.nodes["I0"]['value'] = 0.5
+    brain.graph.nodes["I0"]['value'] = 1.0
+    brain.graph.nodes["I1"]['value'] = 0.5
+    # brain.remove_node('H1')
     print("Forward pass (starting from inputs):")
     outputs = brain.forward(start='input')
     print("Output node values:", outputs)
-    brain.plot()
+    brain.plot(debug=True)

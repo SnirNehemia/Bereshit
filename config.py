@@ -120,6 +120,14 @@ class Config:
                       'modify_weights': 0.2,
                       'modify_layer': 0.2,
                       'modify_activation': 0.1}
+    MUTATION_GRAPH_BRAIN = {'add_node': 0.7,
+                            'remove_node': 0.1,
+                            'modify_edges': 0.7,
+                            'modify_edges_percentage': 0.5,
+                            'add_edge': 0.2,
+                            'remove_edge': 0.1,
+                            'change_activation': 0.1,
+                            'forget_magnitude': 10}
 
     # Filepaths
     now = datetime.now()

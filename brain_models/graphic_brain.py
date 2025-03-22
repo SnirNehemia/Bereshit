@@ -4,8 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 from matplotlib.patches import FancyArrowPatch, Circle
 import platform, matplotlib
-import random
-
+import random, math
 
 if platform.system() == 'Darwin':
     matplotlib.use('MacOSX')
@@ -122,8 +121,8 @@ class Brain:
                     data['value'] /= forget_magnitude
 
     def mutate(self, brain_mutation_rate: dict):
-        # mutation_rate = {'add_node': 0.7, 'remove_node': 0.1, 'modify_edges': 0.7,
-        # 'add_edge': 0.2, 'remove_edge': 0.1, 'change_activation': 0.1}
+        # mutation_rate = {'add_node': 0.7, 'remove_node': 0.1, 'modify_edges': 0.7, 'modify_edges_percentage': 0.5,
+        # 'add_edge': 0.2, 'remove_edge': 0.1, 'change_activation': 0.1, 'forget_magnitude': 10}
         mutation_roll = np.random.rand(len(brain_mutation_rate))
         self.pos = 'none'
 
@@ -137,8 +136,11 @@ class Brain:
                 self.remove_node(node_name)
 
         if mutation_roll[2] < brain_mutation_rate['modify_edges']:
-            ind = np.random.choice(len(self.graph.edges))
-            self.adjust_weight(list(self.graph.edges)[ind][0], list(self.graph.edges)[ind][1])
+            indices = np.random.choice(len(self.graph.edges),
+                                    math.ceil(brain_mutation_rate['modify_edges_percentage']*len(self.graph.edges)))
+            if len(indices) > 0:
+                for ind in indices:
+                    self.adjust_weight(list(self.graph.edges)[ind][0], list(self.graph.edges)[ind][1])
 
         if mutation_roll[3] < brain_mutation_rate['add_edge']:
             # Build the set of all possible directed edges (excluding self-loops if desired)
@@ -169,7 +171,7 @@ class Brain:
             if node_name[0].capitalize() == 'H':
                 self.set_activation(node_name, np.random.choice(list(ACTIVATION_FUNCTIONS.keys())))
 
-        self.forget()
+        self.forget(brain_mutation_rate['forget_magnitude'])  # reduce the current value of the nodes as a forget mechanism between generations
         return self
 
     def forward(self, start='input', activation_func=np.tanh):

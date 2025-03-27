@@ -144,20 +144,20 @@ class Creature(StaticTraits):
         # clip relevant traits
         self.color = np.clip(self.color, 0, 1)
 
-    def move(self, decision: list[np.array([float])]):
+    def move(self, decision: np.array([float])):
 
         dt = config.DT
         propulsion_force_mag, relative_propulsion_force_angle = decision
 
         # constrain propulsion force based on strength
-        propulsion_force_mag = np.clip(propulsion_force_mag, 0, creature.strength)
+        propulsion_force_mag = np.clip(propulsion_force_mag, 0, self.strength)
         c_intertia = physical_model.intertia_limiting_factor
         max_turn_angle = c_intertia / self.mass
         relative_propulsion_force_angle = np.clip(
             relative_propulsion_force_angle, max_turn_angle, max_turn_angle)
 
         # transform relative propulsion_force to global cartesian coordinates (x,y)
-        current_direction = creature.get_heading()
+        current_direction = self.get_heading()
         cos_angle = np.cos(relative_propulsion_force_angle)
         sin_angle = np.sin(relative_propulsion_force_angle)
         new_direction = np.array([
@@ -177,7 +177,7 @@ class Creature(StaticTraits):
         # kinetic friction force
         mu_kinetic = physical_model.mu_kinetic
         alpha_mu = physical_model.alpha_mu
-        mu_total = mu_kinetic + (mu_static - mu_kinetic) * np.exp(-alpha_mu * creature.speed)
+        mu_total = mu_kinetic + (mu_static - mu_kinetic) * np.exp(-alpha_mu * self.speed)
         kinetic_friction_force = - mu_total * normal_force
 
         # friction force used for movement:
@@ -196,8 +196,7 @@ class Creature(StaticTraits):
 
         # drag force (air resistence)
         linear_drag_force = -physical_model.gamma * self.velocity
-        velocity_direction = self.velocity / self.speed
-        quadratic_drag_force = - physical_model.c_drag * self.speed ** 2 * velocity_direction
+        quadratic_drag_force = - physical_model.c_drag * self.speed ** 2 * current_direction
         drag_force = linear_drag_force + quadratic_drag_force
 
         # calc new velocity and position
@@ -205,9 +204,9 @@ class Creature(StaticTraits):
         new_velocity = self.velocity + acceleration * dt
         new_position = self.position + new_velocity * dt
 
-        print(f'{acceleration=}\n'
-              f'{self.velocity=} --> {new_velocity=}\n'
-              f'{self.position} --> {new_position}')
+        # print(f'{acceleration=}\n'
+        #       f'{self.velocity=} --> {new_velocity=}\n'
+        #       f'{self.position} --> {new_position}')
 
         # update position, velocity and speed
         self.velocity = new_velocity

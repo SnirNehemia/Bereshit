@@ -181,9 +181,13 @@ class Simulation:
 
             # use brain to get relative propulsion force and move creature based on it
             decision = creature.think(brain_input)
-            creature.move(decision)
+            creature.move(decision=decision)
+        except Exception as e:
+            print(f'Error in Simulation (use_brain, movement) for creature: {creature.creature_id}:\n{e}')
+            breakpoint()
 
-            # Collision detection: handle cases where creature's new position is inside an obstacle or outbound.
+        # Collision detection: handle cases where creature's new position is inside an obstacle or outbound.
+        try:
             if config.DEBUG_MODE: print('collision detection')
             col, row = map(int, creature.position)  # Convert (x, y) to image indices (col, row)
             height, width = self.env.map_data.shape[:2]
@@ -194,7 +198,8 @@ class Simulation:
                 elif config.BOUNDARY_CONDITION == 'mirror':
                     creature.velocity = -creature.velocity
         except Exception as e:
-            print(f'exception in use_brain for creature: {creature.creature_id}\n{e}')
+            print(f'Error in Simulation (use_brain, collision detection) for creature: {creature.creature_id}:\n{e}')
+            breakpoint()
 
     @staticmethod
     def prepare_eye_input(detection_result, vision_limit):
@@ -403,27 +408,32 @@ class Simulation:
         return is_found_food
 
     def update_debug_logs(self, child_ids, dead_ids, step):
-        # update total/new/dead number of creatures
-        current_num_creatures = len(self.creatures)
-        self.num_creatures_per_step.append(current_num_creatures)
-        self.num_new_creatures_per_step.append(len(child_ids))
-        self.num_dead_creatures_per_step.append(len(dead_ids))
-
-        # update energy statistics
-        creatures_energy = [creature.energy for creature in self.creatures.values()]
-        self.min_creature_energy_per_step.append(np.min(creatures_energy))
-        self.max_creature_energy_per_step.append(np.max(creatures_energy))
-        self.mean_creature_energy_per_step.append(np.mean(creatures_energy))
-        self.std_creature_energy_per_step.append(np.std(creatures_energy))
-
-        # abort simulation if no creatures left or there are too many creatures
-        if current_num_creatures > config.MAX_NUM_CREATURES:
-            print(f'{step=}: Too many creatures, simulation is too slow.')
-            self.abort_simulation = True
-        elif current_num_creatures <= 0:
-            if not self.abort_simulation:
-                print(f'\n{step=}: all creatures are dead :(.')
+        try:
+            # update total/new/dead number of creatures
+            # abort simulation if no creatures left or there are too many creatures
+            current_num_creatures = len(self.creatures)
+            if current_num_creatures > config.MAX_NUM_CREATURES:
+                print(f'{step=}: Too many creatures, simulation is too slow.')
                 self.abort_simulation = True
+            elif current_num_creatures <= 0:
+                if not self.abort_simulation:
+                    print(f'\n{step=}: all creatures are dead :(.')
+                    self.abort_simulation = True
+            else:
+                self.num_creatures_per_step.append(current_num_creatures)
+                self.num_new_creatures_per_step.append(len(child_ids))
+                self.num_dead_creatures_per_step.append(len(dead_ids))
+
+                # update energy statistics
+                creatures_energy = [creature.energy for creature in self.creatures.values()]
+                self.min_creature_energy_per_step.append(np.min(creatures_energy))
+                self.max_creature_energy_per_step.append(np.max(creatures_energy))
+                self.mean_creature_energy_per_step.append(np.mean(creatures_energy))
+                self.std_creature_energy_per_step.append(np.std(creatures_energy))
+
+        except Exception as e:
+            print(f'Error in Simulation (update_debug_logs):\n{e}')
+            breakpoint()
 
     def run_and_visualize(self):
         """

@@ -25,7 +25,7 @@ np.random.seed = 0
 class Config:
     # Simulation parameters
     DT = 2.0  # time passing from frame to frame (relevant when calculating velocities)
-    NUM_FRAMES = 100  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+    NUM_FRAMES = 10  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
     UPDATE_ANIMATION_INTERVAL = 30  # update the animation every n steps
     FRAME_INTERVAL = 75  # interval between frames in animation [in ms]
     STATUS_EVERY_STEP = True  # choose if to update every step or every frame
@@ -71,7 +71,7 @@ class Config:
     MAX_NUM_CREATURES = 1250
     # creature parameters
     INIT_MAX_AGE = 4000
-    INIT_MAX_MASS = 100
+    INIT_MAX_MASS = 500
     INIT_MAX_HEIGHT = 100
     INIT_MAX_STRENGTH = 2
     GROWTH_RATE = GRASS_ENERGY * 2  # the rate for creature growth (it grow every time it eats)

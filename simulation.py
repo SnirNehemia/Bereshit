@@ -51,7 +51,7 @@ class Simulation:
         self.abort_simulation = False
         self.kdtree_update_interval = config.UPDATE_KDTREE_INTERVAL  # Set update interval for KDTree
         self.animation_update_interval = config.UPDATE_ANIMATION_INTERVAL  # Set update interval for animation frames
-        self.step_counter = 0  # Initialize frame counter  # TODO - should be steps_counter?
+        self.step_counter = 0  # Initialize step counter
         self.id_count = config.NUM_CREATURES - 1
         self.focus_ID = 0
         self.purge = True  # flag for purge events
@@ -87,28 +87,28 @@ class Simulation:
             # static traits
             gen = 0
             parent_id = None
-            birth_frame = 0
+            birth_step = 0
             max_age = np.random.randint(low=config.INIT_MAX_AGE * 0.8, high=config.INIT_MAX_AGE)
-            max_weight = config.INIT_MAX_WEIGHT  # np.random.randint(low=config.INIT_MAX_WEIGHT*0.8, high=config.INIT_MAX_WEIGHT)
-            max_height = config.INIT_MAX_HEIGHT  # np.random.randint(low=config.INIT_MAX_HEIGHT*0.8, high=config.INIT_MAX_HEIGHT)
-            max_speed = config.MAX_SPEED
             color = np.random.rand(3)  # Random RGB color.
 
-            energy_efficiency = config.IDLE_ENERGY  # idle energy
-            motion_efficiency = config.MOTION_ENERGY  # speed * speed_efficiency
-            food_efficiency = config.DIGEST_EFFICIENCY
+            max_mass = np.random.uniform(low=0.8, high=1) * config.INIT_MAX_MASS
+            max_height = np.random.uniform(low=0.8, high=1) * config.INIT_MAX_HEIGHT
+            max_strength = np.random.uniform(low=0.8, high=1) * config.INIT_MAX_STRENGTH
+
+            max_speed = np.random.uniform(low=0.8, high=1) * config.MAX_SPEED
+            max_energy = np.random.uniform(low=0.8, high=1) * config.INIT_MAX_ENERGY
+
+            digest_dict = config.INIT_DIGEST_DICT
             reproduction_energy = config.REPRODUCTION_ENERGY
-            max_energy = config.INIT_MAX_ENERGY
 
             vision_limit = config.VISION_LIMIT
             brain = Brain([input_size, output_size])
 
             # init creature
-            creature = Creature(creature_id=creature_id, gen=gen, parent_id=parent_id, birth_frame=birth_frame,
-                                max_age=max_age, max_weight=max_weight, max_height=max_height,
-                                max_speed=max_speed, color=color,
-                                energy_efficiency=energy_efficiency, motion_efficiency=motion_efficiency,
-                                food_efficiency=food_efficiency, reproduction_energy=reproduction_energy,
+            creature = Creature(creature_id=creature_id, gen=gen, parent_id=parent_id, birth_step=birth_step,
+                                max_age=max_age, max_mass=max_mass, max_height=max_height,
+                                max_strength=max_strength, max_speed=max_speed, color=color,
+                                digest_dict=digest_dict, reproduction_energy=reproduction_energy,
                                 max_energy=max_energy,
                                 eyes_params=eyes_params, vision_limit=vision_limit, brain=brain,
                                 position=position)
@@ -169,7 +169,8 @@ class Simulation:
 
     def use_brain(self, creature: Creature, noise_std: float = 0.0):
         try:
-            seek_results = self.seek(creature, noise_std)
+            # get brain input
+            seek_results = self.seek(creature=creature, noise_std=noise_std)
             eyes_inputs = [self.prepare_eye_input(seek_results, creature.vision_limit) for seek_results in
                            seek_results.values()]
             brain_input = np.concatenate([
@@ -177,33 +178,23 @@ class Simulation:
                 creature.velocity,
                 np.concatenate(eyes_inputs)
             ])
+
+            # use brain to get relative propulsion force and move creature based on it
             decision = creature.think(brain_input)
-            delta_angle, delta_speed = decision
-            delta_angle = np.clip(delta_angle, -config.MAX_D_ANGLE, config.MAX_D_ANGLE)
-            delta_speed = np.clip(delta_speed, -config.MAX_D_SPEED, config.MAX_D_SPEED)
+            creature.move(decision)
 
-            current_speed = creature.velocity
-            current_speed_mag = creature.speed
-            if current_speed_mag == 0:
+            # Collision detection: handle cases where creature's new position is inside an obstacle or outbound.
+            if config.DEBUG_MODE: print('collision detection')
+            col, row = map(int, creature.position)  # Convert (x, y) to image indices (col, row)
+            height, width = self.env.map_data.shape[:2]
+            if col < 0 or col >= width or row < 0 or row >= height or self.env.obstacle_mask[row, col]:
+                # choose if the velocity is set to zero or get mirrored
                 if config.BOUNDARY_CONDITION == 'zero':
-                    theta = np.random.uniform(0, 2 * np.pi)
-                    current_direction = np.array([np.cos(theta), np.sin(theta)])
-                else:
-                    current_direction = np.array([0, 0])
-            else:
-                current_direction = current_speed / current_speed_mag
-
-            cos_angle = np.cos(delta_angle)
-            sin_angle = np.sin(delta_angle)
-            new_direction = np.array([
-                current_direction[0] * cos_angle - current_direction[1] * sin_angle,
-                current_direction[0] * sin_angle + current_direction[1] * cos_angle
-            ])
-            new_speed_mag = np.clip(current_speed_mag + delta_speed, 0, creature.max_speed)
-            creature.velocity = new_direction * new_speed_mag
-            creature.calc_speed()
+                    creature.velocity = np.array([0.0, 0.0])
+                elif config.BOUNDARY_CONDITION == 'mirror':
+                    creature.velocity = -creature.velocity
         except Exception as e:
-            print(f'exceptiom in use_brain for creature: {creature.id}\n{e}')
+            print(f'exception in use_brain for creature: {creature.creature_id}\n{e}')
 
     @staticmethod
     def prepare_eye_input(detection_result, vision_limit):
@@ -272,9 +263,9 @@ class Simulation:
                 detected_info = (distance, angle)
         return detected_info
 
-    def kill(self, sim_id):
-        self.dead_creatures[sim_id] = self.creatures[sim_id]
-        del self.creatures[sim_id]
+    def kill(self, creature_id):
+        self.dead_creatures[creature_id] = self.creatures[creature_id]
+        del self.creatures[creature_id]
 
     def step(self, dt: float, noise_std: float = 0.0):
         """
@@ -292,64 +283,30 @@ class Simulation:
 
         if config.DEBUG_MODE: print('\nseek')
         for creature_id, creature in self.creatures.items():
-            # print(f'creature {id}: start brain use...')
             self.use_brain(creature=creature, noise_std=noise_std)
-            # print(f'creature {creature_id}: completed brain use!')
 
-        # -------------------- Update creature positions --------------------------
-
-        # Collision detection: if a creature's new position would be inside an obstacle, stop it.
-        if config.DEBUG_MODE: print('collision detection')
-        for creature_id, creature in self.creatures.items():
-            new_position = creature.position + creature.velocity * dt
-            # Convert (x, y) to image indices (col, row).
-            col = int(new_position[0])
-            row = int(new_position[1])
-            height, width = self.env.map_data.shape[:2]
-            if col < 0 or col >= width or row < 0 or row >= height or self.env.obstacle_mask[row, col]:
-                # choose if the velocity is set to zero or get mirrored
-                if config.BOUNDARY_CONDITION == 'zero':
-                    creature.velocity = np.array([0.0, 0.0])
-                elif config.BOUNDARY_CONDITION == 'mirror':
-                    creature.velocity = -creature.velocity
-
-        # ------------------------ create list of creatures to die or reproduce ----------------------------
+        # ----------------- die / eat / reproduce (+create list of creatures to die or reproduce) ----------------------
 
         list_creatures_reproduce = []
         list_creature_die = []
-        if config.DEBUG_MODE: print('energy consumption')
-        # energy consumption
+
         if config.DEBUG_MODE: print('energy consumption')
         for creature_id, creature in self.creatures.items():
-            # death from age
-            if creature.age >= creature.max_age:
+            # death from age or fatigue
+            if creature.age >= creature.max_age or creature.energy <= 0:
                 list_creature_die.append(creature_id)
                 continue
             else:
-                creature.age += 1
-
-            # use energy
-            creature.consume_energy()
-
-            # test whether to update or kill creature
-            if creature.energy > 0:
-                # update creature position
-                creature.position += creature.velocity * dt
+                creature.age += config.DT
 
                 # check for food (first grass, if not found search for leaf if tall enough)
                 is_found_food = self.eat_food(creature=creature, food_type='grass')
                 if not is_found_food and creature.height >= config.LEAF_HEIGHT:
                     _ = self.eat_food(creature=creature, food_type='leaf')
-                if is_found_food:
-                    creature.log_eat.append(self.step_counter)
 
-                # add to reproduce list
+                # reproduce if able
                 if creature.energy > creature.reproduction_energy + config.MIN_LIFE_ENERGY:
-                    list_creatures_reproduce.append(creature)
-            else:
-                # death from energy
-                list_creature_die.append(creature_id)
-            creature.log_energy.append(creature.energy)
+                    list_creatures_reproduce.append(creature_id)
 
         # ------------------------ add the purge to the killing list ----------------------------
 
@@ -370,21 +327,27 @@ class Simulation:
 
         # kill creatures
         dead_ids = []
-        for sim_id in list_creature_die:
-            self.kill(sim_id)
-            dead_ids.append(sim_id)
+        for creature_id in list_creature_die:
+            self.kill(creature_id)
+            dead_ids.append(creature_id)
 
         # ------------------------ use the list to reproduce ----------------------------
 
         # Reproduction
         child_ids = []
-        for creature in list_creatures_reproduce:
+        for creature_id in list_creatures_reproduce:
+            # update creature
+            creature = self.creatures[creature_id]
             child = creature.reproduce()
             creature.log_reproduce.append(self.step_counter)
-            child.birth_frame = self.step_counter
+            creature.log_energy.append(creature.energy)
+
+            # update child
             self.id_count += 1
             child.creature_id = self.id_count
-            # self.creatures.append(child) # TODO: why do we use dict instead of list?
+            child.birth_step = self.step_counter
+
+            # add to simulation
             self.creatures[self.id_count] = child
             child_ids.append(self.id_count)
             self.children_num += 1
@@ -405,11 +368,12 @@ class Simulation:
         return child_ids, dead_ids
 
     def eat_food(self, creature: Creature, food_type: str):
-        is_found_food = False
+        # check if creature is full
         if creature.energy >= creature.max_energy:
             return False
 
         # get food points
+        is_found_food = False
         food_points, food_energy = [], 0
         if food_type == 'grass':
             food_points = self.env.grass_points
@@ -423,16 +387,19 @@ class Simulation:
             food_distances = [np.linalg.norm(food_point - creature.position)
                               for food_point in food_points]
 
-            if np.min(food_distances) <= config.FOOD_DISTANCE_THRESHOLD:
-                # creature eats
-                creature.eat(food_energy)
+            closest_food_distance = np.min(food_distances)
+            closest_food_point = self.env.grass_points[np.argmin(food_distances)]
 
-                # remove food from board
-                closest_food_point = self.env.grass_points[np.argmin(food_distances)]
+            if closest_food_distance <= config.FOOD_DISTANCE_THRESHOLD:
+                # creature eat food
+                creature.eat(food_type=food_type, food_energy=food_energy)
+                creature.log_eat.append(self.step_counter)
+
+                # remove food from environment
                 self.env.grass_points.remove(closest_food_point)
+                self.env.update_grass_kd_tree()
                 is_found_food = True
-        if is_found_food:
-            self.env.update_grass_kd_tree()  # TODO: add here the leaf kd_tree too
+
         return is_found_food
 
     def update_debug_logs(self, child_ids, dead_ids, step):
@@ -673,7 +640,7 @@ class Simulation:
                 agent.brain.plot(ax_brain)
                 # ax_agent_info.clear()
                 agent.plot_live_status(ax_agent_info)
-                agent.plot_acc_status(ax_zoom, plot_type=1, curr_frame=self.step_counter)
+                agent.plot_acc_status(ax_zoom, plot_type=1, curr_step=self.step_counter)
                 # Create zoomed-in inset
                 # axins = zoomed_inset_axes(ax_env, zoom=100, loc="upper right")  # zoom=2 means 2x zoom
                 # axins = inset_axes(ax_env, width="30%", height="30%", loc="upper right")
@@ -721,7 +688,7 @@ class Simulation:
         try:
             init_fig()
             ani = animation.FuncAnimation(fig=fig, func=update_func, init_func=init_func, blit=True,
-                                      frames=config.NUM_FRAMES, interval=config.FRAME_INTERVAL)
+                                          frames=config.NUM_FRAMES, interval=config.FRAME_INTERVAL)
             print('Simulation completed successfully. saving progress...')
 
         except KeyboardInterrupt:

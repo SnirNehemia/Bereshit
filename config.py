@@ -58,7 +58,11 @@ class Config:
     LEAF_ENERGY = 100
     IDLE_ENERGY = 0.1  # idle energy
     MOTION_ENERGY = 0.01  # speed * speed_efficiency
-    DIGEST_EFFICIENCY = 1  # energy from food * food_efficiency
+    INIT_DIGEST_DICT = {'grass': 1, 'leaf': 0.5, 'creature': 0}
+
+    for c_digest in INIT_DIGEST_DICT.values():
+        assert 0 <= c_digest <= 1, 'Config Error: INIT_DIGEST_DICT is not set correctly (values between 0-1).'
+
     REPRODUCTION_ENERGY = 700  # energy cost of reproduction
     MIN_LIFE_ENERGY = 200  # energy to be left after reproduction
 
@@ -67,8 +71,9 @@ class Config:
     MAX_NUM_CREATURES = 1250
     # creature parameters
     INIT_MAX_AGE = 4000
-    INIT_MAX_WEIGHT = 100
+    INIT_MAX_MASS = 100
     INIT_MAX_HEIGHT = 100
+    INIT_MAX_STRENGTH = 2
     GROWTH_RATE = GRASS_ENERGY * 2  # the rate for creature growth (it grow every time it eats)
     INIT_MAX_ENERGY = 2e3  # maybe useful for maturity test before reproduction
     MAX_SPEED = 5.0  # maximum speed of the creature
@@ -77,7 +82,9 @@ class Config:
     # Define eye parameters: (angle_offset in radians, aperture in radians)
     # eyes_params = ((np.radians(30), np.radians(45)),(np.radians(-30), np.radians(45)))
     EYE_CHANNEL = ['grass']  # ['grass', 'leaves', 'water', 'creatures']
-    EYES_PARAMS = [[np.radians(0), np.radians(90)]]  # list of lists - angle_offset, aperture
+    EYES_PARAMS = [
+        [np.radians(0), np.radians(90)]
+    ]  # list of lists - angle_offset, aperture
     VISION_LIMIT = 1000  # maximum distance that the creature can see
     NOISE_STD = 0.5  # gaussian noise for vision - currently not in use
 
@@ -102,7 +109,7 @@ class Config:
 
                             'energy_efficiency': 0,
                             'motion_efficiency': 0,
-                            'food_efficiency': 0,
+                            'digest_dict': {'grass': 0.1, 'leaf': 0.1, 'creature': 0.05},
                             'reproduction_energy': 0,
                             'max_energy': 0,
 

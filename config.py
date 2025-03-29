@@ -25,10 +25,10 @@ np.random.seed = 0
 class Config:
     # Simulation parameters
     DT = 2.0  # time passing from frame to frame (relevant when calculating velocities)
-    NUM_FRAMES = 100  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+    NUM_FRAMES = 200  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
     UPDATE_ANIMATION_INTERVAL = 30  # 30  # update the animation every n steps
     FRAME_INTERVAL = 75  # interval between frames in animation [in ms]
-    STATUS_EVERY_STEP = False  # choose if to update every step or every frame
+    STATUS_EVERY_STEP = True  # choose if to update every step or every frame
     UPDATE_KDTREE_INTERVAL = 30  # update the kdtree every n steps
     DEBUG_MODE = False  # breakpoint in update_func after each frame (not step!)
     STUCK_PERCENTAGE = 0.75  # percentage of MAX_NUM_CREATURES to stuck simulation
@@ -42,7 +42,7 @@ class Config:
     # Environment parameters
     ENV_PATH = r"Penvs\Env8.png"
     BOUNDARY_CONDITION = 'zero'  # what to do with the velocity on the boundaries - 'mirror' or 'zero'
-    MAX_GRASS_NUM = 1000
+    MAX_GRASS_NUM = 60
     GRASS_GENERATION_RATE = 10  # if exceeding MAX_GRASS_NUM replace GRASS_GENERATION_RATE grass points
     GRASS_GROWTH_CHANCE = 0.5  # maybe will be useful to create droughts
     MAX_LEAVES_NUM = 50
@@ -58,7 +58,7 @@ class Config:
     INIT_MAX_ENERGY = 20000  # maybe useful for maturity test before reproduction
     REPRODUCTION_ENERGY = 12000  # energy cost of reproduction
     MIN_LIFE_ENERGY = 3000  # energy to be left after reproduction
-    GRASS_ENERGY = 5000
+    GRASS_ENERGY = 10000
     LEAF_ENERGY = 2000
     INIT_DIGEST_DICT = {'grass': 1, 'leaf': 0.5, 'creature': 0}
 
@@ -66,13 +66,13 @@ class Config:
         assert 0 <= c_digest <= 1, 'Config Error: INIT_DIGEST_DICT is not set correctly (values between 0-1).'
 
     # Creatures parameters
-    NUM_CREATURES = 900  # init size of population
+    NUM_CREATURES = 500  # init size of population
     MAX_NUM_CREATURES = 1250
     INIT_MAX_AGE = 4000  # [steps]
-    INIT_MAX_MASS = 500  # [kg]
-    INIT_MAX_HEIGHT = 100  # [m]
+    INIT_MAX_MASS = 5  # [kg]
+    INIT_MAX_HEIGHT = 0.5  # [m]
     INIT_MAX_STRENGTH = 50  # [N]
-    MAX_SPEED = 5.0  # [m/sec] maximum speed of the creature
+    MAX_SPEED = 2.5  # [m/sec] maximum speed of the creature
 
     # Eyes parameters
     # Define eye parameters: (angle_offset in radians, aperture in radians)
@@ -90,7 +90,7 @@ class Config:
     INPUT_SIZE = 2 + 1 + 3 * len(EYES_PARAMS) * len(EYE_CHANNEL)
     # d_velocity and d_angle
     OUTPUT_SIZE = 2
-    NORM_INPUT = np.array([1, 1, 1, 1])
+    NORM_INPUT = np.array([1, 1, 1])
     for _ in range(len(EYES_PARAMS) * len(EYE_CHANNEL)):
         NORM_INPUT = np.append(NORM_INPUT, [1, VISION_LIMIT, 1])
 

@@ -20,16 +20,15 @@ plt.rcParams['animation.ffmpeg_path'] = project_folder.joinpath(
 
 np.random.seed = 0
 
-
 @dataclasses.dataclass
 class Config:
     # Simulation parameters
     DT = 2.0  # time passing from frame to frame (relevant when calculating velocities)
-    NUM_FRAMES = 100  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
-    UPDATE_ANIMATION_INTERVAL = 30  # update the animation every n steps
+    NUM_FRAMES = 30  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+    UPDATE_ANIMATION_INTERVAL = 40  # update the animation every n steps
     FRAME_INTERVAL = 75  # interval between frames in animation [in ms]
     STATUS_EVERY_STEP = True  # choose if to update every step or every frame
-    UPDATE_KDTREE_INTERVAL = 90  # update the kdtree every n steps
+    UPDATE_KDTREE_INTERVAL = 120  # update the kdtree every n steps
     DEBUG_MODE = False
     STUCK_PERCENTAGE = 0.75  # percentage of MAX_NUM_CREATURES to stuck simulation
 
@@ -41,7 +40,7 @@ class Config:
     # Environment parameters
     ENV_PATH = r"Penvs\Env8.png"
     BOUNDARY_CONDITION = 'zero'  # what to do with the velocity on the boundaries - 'mirror' or 'zero'
-    MAX_GRASS_NUM = 125
+    MAX_GRASS_NUM = 60
     GRASS_GENERATION_RATE = 2  # 5
     GRASS_GROWTH_CHANCE = 0.5  # maybe will be useful to create droughts
     MAX_LEAVES_NUM = 50
@@ -54,7 +53,7 @@ class Config:
     LEAF_HEIGHT = 10
 
     # Energy parameters
-    GRASS_ENERGY = 200
+    GRASS_ENERGY = 100
     LEAF_ENERGY = 100
     IDLE_ENERGY = 0.1  # idle energy
     MOTION_ENERGY = 0.01  # speed * speed_efficiency
@@ -63,7 +62,7 @@ class Config:
     MIN_LIFE_ENERGY = 200  # energy to be left after reproduction
 
     # Creatures parameters
-    NUM_CREATURES = 900  # init size of population
+    NUM_CREATURES = 800  # init size of population
     MAX_NUM_CREATURES = 1250
     # creature parameters
     INIT_MAX_AGE = 4000
@@ -71,7 +70,7 @@ class Config:
     INIT_MAX_HEIGHT = 100
     GROWTH_RATE = GRASS_ENERGY * 2  # the rate for creature growth (it grow every time it eats)
     INIT_MAX_ENERGY = 2e3  # maybe useful for maturity test before reproduction
-    MAX_SPEED = 5.0  # maximum speed of the creature
+    MAX_SPEED = 2.5  # maximum speed of the creature
 
     # Eyes parameters
     # Define eye parameters: (angle_offset in radians, aperture in radians)
@@ -82,13 +81,14 @@ class Config:
     NOISE_STD = 0.5  # gaussian noise for vision - currently not in use
 
     # Brain parameters
-    # 2 for hunger and thirst, 2 for speed, 3 (flag, distance, angle) for each eye * 4 channels
-    INPUT_SIZE = 2 + 2 + 3 * len(EYES_PARAMS) * len(EYE_CHANNEL)
+    BRAIN_TYPE = 'graphic_brain'  # 'fully_connected_brain' or 'graphic_brain'
+    # 2 for hunger and thirst, 1 for speed, 3 (flag, distance, angle) for each eye * X channels
+    INPUT_SIZE = 2 + 1 + 3 * len(EYES_PARAMS) * len(EYE_CHANNEL)
     # d_velocity and d_angle
     OUTPUT_SIZE = 2
     MAX_D_SPEED = 0.5  # maximum change in speed per frame
     MAX_D_ANGLE = np.radians(2)  # maximum change in angle per frame
-    NORM_INPUT = np.array([1, 1, 1, 1])
+    NORM_INPUT = np.array([1, 1, 1])
     for _ in range(len(EYES_PARAMS) * len(EYE_CHANNEL)):
         NORM_INPUT = np.append(NORM_INPUT, [1, VISION_LIMIT, 1])
 
@@ -116,18 +116,25 @@ class Config:
                             # 'hunger': 3,
                             # 'thirst': 3
                             }
-    MUTATION_BRAIN = {'layer_addition': 0.1,
+    MUTATION_FC_BRAIN = {'layer_addition': 0.1,
                       'modify_weights': 0.2,
                       'modify_layer': 0.2,
                       'modify_activation': 0.1}
-    MUTATION_GRAPH_BRAIN = {'add_node': 0.7,
+    MUTATION_GRAPH_BRAIN = {'add_node': 0.1,
                             'remove_node': 0.1,
-                            'modify_edges': 0.7,
-                            'modify_edges_percentage': 0.5,
-                            'add_edge': 0.2,
+                            'modify_edges': 0.7,  # chance to perform a change to the weights
+                            'modify_edges_percentage': 0.5,  # percentage of edges to change
+                            'add_edge': 0.3,
                             'remove_edge': 0.1,
                             'change_activation': 0.1,
-                            'forget_magnitude': 10}
+                            'forget_magnitude': 10,
+                            'add_loop': 0.2,
+                            'break_edge': 1
+                            }
+    if BRAIN_TYPE == 'fully_connected_brain':  # 'fully_connected_brain' or 'graphic_brain'
+        MUTATION_BRAIN = MUTATION_FC_BRAIN
+    elif BRAIN_TYPE == 'graphic_brain':
+        MUTATION_BRAIN = MUTATION_GRAPH_BRAIN
 
     # Filepaths
     now = datetime.now()
@@ -136,6 +143,6 @@ class Config:
     OUTPUT_FOLDER.mkdir(exist_ok=True, parents=True)
 
     hour_str = now.strftime('%H-%M-%S')  # change this to a different string to create a new output file
-    ANIMATION_FILEPATH = OUTPUT_FOLDER.joinpath(f"simulation_{date_str}T{hour_str}.mp4")
-    SPECIFIC_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"specific_fig_{date_str}T{hour_str}.png")
-    STATISTICS_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"statistics_fig_{date_str}T{hour_str}.png")
+    ANIMATION_FILEPATH = OUTPUT_FOLDER.joinpath(f"simulation_{date_str}_T_{hour_str}.mp4")
+    SPECIFIC_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"specific_fig_{date_str}_T_{hour_str}.png")
+    STATISTICS_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"statistics_fig_{date_str}_T_{hour_str}.png")

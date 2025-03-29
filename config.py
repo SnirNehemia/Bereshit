@@ -85,8 +85,10 @@ class Config:
     NOISE_STD = 0.5  # gaussian noise for vision - currently not in use
 
     # Brain parameters
-    # 2 for hunger and thirst, 2 for speed, 3 (flag, distance, angle) for each eye for each channel
-    INPUT_SIZE = 2 + 2 + 3 * len(EYES_PARAMS) * len(EYE_CHANNEL)
+    BRAIN_TYPE = 'graphic_brain'  # 'fully_connected_brain' or 'graphic_brain'
+    # 2 for hunger and thirst, 1 for speed, 3 (flag, distance, angle) for each eye * X channels
+    INPUT_SIZE = 2 + 1 + 3 * len(EYES_PARAMS) * len(EYE_CHANNEL)
+    # d_velocity and d_angle
     OUTPUT_SIZE = 2
     NORM_INPUT = np.array([1, 1, 1, 1])
     for _ in range(len(EYES_PARAMS) * len(EYE_CHANNEL)):
@@ -110,10 +112,25 @@ class Config:
         'eyes_params': np.radians(5),  # +-degrees for each eye for angle and width
         'vision_limit': 4,
     }
-    MUTATION_BRAIN = {'layer_addition': 0.1,
+    MUTATION_FC_BRAIN = {'layer_addition': 0.1,
                       'modify_weights': 0.2,
                       'modify_layer': 0.2,
                       'modify_activation': 0.1}
+    MUTATION_GRAPH_BRAIN = {'add_node': 0.1,
+                            'remove_node': 0.1,
+                            'modify_edges': 0.7,  # chance to perform a change to the weights
+                            'modify_edges_percentage': 0.5,  # percentage of edges to change
+                            'add_edge': 0.3,
+                            'remove_edge': 0.1,
+                            'change_activation': 0.1,
+                            'forget_magnitude': 10,
+                            'add_loop': 0.2,
+                            'break_edge': 1
+                            }
+    if BRAIN_TYPE == 'fully_connected_brain':  # 'fully_connected_brain' or 'graphic_brain'
+        MUTATION_BRAIN = MUTATION_FC_BRAIN
+    elif BRAIN_TYPE == 'graphic_brain':
+        MUTATION_BRAIN = MUTATION_GRAPH_BRAIN
 
     # Filepaths
     now = datetime.now()
@@ -122,7 +139,7 @@ class Config:
     OUTPUT_FOLDER.mkdir(exist_ok=True, parents=True)
 
     hour_str = now.strftime('%H-%M-%S')  # change this to a different string to create a new output file
-    ANIMATION_FILEPATH = OUTPUT_FOLDER.joinpath(f"{date_str}T{hour_str}_simulation.mp4")
-    SPECIFIC_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"{date_str}T{hour_str}_specific_fig.png")
-    STATISTICS_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"{date_str}T{hour_str}_statistics_fig.png")
-    ENV_FIG_FILE_PATH = OUTPUT_FOLDER.joinpath(f"{date_str}T{hour_str}_env_fig.png")
+    ANIMATION_FILEPATH = OUTPUT_FOLDER.joinpath(f"{date_str}_T_{hour_str}_simulation.mp4")
+    SPECIFIC_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"{date_str}_T_{hour_str}_specific_fig.png")
+    STATISTICS_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"{date_str}_T_{hour_str}_statistics_fig.png")
+    ENV_FIG_FILE_PATH = OUTPUT_FOLDER.joinpath(f"{date_str}_T_{hour_str}_env_fig.png")

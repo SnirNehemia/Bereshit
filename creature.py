@@ -3,10 +3,12 @@ import copy
 import numpy as np
 
 from static_traits import StaticTraits
-from brain import Brain
 from config import Config as config
 from physical_model import PhysicalModel as physical_model
 
+import importlib
+brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
+Brain = getattr(brain_module, 'Brain')
 
 class Creature(StaticTraits):
     """

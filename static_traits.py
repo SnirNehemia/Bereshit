@@ -1,6 +1,10 @@
 import numpy as np
-from brain import Brain
+from brain_models.fully_connected_brain import Brain
+from config import Config as config
 
+import importlib
+brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
+Brain = getattr(brain_module, 'Brain')
 
 class StaticTraits:
     """

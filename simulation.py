@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.spatial import KDTree
 
-from brain import Brain
+# from brain_models.fully_connected_brain import Brain
 from creature import Creature
 from environment import Environment
 from tqdm import tqdm
@@ -13,6 +13,9 @@ from matplotlib.patches import Circle
 import matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes, zoomed_inset_axes, mark_inset
 
+import importlib
+brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
+Brain = getattr(brain_module, 'Brain')
 
 class Simulation:
     """
@@ -182,13 +185,11 @@ class Simulation:
             seek_results = self.seek(creature=creature, noise_std=noise_std)
             eyes_inputs = [self.prepare_eye_input(seek_results, creature.vision_limit) for seek_results in
                            seek_results.values()]
-            brain_input = np.concatenate([
-                np.array([creature.hunger, creature.thirst]),
-                creature.velocity,
-                np.concatenate(eyes_inputs)
-            ])
-
-            # use brain to get relative propulsion force and move creature based on it
+            brain_input = []
+            brain_input.append(np.array([creature.hunger, creature.thirst]))
+            brain_input.append(creature.speed)
+            brain_input.append(np.concatenate(eyes_inputs))
+            brain_input = np.hstack(brain_input)
             decision = creature.think(brain_input)
             creature.move(decision=decision, dt=dt)
         except Exception as e:
@@ -206,6 +207,7 @@ class Simulation:
                 elif config.BOUNDARY_CONDITION == 'mirror':
                     creature.velocity = -creature.velocity
         except Exception as e:
+            print(f'exceptiom in use_brain for creature: {creature.creature_id}\n{e}')
             print(f'Error in Simulation (use_brain, collision detection) for creature: {creature.creature_id}:\n{e}')
             breakpoint()
 
@@ -529,9 +531,11 @@ class Simulation:
                 update_num = config.NUM_FRAMES
 
             progress_bar = tqdm(total=update_num, desc=f"Alive: {len(self.creatures)} | "
-                                                       f"Children: {self.children_num} | "
-                                                       f"Dead: {len(self.dead_creatures)} | "
-                                                       f"Progress:")
+                                             f"Children: {self.children_num} | "
+                                             f"Dead: {len(self.dead_creatures)} | "
+                                             f"leaves: {len(self.env.leaf_points)} | "
+                                             f"grass: {len(self.env.grass_points)} | "
+                                             f"Progress")
 
         def init_func():
             """
@@ -586,9 +590,11 @@ class Simulation:
                 # Update the progress bar every step
                 if config.STATUS_EVERY_STEP:
                     progress_bar.set_description(f"Alive: {len(self.creatures)} | "
-                                                 f"Children: {self.children_num} | "
-                                                 f"Dead: {len(self.dead_creatures)} | "
-                                                 f"Progress")
+                                             f"Children: {self.children_num} | "
+                                             f"Dead: {len(self.dead_creatures)} | "
+                                             f"leaves: {len(self.env.leaf_points)} | "
+                                             f"grass: {len(self.env.grass_points)} | "
+                                             f"Progress")
                     progress_bar.update(1)  # or self.animation_update_interval outside the for loop
 
             # update the progress bar every frame
@@ -596,6 +602,8 @@ class Simulation:
                 progress_bar.set_description(f"Alive: {len(self.creatures)} | "
                                              f"Children: {self.children_num} | "
                                              f"Dead: {len(self.dead_creatures)} | "
+                                             f"leaves: {len(self.env.leaf_points)} | "
+                                             f"grass: {len(self.env.grass_points)} | "
                                              f"Progress")
                 progress_bar.update(1)  # or self.animation_update_interval outside the for loop
 
@@ -722,8 +730,8 @@ class Simulation:
             init_fig()
             self.update_statistics_logs(child_ids=[], dead_ids=[], step=-1)
             ani = animation.FuncAnimation(fig=fig, func=update_func, init_func=init_func, blit=True,
-                                          frames=config.NUM_FRAMES, interval=config.FRAME_INTERVAL)
-            # print('Simulation completed successfully. saving progress...')
+                                      frames=config.NUM_FRAMES, interval=config.FRAME_INTERVAL)
+            print('\nSimulation completed successfully. saving progress...')
 
         except KeyboardInterrupt:
             print('Simulation interrupted. saving progress...')

@@ -55,8 +55,8 @@ class Config:
     FOOD_SIZE = FOOD_DISTANCE_THRESHOLD / 2  # for display
 
     # Energy parameters
-    INIT_MAX_ENERGY = 1e4  # maybe useful for maturity test before reproduction
-    REPRODUCTION_ENERGY = 2000  # energy cost of reproduction
+    INIT_MAX_ENERGY = 20000  # maybe useful for maturity test before reproduction
+    REPRODUCTION_ENERGY = 12000  # energy cost of reproduction
     MIN_LIFE_ENERGY = 3000  # energy to be left after reproduction
     GRASS_ENERGY = 5000
     LEAF_ENERGY = 2000

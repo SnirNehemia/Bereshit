@@ -5,9 +5,6 @@ import numpy as np
 
 @dataclasses.dataclass
 class PhysicalModel:
-    # inertia mock-up (to limit angle turn)
-    inertia_limiting_factor: float = 1  # [radians]*[mass]
-
     # gravity force
     g: float = 10  # [m/sec^2]
 

@@ -57,7 +57,7 @@ class Creature(StaticTraits):
         self.height = np.random.uniform(low=0.01, high=0.1) * self.max_height
         self.strength = np.random.uniform(low=0.01, high=0.1) * self.max_strength
 
-        self.energy = np.random.uniform(low=0.2, high=0.4) * self.max_energy
+        self.energy = np.random.uniform(low=0.6, high=0.8) * self.max_energy
         self.velocity = (np.random.rand(2) - 0.5) * self.max_speed
         self.max_speed_exp = np.linalg.norm(self.velocity)
         self.calc_speed()
@@ -151,20 +151,16 @@ class Creature(StaticTraits):
         # constrain propulsion force based on strength
         propulsion_force_mag, relative_propulsion_force_angle = decision
         propulsion_force_mag = np.clip(propulsion_force_mag, 0, self.strength)
-        c_inertia = physical_model.inertia_limiting_factor
-        max_turn_angle = c_inertia / self.mass
-        relative_propulsion_force_angle = np.clip(
-            relative_propulsion_force_angle, max_turn_angle, max_turn_angle)
 
         # transform relative propulsion_force to global cartesian coordinates (x,y)
         current_direction = self.get_heading()
         cos_angle = np.cos(relative_propulsion_force_angle)
         sin_angle = np.sin(relative_propulsion_force_angle)
-        new_direction = np.array([
+        global_propulsion_force_direction = np.array([
             current_direction[0] * cos_angle - current_direction[1] * sin_angle,
             current_direction[0] * sin_angle + current_direction[1] * cos_angle
         ])
-        global_propulsion_force = new_direction * propulsion_force_mag
+        global_propulsion_force = global_propulsion_force_direction * propulsion_force_mag
 
         # gravity and normal force (right now used only for friction and not in equation of motion because 2D movement)
         gravity_force = self.mass * physical_model.g
@@ -178,7 +174,7 @@ class Creature(StaticTraits):
         mu_kinetic = physical_model.mu_kinetic
         alpha_mu = physical_model.alpha_mu
         mu_total = mu_kinetic + (mu_static - mu_kinetic) * np.exp(-alpha_mu * self.speed)
-        kinetic_friction_force = - mu_total * np.linalg.norm(normal_force) * new_direction
+        kinetic_friction_force = - mu_total * np.linalg.norm(normal_force) * global_propulsion_force_direction
 
         # reaction friction force used for movement:
         # when propulsion force is within the static friction force limit
@@ -189,7 +185,7 @@ class Creature(StaticTraits):
             reaction_friction_force = kinetic_friction_force
 
         # drag force (air resistence)
-        linear_drag_force = -physical_model.gamma * self.velocity
+        linear_drag_force = - physical_model.gamma * self.velocity
         quadratic_drag_force = - physical_model.c_drag * self.speed ** 2 * current_direction
         drag_force = linear_drag_force + quadratic_drag_force
 
@@ -222,9 +218,8 @@ class Creature(StaticTraits):
     def calc_inner_energy(self):
         c_d = physical_model.energy_conversion_factors['digest']
         c_h = physical_model.energy_conversion_factors['height']
-        c_m = physical_model.energy_conversion_factors['mass']
         rest_energy = physical_model.energy_conversion_factors['rest'] * self.mass ** 0.75  # called BMR energy
-        inner_energy = rest_energy + c_d * np.sum(list(self.digest_dict.values())) + c_h * self.height + c_m * self.mass
+        inner_energy = rest_energy + c_d * np.sum(list(self.digest_dict.values())) + c_h * self.height
         return inner_energy
 
     @staticmethod

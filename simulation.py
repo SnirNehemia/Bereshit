@@ -560,6 +560,15 @@ class Simulation:
 
             # abort simulation if no creatures left or there are too many creatures
             if self.abort_simulation:
+                from matplotlib import use
+
+                use('TkAgg')
+                for stat_attribute in self.stat_attributes:
+                    statistics_fig = self.plot_statistics_graph(stat_attribute=stat_attribute)
+                    statistics_fig.show()
+
+                breakpoint()
+
                 ax_env.set_title(f"Evolution Simulation ({frame=}, step={self.step_counter})")
                 progress_bar.update(self.animation_update_interval)
                 self.step_counter += self.animation_update_interval

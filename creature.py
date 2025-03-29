@@ -44,6 +44,7 @@ class Creature(StaticTraits):
         self.log_eat = None
         self.log_reproduce = None
         self.log_energy = None
+        self.log_speed = None
         self.init_state()
 
     def init_state(self):
@@ -52,21 +53,22 @@ class Creature(StaticTraits):
         """
         # dynamic traits
         self.age = 0
-        self.mass = np.random.uniform(low=self.max_mass * 0.01, high=self.max_mass * 0.1)
-        self.height = np.random.uniform(low=self.max_height * 0.01, high=self.max_height * 0.1)
-        self.strength = np.random.uniform(low=self.max_strength * 0.01, high=self.max_strength * 0.1)
+        self.mass = np.random.uniform(low=0.01, high=0.1) * self.max_mass
+        self.height = np.random.uniform(low=0.01, high=0.1) * self.max_height
+        self.strength = np.random.uniform(low=0.01, high=0.1) * self.max_strength
 
+        self.energy = np.random.uniform(low=0.2, high=0.4) * self.max_energy
         self.velocity = (np.random.rand(2) - 0.5) * self.max_speed
         self.max_speed_exp = np.linalg.norm(self.velocity)
         self.calc_speed()
-        self.energy = int(self.reproduction_energy * 0.95)
 
         self.hunger = 100
         self.thirst = 100
 
-        self.log_energy = []
         self.log_eat = []
         self.log_reproduce = []
+        self.log_energy = []
+        self.log_speed = []
 
     def get_heading(self):
         """
@@ -131,7 +133,7 @@ class Creature(StaticTraits):
                             self.eyes_params[eye_idx][j] += mutation_factor
                 # mutate digest dict
                 elif trait_key == 'digest_dict':
-                    max_mutation_factor = np.array(max_mutation_factors[trait_key].values())
+                    max_mutation_factor = np.array(list(max_mutation_factors[trait_key].values()))
                     mutation_factor = np.random.uniform(-max_mutation_factor, max_mutation_factor)
                     for i, food_type in enumerate(self.digest_dict.keys()):
                         self.digest_dict[food_type] += mutation_factor[i]
@@ -144,15 +146,13 @@ class Creature(StaticTraits):
         # clip relevant traits
         self.color = np.clip(self.color, 0, 1)
 
-    def move(self, decision: np.array([float])):
-
-        dt = config.DT
-        propulsion_force_mag, relative_propulsion_force_angle = decision
+    def move(self, decision: np.array([float]), dt: float = config.DT):
 
         # constrain propulsion force based on strength
+        propulsion_force_mag, relative_propulsion_force_angle = decision
         propulsion_force_mag = np.clip(propulsion_force_mag, 0, self.strength)
-        c_intertia = physical_model.intertia_limiting_factor
-        max_turn_angle = c_intertia / self.mass
+        c_inertia = physical_model.inertia_limiting_factor
+        max_turn_angle = c_inertia / self.mass
         relative_propulsion_force_angle = np.clip(
             relative_propulsion_force_angle, max_turn_angle, max_turn_angle)
 
@@ -172,27 +172,21 @@ class Creature(StaticTraits):
 
         # static friction force
         mu_static = physical_model.mu_static
-        static_friction_force = mu_static * np.linalg.norm(normal_force)
+        static_friction_force_mag = mu_static * np.linalg.norm(normal_force)
 
         # kinetic friction force
         mu_kinetic = physical_model.mu_kinetic
         alpha_mu = physical_model.alpha_mu
         mu_total = mu_kinetic + (mu_static - mu_kinetic) * np.exp(-alpha_mu * self.speed)
-        kinetic_friction_force = - mu_total * normal_force
+        kinetic_friction_force = - mu_total * np.linalg.norm(normal_force) * new_direction
 
-        # friction force used for movement:
-        # when no propulsion force is applied
-        if np.linalg.norm(global_propulsion_force) == 0:
-            required_friction = self.mass * self.velocity / dt
-            if np.linalg.norm(required_friction) <= static_friction_force:
-                friction_force = - required_friction
-            else:
-                friction_force = kinetic_friction_force
-        # when propulsion force is in limits of static friction force
-        elif np.linalg.norm(global_propulsion_force) <= static_friction_force:
-            friction_force = - global_propulsion_force
+        # reaction friction force used for movement:
+        # when propulsion force is within the static friction force limit
+        # there is reaction force opposite to propulsion force else kinetic friction opposite to propulsion force
+        if np.linalg.norm(global_propulsion_force) <= static_friction_force_mag:
+            reaction_friction_force = - global_propulsion_force
         else:
-            friction_force = kinetic_friction_force
+            reaction_friction_force = kinetic_friction_force
 
         # drag force (air resistence)
         linear_drag_force = -physical_model.gamma * self.velocity
@@ -200,7 +194,7 @@ class Creature(StaticTraits):
         drag_force = linear_drag_force + quadratic_drag_force
 
         # calc new velocity and position
-        acceleration = (friction_force + drag_force) / self.mass
+        acceleration = (reaction_friction_force + drag_force) / self.mass
         new_velocity = self.velocity + acceleration * dt
         new_position = self.position + new_velocity * dt
 
@@ -356,6 +350,7 @@ if __name__ == '__main__':
 
     import matplotlib.pyplot as plt
     from matplotlib import use
+
     use('TkAgg')
 
     vx, vy = np.zeros_like(velocities), np.zeros_like(velocities)

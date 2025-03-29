@@ -6,7 +6,7 @@ import numpy as np
 @dataclasses.dataclass
 class PhysicalModel:
     # inertia mock-up (to limit angle turn)
-    intertia_limiting_factor: float = 1  # [radians]*[mass]
+    inertia_limiting_factor: float = 1  # [radians]*[mass]
 
     # gravity force
     g: float = 10  # [m/sec^2]
@@ -16,15 +16,15 @@ class PhysicalModel:
     c_drag: float = 0.1  # [F]/[v^2] quadratic drag air resistence (dominant in high speeds)
 
     # friction force
-    mu_static: float = 0.2  # [no units]
-    mu_kinetic: float = 0.1  # [no units]
+    mu_static: float = 0.5  # [no units]  # higher mu_static means faster movement
+    mu_kinetic: float = 0.3  # [no units]
     alpha_mu: float = 1  # [no units]
     assert mu_static > mu_kinetic, f'Physical model error: {mu_static=} must be larger than {mu_kinetic=}'
 
     # convert physical parameters to energy
     energy_conversion_factors = {
-        'activity_efficiency': 0.25,  # propulsion force to energy factor (higher -> efficient)
-        'heat_loss': 0.2,  # propulsion force to wasted energy (higher -> more loss)
+        'activity_efficiency': 0.4,  #0.25,  # propulsion force to energy factor (higher -> efficient)
+        'heat_loss': 0.1,  # propulsion force to wasted energy (higher -> more loss)
         'rest': 0.2,  # constant for Basal Metabolic Rate (BMR) energy
         'digest': 0.3,  # [E]/[no units] convert digest factor to digest energy
         'height': 5,  # [E]/[h]  # convert height to height energy

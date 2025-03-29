@@ -25,15 +25,16 @@ np.random.seed = 0
 class Config:
     # Simulation parameters
     DT = 2.0  # time passing from frame to frame (relevant when calculating velocities)
-    NUM_FRAMES = 100  # the actual number of steps will be NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
-    UPDATE_ANIMATION_INTERVAL = 30  # update the animation every n steps
+    NUM_FRAMES = 100  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+    UPDATE_ANIMATION_INTERVAL = 30  # 30  # update the animation every n steps
     FRAME_INTERVAL = 75  # interval between frames in animation [in ms]
-    STATUS_EVERY_STEP = True  # choose if to update every step or every frame
-    UPDATE_KDTREE_INTERVAL = 90  # update the kdtree every n steps
-    DEBUG_MODE = False
+    STATUS_EVERY_STEP = False  # choose if to update every step or every frame
+    UPDATE_KDTREE_INTERVAL = 30  # update the kdtree every n steps
+    DEBUG_MODE = False  # breakpoint in update_func after each frame (not step!)
     STUCK_PERCENTAGE = 0.75  # percentage of MAX_NUM_CREATURES to stuck simulation
 
     # Purge parameters
+    DO_PURGE = False
     PURGE_PERCENTAGE = 0.1  # percentage out of MAX_NUM_CREATURES to do purge
     PURGE_SPEED_THRESHOLD = 1  # if the creature's speed is below this threshold at first reproduction, it will be removed
     PURGE_FRAME_FREQUENCY = 50  # do purge every PURGE_FRAME_FREQUENCY frames
@@ -41,81 +42,74 @@ class Config:
     # Environment parameters
     ENV_PATH = r"Penvs\Env8.png"
     BOUNDARY_CONDITION = 'zero'  # what to do with the velocity on the boundaries - 'mirror' or 'zero'
-    MAX_GRASS_NUM = 125
-    GRASS_GENERATION_RATE = 2  # 5
+    MAX_GRASS_NUM = 1000
+    GRASS_GENERATION_RATE = 10  # if exceeding MAX_GRASS_NUM replace GRASS_GENERATION_RATE grass points
     GRASS_GROWTH_CHANCE = 0.5  # maybe will be useful to create droughts
     MAX_LEAVES_NUM = 50
-    LEAVES_GENERATION_RATE = 0  # 3
+    LEAVES_GENERATION_RATE = 0  # if exceeding MAX_LEAVES_NUM replace LEAVES_GENERATION_RATE grass points
     LEAVES_GROWTH_CHANCE = 0.5  # maybe will be useful to create droughts
 
     # Food parameters
-    FOOD_DISTANCE_THRESHOLD = 75
-    FOOD_SIZE = FOOD_DISTANCE_THRESHOLD / 2  # 3.14*(FOOD_DISTANCE_THRESHOLD/2)**2 for display
     LEAF_HEIGHT = 10
+    FOOD_DISTANCE_THRESHOLD = 75
+    FOOD_SIZE = FOOD_DISTANCE_THRESHOLD / 2  # for display
 
     # Energy parameters
-    GRASS_ENERGY = 200
-    LEAF_ENERGY = 100
-    IDLE_ENERGY = 0.1  # idle energy
-    MOTION_ENERGY = 0.01  # speed * speed_efficiency
-    DIGEST_EFFICIENCY = 1  # energy from food * food_efficiency
-    REPRODUCTION_ENERGY = 700  # energy cost of reproduction
-    MIN_LIFE_ENERGY = 200  # energy to be left after reproduction
+    INIT_MAX_ENERGY = 20000  # maybe useful for maturity test before reproduction
+    REPRODUCTION_ENERGY = 12000  # energy cost of reproduction
+    MIN_LIFE_ENERGY = 3000  # energy to be left after reproduction
+    GRASS_ENERGY = 5000
+    LEAF_ENERGY = 2000
+    INIT_DIGEST_DICT = {'grass': 1, 'leaf': 0.5, 'creature': 0}
+
+    for c_digest in INIT_DIGEST_DICT.values():
+        assert 0 <= c_digest <= 1, 'Config Error: INIT_DIGEST_DICT is not set correctly (values between 0-1).'
 
     # Creatures parameters
     NUM_CREATURES = 900  # init size of population
     MAX_NUM_CREATURES = 1250
-    # creature parameters
-    INIT_MAX_AGE = 4000
-    INIT_MAX_WEIGHT = 100
-    INIT_MAX_HEIGHT = 100
-    GROWTH_RATE = GRASS_ENERGY * 2  # the rate for creature growth (it grow every time it eats)
-    INIT_MAX_ENERGY = 2e3  # maybe useful for maturity test before reproduction
-    MAX_SPEED = 5.0  # maximum speed of the creature
+    INIT_MAX_AGE = 4000  # [steps]
+    INIT_MAX_MASS = 500  # [kg]
+    INIT_MAX_HEIGHT = 100  # [m]
+    INIT_MAX_STRENGTH = 50  # [N]
+    MAX_SPEED = 5.0  # [m/sec] maximum speed of the creature
 
     # Eyes parameters
     # Define eye parameters: (angle_offset in radians, aperture in radians)
     # eyes_params = ((np.radians(30), np.radians(45)),(np.radians(-30), np.radians(45)))
     EYE_CHANNEL = ['grass']  # ['grass', 'leaves', 'water', 'creatures']
-    EYES_PARAMS = [[np.radians(0), np.radians(90)]]  # list of lists - angle_offset, aperture
+    EYES_PARAMS = [
+        [np.radians(0), np.radians(90)]
+    ]  # list of lists - angle_offset, aperture
     VISION_LIMIT = 1000  # maximum distance that the creature can see
     NOISE_STD = 0.5  # gaussian noise for vision - currently not in use
 
     # Brain parameters
-    # 2 for hunger and thirst, 2 for speed, 3 (flag, distance, angle) for each eye * 4 channels
+    # 2 for hunger and thirst, 2 for speed, 3 (flag, distance, angle) for each eye for each channel
     INPUT_SIZE = 2 + 2 + 3 * len(EYES_PARAMS) * len(EYE_CHANNEL)
-    # d_velocity and d_angle
     OUTPUT_SIZE = 2
-    MAX_D_SPEED = 0.5  # maximum change in speed per frame
-    MAX_D_ANGLE = np.radians(2)  # maximum change in angle per frame
     NORM_INPUT = np.array([1, 1, 1, 1])
     for _ in range(len(EYES_PARAMS) * len(EYE_CHANNEL)):
         NORM_INPUT = np.append(NORM_INPUT, [1, VISION_LIMIT, 1])
 
     # Mutations
     MUTATION_CHANCE = 0.3  # number between 0-1 indicating chance of trait to be mutated
-    MAX_MUTATION_FACTORS = {'max_age': 2,
-                            'max_weight': 1,
-                            'max_height': 1,
-                            'max_speed': 0.1,
-                            'color': np.array([0.01, 0.01, 0.01]),  # +-in each RGB color
+    MAX_MUTATION_FACTORS = {
+        'color': np.array([0.01, 0.01, 0.01]),  # +-in each RGB color
 
-                            'energy_efficiency': 0,
-                            'motion_efficiency': 0,
-                            'food_efficiency': 0,
-                            'reproduction_energy': 0,
-                            'max_energy': 0,
+        'max_age': 2,
+        'max_mass': 1,
+        'max_height': 1,
+        'max_strength': 2,
+        'max_speed': 0.1,
+        'max_energy': 0,
 
-                            'eyes_params': np.radians(5),  # +-degrees for each eye for angle and width
-                            'vision_limit': 4,
-                            'weight': 3,
-                            'height': 3
-                            # 'position': np.array([5, 5]),
-                            # 'velocity': np.array([2, 2]),
-                            # 'energy': 3,
-                            # 'hunger': 3,
-                            # 'thirst': 3
-                            }
+        'digest_dict': {'grass': 0.1, 'leaf': 0.1, 'creature': 0.05},
+        'reproduction_energy': 0,
+
+        'eyes_params': np.radians(5),  # +-degrees for each eye for angle and width
+        'vision_limit': 4,
+    }
     MUTATION_BRAIN = {'layer_addition': 0.1,
                       'modify_weights': 0.2,
                       'modify_layer': 0.2,
@@ -128,6 +122,7 @@ class Config:
     OUTPUT_FOLDER.mkdir(exist_ok=True, parents=True)
 
     hour_str = now.strftime('%H-%M-%S')  # change this to a different string to create a new output file
-    ANIMATION_FILEPATH = OUTPUT_FOLDER.joinpath(f"simulation_{date_str}T{hour_str}.mp4")
-    SPECIFIC_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"specific_fig_{date_str}T{hour_str}.png")
-    STATISTICS_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"statistics_fig_{date_str}T{hour_str}.png")
+    ANIMATION_FILEPATH = OUTPUT_FOLDER.joinpath(f"{date_str}T{hour_str}_simulation.mp4")
+    SPECIFIC_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"{date_str}T{hour_str}_specific_fig.png")
+    STATISTICS_FIG_FILEPATH = OUTPUT_FOLDER.joinpath(f"{date_str}T{hour_str}_statistics_fig.png")
+    ENV_FIG_FILE_PATH = OUTPUT_FOLDER.joinpath(f"{date_str}T{hour_str}_env_fig.png")

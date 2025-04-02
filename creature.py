@@ -59,7 +59,7 @@ class Creature(StaticTraits):
         self.height = np.random.uniform(low=0.01, high=0.1) * self.max_height
         self.strength = np.random.uniform(low=0.01, high=0.1) * self.max_strength
 
-        self.energy = np.random.uniform(low=0.6, high=0.8) * (config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY) # TODO: patch for runability | was self.max_energy
+        self.energy = 0.95 * (config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY) # TODO: patch for runability | was self.max_energy
         self.velocity = (np.random.rand(2) - 0.5) * self.max_speed
         self.max_speed_exp = np.linalg.norm(self.velocity)
         self.calc_speed()
@@ -241,7 +241,7 @@ class Creature(StaticTraits):
         new_trait = old_trait + trait_energy / c_trait
         return new_trait, trait_energy
 
-    def eat(self, food_type, food_energy):
+    def eat(self, food_type, food_energy, rebalance=config.REBALANCE):
         gained_energy = self.digest_dict[food_type] * food_energy
         self.height, height_energy = self.convert_gained_energy_to_trait(
             trait_type='height',
@@ -258,9 +258,13 @@ class Creature(StaticTraits):
         )
 
         excess_energy = gained_energy - height_energy - mass_energy
+        if rebalance:
+            self.gained_energy = gained_energy
+            self.height_energy = height_energy
+            self.mass_energy = mass_energy
         self.energy += excess_energy
 
-    def plot_live_status(self, ax, debug=False):
+    def plot_live_status(self, ax, debug=False, plot_horizontal=True):
         """
         Plots the agent's status (energy, hunger, thirst) on the given axes.
         """
@@ -269,20 +273,32 @@ class Creature(StaticTraits):
             plt.ion()
             fig, ax = plt.subplots(1, 1)
         # Define attributes dynamically
-        ls = ['energy', 'hunger', 'thirst', 'age']
-        colors = ['green', 'red', 'blue', 'grey']
+        ls = ['energy', 'age']  # , 'hunger', 'thirst'
+        colors = ['green', 'grey']  # , 'red', 'blue'
         values = [getattr(self, attr) for attr in ls]  # Dynamically get values
         ax.clear()
-        ax.set_title(f'Agent # {self.creature_id} Status | ancestors = {self.ancestors}')
-        ax.barh(ls, values, color=colors)
-        # ax.barh(['Energy', 'Hunger', 'Thirst'], [self.energy, self.hunger, self.thirst], color=['green', 'red', 'blue'])
-        ax.set_xlim(0, max(config.REPRODUCTION_ENERGY, self.max_age))
-        # ax.set_xticks([0,self.max_energy/2, self.max_energy])
-        ax.set_yticks(ls)
-        if 'energy' in ls:
-            ax.scatter([config.REPRODUCTION_ENERGY], ['energy'], color='black', s=20)
-        if 'age' in ls:
-            ax.scatter([self.max_age], ['age'], color='black', s=20)
+        ax.set_title(f'Agent # {self.creature_id} Status | ancestors num = len({self.ancestors})')
+        if plot_horizontal:
+            ax.barh(ls, values, color=colors)
+            if 'energy' in ls:
+                ax.scatter([config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY], ['energy'], color='black', s=20)
+            if 'age' in ls:
+                ax.scatter([self.max_age], ['age'], color='black', s=20)
+                # ax.barh(['Energy', 'Hunger', 'Thirst'], [self.energy, self.hunger, self.thirst], color=['green', 'red', 'blue'])
+                ax.set_xlim(0, max(config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY, self.max_age))
+                # ax.set_xticks([0,self.max_energy/2, self.max_energy])
+                ax.set_yticks(ls)
+        else:
+            ax.bar(ls, values, color=colors)
+            if 'energy' in ls:
+                ax.scatter( ['energy'], [config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY], color='black', s=20)
+            if 'age' in ls:
+                ax.scatter( ['age'], [self.max_age], color='black', s=20)
+                ax.set_ylim(0, max(config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY, self.max_age))
+                ax.set_xticks(ls)
+                ax.set_xticklabels(ls, rotation=80, ha='right')
+
+
 
     def plot_acc_status(self, ax, debug=False, plot_type=1, curr_step=-1):
         """
@@ -318,14 +334,13 @@ class Creature(StaticTraits):
             ax.scatter(reproducing_frames, [2] * len(reproducing_frames), color='red', marker='D', s=100,
                        label='Reproducing')
             ax.set_yticks([1, 2])
-            ax.set_yticklabels(['Eating', 'Reproducing'])
+            # ax.set_yticklabels(['Eating', 'Reproducing'])
             # Label x-axis and add a title
             ax.set_xlabel('Frame Number')
             ax.set_title('Event Timeline: Eating & Reproducing')
             ax.set_xlim([self.birth_step - 1, curr_step + 1])
             ax.set_ylim([0.5, 2.5])
             ax.legend()
-
 
 if __name__ == '__main__':
     creature = Creature(creature_id=0, gen=0, parent_id="0", birth_step=0,

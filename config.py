@@ -25,12 +25,13 @@ np.random.seed = 0
 class Config:
     # Simulation parameters
     DT = 2.0  # time passing from frame to frame (relevant when calculating velocities)
-    NUM_FRAMES = 600  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
-    UPDATE_ANIMATION_INTERVAL = 35  # 30  # update the animation every n steps
+    NUM_FRAMES = 5  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+    UPDATE_ANIMATION_INTERVAL = 10  # 30  # update the animation every n steps
     FRAME_INTERVAL = 75  # interval between frames in animation [in ms]
     STATUS_EVERY_STEP = True  # choose if to update every step or every frame
     UPDATE_KDTREE_INTERVAL = 90  # update the kdtree every n steps
     DEBUG_MODE = False  # breakpoint in update_func after each frame (not step!)
+    REBALANCE = False
     STUCK_PERCENTAGE = 0.75  # percentage of MAX_NUM_CREATURES to stuck simulation
 
     # Purge parameters
@@ -71,7 +72,7 @@ class Config:
     INIT_MAX_AGE = 4000  # [steps]
     INIT_MAX_MASS = 10  # [kg]
     INIT_MAX_HEIGHT = 0.5  # [m]
-    INIT_MAX_STRENGTH = 50  # [N]
+    INIT_MAX_STRENGTH = 25  # [N]
     MAX_SPEED = 2.5  # [m/sec] maximum speed of the creature
 
     # Eyes parameters

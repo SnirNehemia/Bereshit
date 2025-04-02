@@ -468,7 +468,7 @@ class Simulation:
         Prints progress every 10 frames.
         """
         global quiv, scat, grass_scat, leaves_scat, agent_scat
-        global fig, ax_env, ax_brain, ax_agent_info, ax_zoom, progress_bar
+        global fig, ax_env, ax_brain, ax_agent_info, ax_agent_events, ax_life, progress_bar
 
         def init_fig():
             """
@@ -476,7 +476,7 @@ class Simulation:
             :return:
             """
             global quiv, scat, grass_scat, leaves_scat, agent_scat
-            global fig, ax_env, ax_brain, ax_agent_info, ax_zoom, progress_bar
+            global fig, ax_env, ax_brain, ax_agent_info, ax_agent_events, ax_life, progress_bar
 
             # init fig with the grid layout with uneven ratios
             fig = plt.figure(figsize=(16, 8))
@@ -486,7 +486,10 @@ class Simulation:
             ax_brain = fig.add_subplot(fig_grid[0, 2])  # Smaller subplot (1/4 width, full height)
             ax_pass = fig.add_subplot(fig_grid[1, 0])  # placeholder
             ax_agent_info = fig.add_subplot(fig_grid[1, 1])  # Smaller subplot (1/4 height, full width)
-            ax_zoom = fig.add_subplot(fig_grid[1, 2])  # Smallest subplot (1/4 x 1/4)
+            # ax_agent_status = fig.add_subplot(fig_grid[1, 2])  # Smallest subplot (1/4 x 1/4)
+            subgrid  = gridspec.GridSpecFromSubplotSpec(1,2,subplot_spec=fig_grid[1, 2], width_ratios=[1, 4])
+            ax_life = fig.add_subplot(subgrid[0, 0])
+            ax_agent_events = fig.add_subplot(subgrid[0, 1])
             extent = self.env.get_extent()
             ax_env.set_xlim(extent[0], extent[1])
             ax_env.set_ylim(extent[2], extent[3])
@@ -522,7 +525,14 @@ class Simulation:
             # Scatter food points for vegetation
             grass_scat = ax_env.scatter([], [], c='lightgreen', edgecolors='black', s=10)
             leaves_scat = ax_env.scatter([], [], c='darkgreen', edgecolors='black', s=10)
-            agent_scat = ax_env.scatter([], [], s=20, facecolors='none', edgecolors='r')
+            agent_scat = ax_env.scatter(
+                [self.creatures[0].position[0]] * 2, [self.creatures[0].position[1]] * 2,  # Repeat position for N=2 rings
+                s=[60, 500],  # Different sizes for bullseye rings # config.FOOD_SIZE
+                facecolors=['none', 'none'],
+                edgecolors=['black', 'black'],
+                linewidth=2.5,
+                marker='o'  # or 'x'
+            )
 
             # Initialize the progress bar to print
             if config.STATUS_EVERY_STEP:
@@ -546,7 +556,7 @@ class Simulation:
             :return:
             """
             global quiv, scat, grass_scat, leaves_scat, agent_scat
-            global fig, ax_env, ax_brain, ax_agent_info, ax_zoom, progress_bar
+            global fig, ax_env, ax_brain, ax_agent_info, ax_agent_events, ax_life, progress_bar
 
             return scat, quiv, grass_scat, leaves_scat, agent_scat
 
@@ -560,7 +570,7 @@ class Simulation:
             :return: the variables that are updated (right now we are redrawing them)
             """
             global quiv, scat, grass_scat, leaves_scat, agent_scat
-            global fig, ax_env, ax_brain, ax_agent_info, ax_zoom, progress_bar
+            global fig, ax_env, ax_brain, ax_agent_info, ax_agent_events, ax_life, progress_bar
 
             # abort simulation if no creatures left or there are too many creatures
             if self.abort_simulation:
@@ -623,12 +633,16 @@ class Simulation:
 
                 breakpoint()
             # --------------------------- Plot --------------------------- #
-
+            if 'grass_scat' in globals():
+                try:  # in case it's empty
+                    grass_scat.remove()
+                except:
+                    pass
             try:
                 # Update creature positions and directions
                 num_creatures_in_last_frame = len(self.positions)
                 self.positions = np.array([creature.position for creature in self.creatures.values()])
-                sizes = np.array([creature.mass for creature in self.creatures.values()]) * config.FOOD_SIZE / 100
+                sizes = np.array([creature.mass for creature in self.creatures.values()]) * config.FOOD_SIZE # / 10
                 colors = [creature.color for creature in self.creatures.values()]
 
                 U, V = [], []
@@ -646,11 +660,14 @@ class Simulation:
                     if num_creatures_after_step == num_creatures_in_last_frame:
                         # Update scatter and quiver plot (positions & directions)
                         scat.set_offsets(self.positions)
+                        scat.set_facecolor(colors)
+                        scat.set_sizes(sizes)
                         quiv.set_offsets(self.positions)
+                        quiv.set_facecolor(colors)
                         quiv.set_UVC(U, V)  # Update U (x-component) and V (y-component)
                     else:
                         # Clear scatter and quiver plots (positions & directions)
-                        for obj_name in ['quiv', 'scat', 'grass_scat', 'leaves_scat', 'agent_scat']:
+                        for obj_name in ['quiv', 'scat', 'grass_scat', 'leaves_scat']:#, 'agent_scat']:
                             obj = globals()[obj_name]
                             try:  # in case it's empty
                                 obj.remove()
@@ -699,25 +716,12 @@ class Simulation:
                         else:
                             self.focus_ID = np.random.choice(list(self.creatures.keys()))
                     agent = self.creatures[self.focus_ID]
-                    agent_scat = ax_env.scatter(
-                        [agent.position[0]] * 2, [agent.position[1]] * 2,  # Repeat position for N=2 rings
-                        s=[60, 500],  # Different sizes for bullseye rings # config.FOOD_SIZE
-                        facecolors=['none', 'none'],
-                        edgecolors=['black', 'black'],
-                        linewidth=2.5,
-                        marker='o'  # or 'x'
-                    )
+                    agent_scat.set_offsets([agent.position, agent.position])
                     agent.brain.plot(ax_brain)
                     # ax_agent_info.clear()
-                    agent.plot_live_status(ax_agent_info)
-                    agent.plot_acc_status(ax_zoom, plot_type=1, curr_step=self.step_counter)
-                    # Create zoomed-in inset
-                    # axins = zoomed_inset_axes(ax_env, zoom=100, loc="upper right")  # zoom=2 means 2x zoom
-                    # axins = inset_axes(ax_env, width="30%", height="30%", loc="upper right")
-                    # axins.set_xlim(agent.position[0] - 100, agent.position[0] + 100)  # Set zoom-in limits
-                    # axins.set_ylim(agent.position[1] - 100, agent.position[1] + 100)  # Adjust zoom region
-                    # axins.set_xticks([])  # Hide x-axis ticks
-                    # axins.set_yticks([])  # Hide y-axis ticks
+                    # agent.plot_live_status(ax_agent_info)
+                    agent.plot_live_status(ax_life, plot_horizontal=False)
+                    agent.plot_acc_status(ax_agent_events, plot_type=1, curr_step=self.step_counter)
 
             except Exception as e:
                 print(f'Error in simulation (update_func): cannot plot because {e}.')
@@ -754,9 +758,9 @@ class Simulation:
                 print(f'statistics fig saved as {statistics_fig_filepath.stem}.')
 
             env_fig, ax = plt.subplots(1, 1)
-            ax[0].plot(self.num_grass_history, 'g.-', label='num grass')
-            ax[0].plot(self.num_leaves_history, 'k.-', label='num leaves')
-            ax[0].legend()
+            ax.plot(self.num_grass_history, 'g.-', label='num grass')  # was ax[0]
+            ax.plot(self.num_leaves_history, 'k.-', label='num leaves')
+            ax.legend()
             env_fig.show()
             env_fig.savefig(fname=config.ENV_FIG_FILE_PATH)
 

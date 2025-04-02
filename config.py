@@ -25,8 +25,8 @@ np.random.seed = 0
 class Config:
     # Simulation parameters
     DT = 2.0  # time passing from frame to frame (relevant when calculating velocities)
-    NUM_FRAMES = 5  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
-    UPDATE_ANIMATION_INTERVAL = 10  # 30  # update the animation every n steps
+    NUM_FRAMES = 1200  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+    UPDATE_ANIMATION_INTERVAL = 25  # 30  # update the animation every n steps
     FRAME_INTERVAL = 75  # interval between frames in animation [in ms]
     STATUS_EVERY_STEP = True  # choose if to update every step or every frame
     UPDATE_KDTREE_INTERVAL = 90  # update the kdtree every n steps
@@ -59,7 +59,7 @@ class Config:
     INIT_MAX_ENERGY = 20000  # maybe useful for maturity test before reproduction
     REPRODUCTION_ENERGY = 12000  # energy cost of reproduction
     MIN_LIFE_ENERGY = 5000  # energy to be left after reproduction
-    GRASS_ENERGY = 5000
+    GRASS_ENERGY = 4000
     LEAF_ENERGY = 2000
     INIT_DIGEST_DICT = {'grass': 1, 'leaf': 0.5, 'creature': 0}
 
@@ -69,7 +69,7 @@ class Config:
     # Creatures parameters
     NUM_CREATURES = 800  # init size of population
     MAX_NUM_CREATURES = 1250
-    INIT_MAX_AGE = 4000  # [steps]
+    INIT_MAX_AGE = 8000  # [steps]
     INIT_MAX_MASS = 10  # [kg]
     INIT_MAX_HEIGHT = 0.5  # [m]
     INIT_MAX_STRENGTH = 25  # [N]
@@ -126,7 +126,7 @@ class Config:
                             'change_activation': 0.1,
                             'forget_magnitude': 10,
                             'add_loop': 0.2,
-                            'break_edge': 1
+                            'break_edge': 0.5
                             }
     if BRAIN_TYPE == 'fully_connected_brain':  # 'fully_connected_brain' or 'graphic_brain'
         MUTATION_BRAIN = MUTATION_FC_BRAIN

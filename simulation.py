@@ -468,7 +468,7 @@ class Simulation:
         Prints progress every 10 frames.
         """
         global quiv, scat, grass_scat, leaves_scat, agent_scat
-        global fig, ax_env, ax_brain, ax_agent_info, ax_agent_events, ax_life, progress_bar
+        global fig, ax_env, ax_brain, ax_agent_info_1, ax_agent_info_2, ax_agent_events, ax_life, progress_bar
 
         def init_fig():
             """
@@ -476,7 +476,7 @@ class Simulation:
             :return:
             """
             global quiv, scat, grass_scat, leaves_scat, agent_scat
-            global fig, ax_env, ax_brain, ax_agent_info, ax_agent_events, ax_life, progress_bar
+            global fig, ax_env, ax_brain, ax_agent_info_1, ax_agent_info_2, ax_agent_events, ax_life, progress_bar
 
             # init fig with the grid layout with uneven ratios
             fig = plt.figure(figsize=(16, 8))
@@ -486,6 +486,8 @@ class Simulation:
             ax_brain = fig.add_subplot(fig_grid[0, 2])  # Smaller subplot (1/4 width, full height)
             ax_pass = fig.add_subplot(fig_grid[1, 0])  # placeholder
             ax_agent_info = fig.add_subplot(fig_grid[1, 1])  # Smaller subplot (1/4 height, full width)
+            ax_agent_info_1 = ax_agent_info
+            ax_agent_info_2 = ax_agent_info_1.twinx()
             # ax_agent_status = fig.add_subplot(fig_grid[1, 2])  # Smallest subplot (1/4 x 1/4)
             subgrid  = gridspec.GridSpecFromSubplotSpec(1,2,subplot_spec=fig_grid[1, 2], width_ratios=[1, 4])
             ax_life = fig.add_subplot(subgrid[0, 0])
@@ -556,7 +558,7 @@ class Simulation:
             :return:
             """
             global quiv, scat, grass_scat, leaves_scat, agent_scat
-            global fig, ax_env, ax_brain, ax_agent_info, ax_agent_events, ax_life, progress_bar
+            global fig, ax_env, ax_brain, ax_agent_info_1, ax_agent_info_2, ax_agent_events, ax_life, progress_bar
 
             return scat, quiv, grass_scat, leaves_scat, agent_scat
 
@@ -570,7 +572,7 @@ class Simulation:
             :return: the variables that are updated (right now we are redrawing them)
             """
             global quiv, scat, grass_scat, leaves_scat, agent_scat
-            global fig, ax_env, ax_brain, ax_agent_info, ax_agent_events, ax_life, progress_bar
+            global fig, ax_env, ax_brain, ax_agent_info_1, ax_agent_info_2, ax_agent_events, ax_life, progress_bar
 
             # abort simulation if no creatures left or there are too many creatures
             if self.abort_simulation:
@@ -719,7 +721,8 @@ class Simulation:
                     agent_scat.set_offsets([agent.position, agent.position])
                     agent.brain.plot(ax_brain)
                     # ax_agent_info.clear()
-                    # agent.plot_live_status(ax_agent_info)
+                    agent.plot_rebalance(ax_agent_info_1, mode='energy')
+                    agent.plot_rebalance(ax_agent_info_2, mode='speed')
                     agent.plot_live_status(ax_life, plot_horizontal=False)
                     agent.plot_acc_status(ax_agent_events, plot_type=1, curr_step=self.step_counter)
 

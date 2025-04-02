@@ -49,7 +49,7 @@ class Creature(StaticTraits):
         self.log_speed = None
         self.init_state()
 
-    def init_state(self):
+    def init_state(self, rebalance=config.REBALANCE):
         """
         :return:
         """
@@ -71,6 +71,10 @@ class Creature(StaticTraits):
         self.log_reproduce = []
         self.log_energy = []
         self.log_speed = []
+        if rebalance:
+            self.gained_energy = []
+            self.height_energy = []
+            self.mass_energy = []
 
     def get_heading(self):
         """
@@ -259,10 +263,35 @@ class Creature(StaticTraits):
 
         excess_energy = gained_energy - height_energy - mass_energy
         if rebalance:
-            self.gained_energy = gained_energy
-            self.height_energy = height_energy
-            self.mass_energy = mass_energy
+            self.gained_energy.append(gained_energy)
+            self.height_energy.append(height_energy)
+            self.mass_energy.append(mass_energy)
         self.energy += excess_energy
+
+    def plot_rebalance(self, ax, debug=False, mode='energy'):
+        if debug:
+            import matplotlib.pyplot as plt
+            plt.ion()
+            fig, ax = plt.subplots(1, 1)
+        ax.clear()
+        if mode == 'speed':
+            ax.plot(self.log_speed, color='teal', alpha=0.5)
+            ax.set_ylim(0, max(self.log_speed) * 1.1)
+            ax.tick_params(axis='y', colors='teal')
+            ax.spines['left'].set_color('maroon')
+            ax.spines['right'].set_color('teal')
+        elif mode == 'energy':
+            ax.plot(self.log_energy, color='maroon', alpha=0.5)
+            ax.set_ylim(0, (config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY) * 1.1)
+            ax.tick_params(axis='y', colors='maroon')
+            ax.spines['left'].set_color('maroon')
+            ax.spines['right'].set_color('teal')
+
+        # ax2 = ax.twinx()
+        # ax2.clear()
+        # ax2.plot(self.log_speed)
+        # ax.plot(self.height_energy)
+        # ax.plot(self.mass_energy)
 
     def plot_live_status(self, ax, debug=False, plot_horizontal=True):
         """
@@ -296,7 +325,10 @@ class Creature(StaticTraits):
                 ax.scatter( ['age'], [self.max_age], color='black', s=20)
                 ax.set_ylim(0, max(config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY, self.max_age))
                 ax.set_xticks(ls)
-                ax.set_xticklabels(ls, rotation=80, ha='right')
+                ax.set_xticklabels(ls, rotation=90, ha='right')
+                ax.set_yticks([])
+                ax.yaxis.set_tick_params(labelleft=False)
+
 
 
 

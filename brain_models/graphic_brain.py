@@ -211,6 +211,9 @@ class Brain:
             ind = np.random.choice(len(self.graph.nodes))
             node_name = list(self.graph.nodes)[ind]
             if node_name[0].capitalize() == 'H':
+                activation_set = np.random.choice(list(ACTIVATION_FUNCTIONS.keys()))
+                while activation_set == 'I':
+                    activation_set = np.random.choice(list(ACTIVATION_FUNCTIONS.keys()))
                 self.set_activation(node_name, np.random.choice(list(ACTIVATION_FUNCTIONS.keys())))
 
         if mutation_roll[6] < brain_mutation_rate['add_loop']:

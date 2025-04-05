@@ -533,7 +533,8 @@ class Simulation:
                 facecolors=['none', 'none'],
                 edgecolors=['black', 'black'],
                 linewidth=2.5,
-                marker='o'  # or 'x'
+                marker='o',
+                zorder=4 # or 'x'
             )
 
             # Initialize the progress bar to print

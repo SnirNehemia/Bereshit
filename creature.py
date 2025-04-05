@@ -59,7 +59,7 @@ class Creature(StaticTraits):
         self.height = np.random.uniform(low=0.01, high=0.1) * self.max_height
         self.strength = np.random.uniform(low=0.01, high=0.1) * self.max_strength
 
-        self.energy = 0.95 * (config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY) # TODO: patch for runability | was self.max_energy
+        self.energy = 0.8 * (config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY) # TODO: patch for runability | was self.max_energy
         self.velocity = (np.random.rand(2) - 0.5) * self.max_speed
         self.max_speed_exp = np.linalg.norm(self.velocity)
         self.calc_speed()
@@ -306,7 +306,7 @@ class Creature(StaticTraits):
         colors = ['green', 'grey']  # , 'red', 'blue'
         values = [getattr(self, attr) for attr in ls]  # Dynamically get values
         ax.clear()
-        ax.set_title(f'Agent # {self.creature_id} Status | ancestors num = len({self.ancestors})')
+        ax.set_title(f'Agent # {self.creature_id} | anc. = {len(self.ancestors)}')
         if plot_horizontal:
             ax.barh(ls, values, color=colors)
             if 'energy' in ls:
@@ -351,7 +351,7 @@ class Creature(StaticTraits):
         if plot_type == 0:
             # option 1
             values = [len(getattr(self, attr)) for attr in ls]  # Dynamically get values
-            ax.set_title(f'Agent # {self.id} Accumulated Status')
+            ax.set_title(f'Agent # {self.id}')
             ax.bar(ls, values, color=colors, width=0.2)
             ax.set_ylim(0, 10)
             ax.set_yticks([0, 5, 10, 100])
@@ -369,7 +369,7 @@ class Creature(StaticTraits):
             # ax.set_yticklabels(['Eating', 'Reproducing'])
             # Label x-axis and add a title
             ax.set_xlabel('Frame Number')
-            ax.set_title('Event Timeline: Eating & Reproducing')
+            # ax.set_title('Event Timeline')
             ax.set_xlim([self.birth_step - 1, curr_step + 1])
             ax.set_ylim([0.5, 2.5])
             ax.legend()

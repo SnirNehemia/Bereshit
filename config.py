@@ -24,9 +24,9 @@ np.random.seed = 0
 @dataclasses.dataclass
 class Config:
     # Simulation parameters
-    DT = 2.0  # time passing from frame to frame (relevant when calculating velocities)
+    DT = 10.0  # time passing from frame to frame (relevant when calculating velocities) and what is the resolution of every calculation?
     NUM_FRAMES = 1200  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
-    UPDATE_ANIMATION_INTERVAL = 25  # 30  # update the animation every n steps
+    UPDATE_ANIMATION_INTERVAL = 3  # 30  # update the animation every n steps = every n*dt seconds
     FRAME_INTERVAL = 75  # interval between frames in animation [in ms]
     STATUS_EVERY_STEP = True  # choose if to update every step or every frame
     UPDATE_KDTREE_INTERVAL = 90  # update the kdtree every n steps
@@ -43,9 +43,9 @@ class Config:
     # Environment parameters
     ENV_PATH = r"Penvs\Env8.png"
     BOUNDARY_CONDITION = 'zero'  # what to do with the velocity on the boundaries - 'mirror' or 'zero'
-    MAX_GRASS_NUM = 50
-    GRASS_GENERATION_RATE = 2  # if exceeding MAX_GRASS_NUM replace GRASS_GENERATION_RATE grass points
-    GRASS_GROWTH_CHANCE = 0.1  # maybe will be useful to create droughts
+    MAX_GRASS_NUM = 100
+    GRASS_GENERATION_RATE = 5  # if exceeding MAX_GRASS_NUM replace GRASS_GENERATION_RATE grass points
+    GRASS_GROWTH_CHANCE = 0.5  # maybe will be useful to create droughts
     MAX_LEAVES_NUM = 50
     LEAVES_GENERATION_RATE = 0  # if exceeding MAX_LEAVES_NUM replace LEAVES_GENERATION_RATE grass points
     LEAVES_GROWTH_CHANCE = 0.5  # maybe will be useful to create droughts
@@ -59,7 +59,7 @@ class Config:
     INIT_MAX_ENERGY = 20000  # maybe useful for maturity test before reproduction
     REPRODUCTION_ENERGY = 12000  # energy cost of reproduction
     MIN_LIFE_ENERGY = 5000  # energy to be left after reproduction
-    GRASS_ENERGY = 4000
+    GRASS_ENERGY = 500
     LEAF_ENERGY = 2000
     INIT_DIGEST_DICT = {'grass': 1, 'leaf': 0.5, 'creature': 0}
 

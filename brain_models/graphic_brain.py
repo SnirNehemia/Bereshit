@@ -7,6 +7,7 @@ import platform, matplotlib
 import random, math
 from config import Config as config
 
+# TODO: make closed loop activation tanh! or regulate it
 
 if platform.system() == 'Darwin':
     matplotlib.use('MacOSX')

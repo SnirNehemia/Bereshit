@@ -25,10 +25,10 @@ np.random.seed = 0
 class Config:
     # Simulation parameters
     DT = 10.0  # time passing from frame to frame (relevant when calculating velocities) and what is the resolution of every calculation?
-    NUM_FRAMES = 1200  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+    NUM_FRAMES = 8000  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
     UPDATE_ANIMATION_INTERVAL = 3  # 30  # update the animation every n steps = every n*dt seconds
     FRAME_INTERVAL = 75  # interval between frames in animation [in ms]
-    STATUS_EVERY_STEP = True  # choose if to update every step or every frame
+    STATUS_EVERY_STEP = False  # choose if to update every step or every frame
     UPDATE_KDTREE_INTERVAL = 90  # update the kdtree every n steps
     DEBUG_MODE = False  # breakpoint in update_func after each frame (not step!)
     REBALANCE = False
@@ -44,7 +44,7 @@ class Config:
     ENV_PATH = r"Penvs\Env8.png"
     BOUNDARY_CONDITION = 'zero'  # what to do with the velocity on the boundaries - 'mirror' or 'zero'
     MAX_GRASS_NUM = 100
-    GRASS_GENERATION_RATE = 5  # if exceeding MAX_GRASS_NUM replace GRASS_GENERATION_RATE grass points
+    GRASS_GENERATION_RATE = 5  # if num grass points <= MAX_GRASS_NUM create new GRASS_GENERATION_RATE grass points
     GRASS_GROWTH_CHANCE = 0.5  # maybe will be useful to create droughts
     MAX_LEAVES_NUM = 50
     LEAVES_GENERATION_RATE = 0  # if exceeding MAX_LEAVES_NUM replace LEAVES_GENERATION_RATE grass points

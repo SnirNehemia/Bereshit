@@ -7,8 +7,10 @@ from config import Config as config
 from physical_model import PhysicalModel as physical_model
 
 import importlib
+
 brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
 Brain = getattr(brain_module, 'Brain')
+
 
 class Creature(StaticTraits):
     """
@@ -59,7 +61,8 @@ class Creature(StaticTraits):
         self.height = np.random.uniform(low=0.01, high=0.1) * self.max_height
         self.strength = np.random.uniform(low=0.01, high=0.1) * self.max_strength
 
-        self.energy = 0.8 * (config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY) # TODO: patch for runability | was self.max_energy
+        self.energy = 0.8 * (
+                    config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY)  # TODO: patch for runability | was self.max_energy
         self.velocity = (np.random.rand(2) - 0.5) * self.max_speed
         self.max_speed_exp = np.linalg.norm(self.velocity)
         self.calc_speed()
@@ -178,9 +181,9 @@ class Creature(StaticTraits):
 
         # kinetic friction force
         mu_kinetic = physical_model.mu_kinetic
-        alpha_mu = physical_model.alpha_mu
-        mu_total = mu_kinetic + (mu_static - mu_kinetic) * np.exp(-alpha_mu * self.speed)
-        kinetic_friction_force = - mu_total * np.linalg.norm(normal_force) * global_propulsion_force_direction
+        # alpha_mu = physical_model.alpha_mu
+        # mu_total = mu_kinetic + (mu_static - mu_kinetic) * np.exp(-alpha_mu * self.speed)
+        kinetic_friction_force = - mu_kinetic * np.linalg.norm(normal_force) * global_propulsion_force_direction
 
         # reaction friction force used for movement:
         # when propulsion force is within the static friction force limit
@@ -320,17 +323,14 @@ class Creature(StaticTraits):
         else:
             ax.bar(ls, values, color=colors)
             if 'energy' in ls:
-                ax.scatter( ['energy'], [config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY], color='black', s=20)
+                ax.scatter(['energy'], [config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY], color='black', s=20)
             if 'age' in ls:
-                ax.scatter( ['age'], [self.max_age], color='black', s=20)
+                ax.scatter(['age'], [self.max_age], color='black', s=20)
                 ax.set_ylim(0, max(config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY, self.max_age))
                 ax.set_xticks(ls)
                 ax.set_xticklabels(ls, rotation=90, ha='right')
                 ax.set_yticks([])
                 ax.yaxis.set_tick_params(labelleft=False)
-
-
-
 
     def plot_acc_status(self, ax, debug=False, plot_type=1, curr_step=-1):
         """
@@ -373,6 +373,7 @@ class Creature(StaticTraits):
             ax.set_xlim([self.birth_step - 1, curr_step + 1])
             ax.set_ylim([0.5, 2.5])
             ax.legend()
+
 
 if __name__ == '__main__':
     creature = Creature(creature_id=0, gen=0, parent_id="0", birth_step=0,

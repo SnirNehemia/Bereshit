@@ -7,8 +7,10 @@ from config import Config as config
 from physical_model import PhysicalModel as physical_model
 
 import importlib
+
 brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
 Brain = getattr(brain_module, 'Brain')
+
 
 class Creature(StaticTraits):
     """
@@ -49,7 +51,7 @@ class Creature(StaticTraits):
         self.log_speed = None
         self.init_state()
 
-    def init_state(self):
+    def init_state(self, rebalance=config.REBALANCE):
         """
         :return:
         """
@@ -59,7 +61,8 @@ class Creature(StaticTraits):
         self.height = np.random.uniform(low=0.01, high=0.1) * self.max_height
         self.strength = np.random.uniform(low=0.01, high=0.1) * self.max_strength
 
-        self.energy = np.random.uniform(low=0.6, high=0.8) * (config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY) # TODO: patch for runability | was self.max_energy
+        self.energy = 0.8 * (
+                    config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY)  # TODO: patch for runability | was self.max_energy
         self.velocity = (np.random.rand(2) - 0.5) * self.max_speed
         self.max_speed_exp = np.linalg.norm(self.velocity)
         self.calc_speed()
@@ -71,6 +74,10 @@ class Creature(StaticTraits):
         self.log_reproduce = []
         self.log_energy = []
         self.log_speed = []
+        if rebalance:
+            self.gained_energy = []
+            self.height_energy = []
+            self.mass_energy = []
 
     def get_heading(self):
         """
@@ -174,9 +181,9 @@ class Creature(StaticTraits):
 
         # kinetic friction force
         mu_kinetic = physical_model.mu_kinetic
-        alpha_mu = physical_model.alpha_mu
-        mu_total = mu_kinetic + (mu_static - mu_kinetic) * np.exp(-alpha_mu * self.speed)
-        kinetic_friction_force = - mu_total * np.linalg.norm(normal_force) * global_propulsion_force_direction
+        # alpha_mu = physical_model.alpha_mu
+        # mu_total = mu_kinetic + (mu_static - mu_kinetic) * np.exp(-alpha_mu * self.speed)
+        kinetic_friction_force = - mu_kinetic * np.linalg.norm(normal_force) * global_propulsion_force_direction
 
         # reaction friction force used for movement:
         # when propulsion force is within the static friction force limit
@@ -187,8 +194,8 @@ class Creature(StaticTraits):
             reaction_friction_force = kinetic_friction_force
 
         # drag force (air resistence)
-        linear_drag_force = - physical_model.gamma * self.velocity
-        quadratic_drag_force = - physical_model.c_drag * self.speed ** 2 * current_direction
+        linear_drag_force = - physical_model.gamma * self.height * self.velocity
+        quadratic_drag_force = - physical_model.c_drag * self.height * self.speed ** 2 * current_direction
         drag_force = linear_drag_force + quadratic_drag_force
 
         # calc new velocity and position
@@ -221,7 +228,7 @@ class Creature(StaticTraits):
         c_d = physical_model.energy_conversion_factors['digest']
         c_h = physical_model.energy_conversion_factors['height']
         rest_energy = physical_model.energy_conversion_factors['rest'] * self.mass ** 0.75  # called BMR energy
-        inner_energy = rest_energy + c_d * np.sum(list(self.digest_dict.values())) + c_h * self.height
+        inner_energy = rest_energy + c_d * np.sum(list(self.digest_dict.values()))
         return inner_energy
 
     @staticmethod
@@ -241,7 +248,7 @@ class Creature(StaticTraits):
         new_trait = old_trait + trait_energy / c_trait
         return new_trait, trait_energy
 
-    def eat(self, food_type, food_energy):
+    def eat(self, food_type, food_energy, rebalance=config.REBALANCE):
         gained_energy = self.digest_dict[food_type] * food_energy
         self.height, height_energy = self.convert_gained_energy_to_trait(
             trait_type='height',
@@ -258,9 +265,38 @@ class Creature(StaticTraits):
         )
 
         excess_energy = gained_energy - height_energy - mass_energy
+        if rebalance:
+            self.gained_energy.append(gained_energy)
+            self.height_energy.append(height_energy)
+            self.mass_energy.append(mass_energy)
         self.energy += excess_energy
 
-    def plot_live_status(self, ax, debug=False):
+    def plot_rebalance(self, ax, debug=False, mode='energy'):
+        if debug:
+            import matplotlib.pyplot as plt
+            plt.ion()
+            fig, ax = plt.subplots(1, 1)
+        ax.clear()
+        if mode == 'speed':
+            ax.plot(self.log_speed, color='teal', alpha=0.5)
+            ax.set_ylim(0, max(self.log_speed) * 1.1)
+            ax.tick_params(axis='y', colors='teal')
+            ax.spines['left'].set_color('maroon')
+            ax.spines['right'].set_color('teal')
+        elif mode == 'energy':
+            ax.plot(self.log_energy, color='maroon', alpha=0.5)
+            ax.set_ylim(0, (config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY) * 1.1)
+            ax.tick_params(axis='y', colors='maroon')
+            ax.spines['left'].set_color('maroon')
+            ax.spines['right'].set_color('teal')
+
+        # ax2 = ax.twinx()
+        # ax2.clear()
+        # ax2.plot(self.log_speed)
+        # ax.plot(self.height_energy)
+        # ax.plot(self.mass_energy)
+
+    def plot_live_status(self, ax, debug=False, plot_horizontal=True):
         """
         Plots the agent's status (energy, hunger, thirst) on the given axes.
         """
@@ -269,20 +305,32 @@ class Creature(StaticTraits):
             plt.ion()
             fig, ax = plt.subplots(1, 1)
         # Define attributes dynamically
-        ls = ['energy', 'hunger', 'thirst', 'age']
-        colors = ['green', 'red', 'blue', 'grey']
+        ls = ['energy', 'age']  # , 'hunger', 'thirst'
+        colors = ['green', 'grey']  # , 'red', 'blue'
         values = [getattr(self, attr) for attr in ls]  # Dynamically get values
         ax.clear()
-        ax.set_title(f'Agent # {self.creature_id} Status | ancestors = {self.ancestors}')
-        ax.barh(ls, values, color=colors)
-        # ax.barh(['Energy', 'Hunger', 'Thirst'], [self.energy, self.hunger, self.thirst], color=['green', 'red', 'blue'])
-        ax.set_xlim(0, max(config.REPRODUCTION_ENERGY, self.max_age))
-        # ax.set_xticks([0,self.max_energy/2, self.max_energy])
-        ax.set_yticks(ls)
-        if 'energy' in ls:
-            ax.scatter([config.REPRODUCTION_ENERGY], ['energy'], color='black', s=20)
-        if 'age' in ls:
-            ax.scatter([self.max_age], ['age'], color='black', s=20)
+        ax.set_title(f'Agent # {self.creature_id} | anc. = {len(self.ancestors)}')
+        if plot_horizontal:
+            ax.barh(ls, values, color=colors)
+            if 'energy' in ls:
+                ax.scatter([config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY], ['energy'], color='black', s=20)
+            if 'age' in ls:
+                ax.scatter([self.max_age], ['age'], color='black', s=20)
+                # ax.barh(['Energy', 'Hunger', 'Thirst'], [self.energy, self.hunger, self.thirst], color=['green', 'red', 'blue'])
+                ax.set_xlim(0, max(config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY, self.max_age))
+                # ax.set_xticks([0,self.max_energy/2, self.max_energy])
+                ax.set_yticks(ls)
+        else:
+            ax.bar(ls, values, color=colors)
+            if 'energy' in ls:
+                ax.scatter(['energy'], [config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY], color='black', s=20)
+            if 'age' in ls:
+                ax.scatter(['age'], [self.max_age], color='black', s=20)
+                ax.set_ylim(0, max(config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY, self.max_age))
+                ax.set_xticks(ls)
+                ax.set_xticklabels(ls, rotation=90, ha='right')
+                ax.set_yticks([])
+                ax.yaxis.set_tick_params(labelleft=False)
 
     def plot_acc_status(self, ax, debug=False, plot_type=1, curr_step=-1):
         """
@@ -303,7 +351,7 @@ class Creature(StaticTraits):
         if plot_type == 0:
             # option 1
             values = [len(getattr(self, attr)) for attr in ls]  # Dynamically get values
-            ax.set_title(f'Agent # {self.id} Accumulated Status')
+            ax.set_title(f'Agent # {self.id}')
             ax.bar(ls, values, color=colors, width=0.2)
             ax.set_ylim(0, 10)
             ax.set_yticks([0, 5, 10, 100])
@@ -318,10 +366,10 @@ class Creature(StaticTraits):
             ax.scatter(reproducing_frames, [2] * len(reproducing_frames), color='red', marker='D', s=100,
                        label='Reproducing')
             ax.set_yticks([1, 2])
-            ax.set_yticklabels(['Eating', 'Reproducing'])
+            # ax.set_yticklabels(['Eating', 'Reproducing'])
             # Label x-axis and add a title
             ax.set_xlabel('Frame Number')
-            ax.set_title('Event Timeline: Eating & Reproducing')
+            # ax.set_title('Event Timeline')
             ax.set_xlim([self.birth_step - 1, curr_step + 1])
             ax.set_ylim([0.5, 2.5])
             ax.legend()

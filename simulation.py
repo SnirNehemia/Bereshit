@@ -14,8 +14,13 @@ import matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes, zoomed_inset_axes, mark_inset
 
 import importlib
+
+from traits_evolution.trait_stacked_colored_histogram import trait_stacked_colored_histogram
+from traits_evolution.traits_scatter import plot_traits_scatter
+
 brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
 Brain = getattr(brain_module, 'Brain')
+
 
 class Simulation:
     """
@@ -194,7 +199,7 @@ class Simulation:
             creature.move(decision=decision, dt=dt)
         except Exception as e:
             print(f'Error in Simulation (use_brain, movement) for creature: {creature.creature_id}:\n{e}')
-            breakpoint()
+            # breakpoint()
 
         # Collision detection: handle cases where creature's new position is inside an obstacle or outbound.
         try:
@@ -207,9 +212,9 @@ class Simulation:
                 elif config.BOUNDARY_CONDITION == 'mirror':
                     creature.velocity = -creature.velocity
         except Exception as e:
-            print(f'exceptiom in use_brain for creature: {creature.creature_id}\n{e}')
+            print(f'exception in use_brain for creature: {creature.creature_id}\n{e}')
             print(f'Error in Simulation (use_brain, collision detection) for creature: {creature.creature_id}:\n{e}')
-            breakpoint()
+            # breakpoint()
 
     @staticmethod
     def prepare_eye_input(detection_result, vision_limit):
@@ -450,13 +455,58 @@ class Simulation:
 
         except Exception as e:
             print(f'Error in Simulation (update_statistics_logs):\n{e}')
-            breakpoint()
+            # breakpoint()
 
     def update_attribute_statistics_logs(self, attribute: str):
         creatures_attribute = [getattr(creature, attribute) for creature in self.creatures.values()]
 
         for stat_name, stat_func in self.stat_dict.items():
             getattr(self, f'{stat_name}_creature_{attribute}_per_step').append(stat_func(creatures_attribute))
+
+    def plot_statistics_graph(self, stat_attribute: str):
+        """
+        Plot a graph showing the number of current/new/dead creatures in every step and
+        a graph showing the min/mstatistics_ax/mean/std energy of all creatures alive in every step.
+        :return:
+        """
+
+        # Plot number of alive/new/dead creatures in every step
+        num_creatures_per_step = np.array(self.num_creatures_per_step)
+        num_new_creatures_per_step = np.array(self.num_new_creatures_per_step)
+        num_dead_creatures_per_step = np.array(self.num_dead_creatures_per_step)
+
+        statistics_fig, statistics_ax = plt.subplots(2, 1, sharex='all')
+        statistics_ax[0].plot(num_creatures_per_step, 'b.-', label='alive')
+        statistics_ax[0].axhline(y=config.MAX_NUM_CREATURES,
+                                 linestyle='--', color='b', label='max num creatures')
+        statistics_ax[0].tick_params(axis='y', colors='b')
+        statistics_ax[0].set_title('num creatures per step')
+        statistics_ax[0].legend()
+
+        # plot number of alive creatures in second y-axis for clarity
+        statistics_ax2 = statistics_ax[0].twinx()
+        statistics_ax2.plot(num_dead_creatures_per_step, 'r.-', label='dead')
+        statistics_ax2.plot(num_new_creatures_per_step, 'g.-', label='new')
+        statistics_ax2.legend()
+
+        # plot min/max/mean/std attribute (speed or energy) of all creatures alive in every step
+        statistics_ax[1].plot(getattr(self, f'min_creature_{stat_attribute}_per_step'), '.-',
+                              label=f'min {stat_attribute}')
+        statistics_ax[1].plot(getattr(self, f'max_creature_{stat_attribute}_per_step'), '.-',
+                              label=f'max {stat_attribute}')
+        statistics_ax[1].errorbar(x=np.arange(len(getattr(self, f'mean_creature_{stat_attribute}_per_step'))),
+                                  y=getattr(self, f'mean_creature_{stat_attribute}_per_step'),
+                                  yerr=getattr(self, f'std_creature_{stat_attribute}_per_step'), linestyle='-',
+                                  marker='.',
+                                  label=f'mean and std {stat_attribute}')
+        if stat_attribute == 'energy':
+            statistics_ax[1].axhline(y=config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY,
+                                     linestyle='--', color='r', label='reproduction threshold')
+        statistics_ax[1].set_title(f'{stat_attribute} statistics per step')
+        statistics_ax[1].set_xlabel('step number')
+        statistics_ax[1].legend()
+
+        return statistics_fig
 
     def run_and_visualize(self):
         """
@@ -467,16 +517,16 @@ class Simulation:
           - Creatures as colored dots with arrows indicating heading.
         Prints progress every 10 frames.
         """
-        global quiv, scat, grass_scat, leaves_scat, agent_scat
-        global fig, ax_env, ax_brain, ax_agent_info, ax_zoom, progress_bar
+        global lineage_graph, traits_scat, quiv, scat, grass_scat, leaves_scat, agent_scat
+        global fig, ax_lineage, ax_traits, ax_env, ax_brain, ax_agent_info_1, ax_agent_info_2, ax_agent_events, ax_life, progress_bar
 
         def init_fig():
             """
             Init the simulation figure.
             :return:
             """
-            global quiv, scat, grass_scat, leaves_scat, agent_scat
-            global fig, ax_env, ax_brain, ax_agent_info, ax_zoom, progress_bar
+            global lineage_graph, traits_scat, quiv, scat, grass_scat, leaves_scat, agent_scat
+            global fig, ax_lineage, ax_traits, ax_env, ax_brain, ax_agent_info_1, ax_agent_info_2, ax_agent_events, ax_life, progress_bar
 
             # init fig with the grid layout with uneven ratios
             fig = plt.figure(figsize=(16, 8))
@@ -484,9 +534,14 @@ class Simulation:
             ax_lineage = fig.add_subplot(fig_grid[0, 0])  # ancestor tree?
             ax_env = fig.add_subplot(fig_grid[0, 1])  # Large subplot (3/4 of figure)
             ax_brain = fig.add_subplot(fig_grid[0, 2])  # Smaller subplot (1/4 width, full height)
-            ax_pass = fig.add_subplot(fig_grid[1, 0])  # placeholder
+            ax_traits = fig.add_subplot(fig_grid[1, 0])  # placeholder
             ax_agent_info = fig.add_subplot(fig_grid[1, 1])  # Smaller subplot (1/4 height, full width)
-            ax_zoom = fig.add_subplot(fig_grid[1, 2])  # Smallest subplot (1/4 x 1/4)
+            ax_agent_info_1 = ax_agent_info
+            ax_agent_info_2 = ax_agent_info_1.twinx()
+            # ax_agent_status = fig.add_subplot(fig_grid[1, 2])  # Smallest subplot (1/4 x 1/4)
+            subgrid = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=fig_grid[1, 2], width_ratios=[1, 4])
+            ax_life = fig.add_subplot(subgrid[0, 0])
+            ax_agent_events = fig.add_subplot(subgrid[0, 1])
             extent = self.env.get_extent()
             ax_env.set_xlim(extent[0], extent[1])
             ax_env.set_ylim(extent[2], extent[3])
@@ -522,7 +577,22 @@ class Simulation:
             # Scatter food points for vegetation
             grass_scat = ax_env.scatter([], [], c='lightgreen', edgecolors='black', s=10)
             leaves_scat = ax_env.scatter([], [], c='darkgreen', edgecolors='black', s=10)
-            agent_scat = ax_env.scatter([], [], s=20, facecolors='none', edgecolors='r')
+            agent_scat = ax_env.scatter(
+                [self.creatures[0].position[0]] * 2, [self.creatures[0].position[1]] * 2,
+                # Repeat position for N=2 rings
+                s=[60, 500],  # Different sizes for bullseye rings # config.FOOD_SIZE
+                facecolors=['none', 'none'],
+                edgecolors=['black', 'black'],
+                linewidth=2.5,
+                marker='o',
+                zorder=4  # or 'x'
+            )
+
+            # Init lineage plot
+            lineage_graph = ax_lineage.scatter([], [], c=[], s=50)
+
+            # Init traits plot
+            traits_scat = ax_traits.scatter([], [], c=[], s=50)
 
             # Initialize the progress bar to print
             if config.STATUS_EVERY_STEP:
@@ -531,11 +601,11 @@ class Simulation:
                 update_num = config.NUM_FRAMES
 
             progress_bar = tqdm(total=update_num, desc=f"Alive: {len(self.creatures)} | "
-                                             f"Children: {self.children_num} | "
-                                             f"Dead: {len(self.dead_creatures)} | "
-                                             f"leaves: {len(self.env.leaf_points)} | "
-                                             f"grass: {len(self.env.grass_points)} | "
-                                             f"Progress")
+                                                       f"Children: {self.children_num} | "
+                                                       f"Dead: {len(self.dead_creatures)} | "
+                                                       f"leaves: {len(self.env.leaf_points)} | "
+                                                       f"grass: {len(self.env.grass_points)} | "
+                                                       f"Progress")
 
         def init_func():
             """
@@ -545,10 +615,10 @@ class Simulation:
             reduce computation time (because blit=True)
             :return:
             """
-            global quiv, scat, grass_scat, leaves_scat, agent_scat
-            global fig, ax_env, ax_brain, ax_agent_info, ax_zoom, progress_bar
+            global lineage_graph, traits_scat, quiv, scat, grass_scat, leaves_scat, agent_scat
+            global fig, ax_lineage, ax_traits, ax_env, ax_brain, ax_agent_info_1, ax_agent_info_2, ax_agent_events, ax_life, progress_bar
 
-            return scat, quiv, grass_scat, leaves_scat, agent_scat
+            return scat, quiv, grass_scat, leaves_scat, agent_scat, traits_scat
 
         # Function for simulation progress
         def update_func(frame):
@@ -559,25 +629,26 @@ class Simulation:
             :param frame:
             :return: the variables that are updated (right now we are redrawing them)
             """
-            global quiv, scat, grass_scat, leaves_scat, agent_scat
-            global fig, ax_env, ax_brain, ax_agent_info, ax_zoom, progress_bar
+            global lineage_graph, traits_scat, quiv, scat, grass_scat, leaves_scat, agent_scat
+            global fig, ax_lineage, ax_traits, ax_env, ax_brain, ax_agent_info_1, ax_agent_info_2, ax_agent_events, ax_life, progress_bar
 
             # abort simulation if no creatures left or there are too many creatures
             if self.abort_simulation:
-                from matplotlib import use
+                if config.DEBUG_MODE:
+                    from matplotlib import use
 
-                use('TkAgg')
-                for stat_attribute in self.stat_attributes:
-                    statistics_fig = self.plot_statistics_graph(stat_attribute=stat_attribute)
-                    statistics_fig.show()
+                    use('TkAgg')
+                    for stat_attribute in self.stat_attributes:
+                        statistics_fig = self.plot_statistics_graph(stat_attribute=stat_attribute)
+                        statistics_fig.show()
 
-                breakpoint()
+                    # breakpoint()
 
                 ax_env.set_title(f"Evolution Simulation ({frame=}, step={self.step_counter})")
                 progress_bar.update(self.animation_update_interval)
                 self.step_counter += self.animation_update_interval
 
-                return scat, quiv, grass_scat, leaves_scat, agent_scat
+                return scat, quiv, grass_scat, leaves_scat, agent_scat, traits_scat
 
             # Run steps of frame
             for step in range(self.animation_update_interval):
@@ -590,11 +661,11 @@ class Simulation:
                 # Update the progress bar every step
                 if config.STATUS_EVERY_STEP:
                     progress_bar.set_description(f"Alive: {len(self.creatures)} | "
-                                             f"Children: {self.children_num} | "
-                                             f"Dead: {len(self.dead_creatures)} | "
-                                             f"leaves: {len(self.env.leaf_points)} | "
-                                             f"grass: {len(self.env.grass_points)} | "
-                                             f"Progress")
+                                                 f"Children: {self.children_num} | "
+                                                 f"Dead: {len(self.dead_creatures)} | "
+                                                 f"leaves: {len(self.env.leaf_points)} | "
+                                                 f"grass: {len(self.env.grass_points)} | "
+                                                 f"Progress")
                     progress_bar.update(1)  # or self.animation_update_interval outside the for loop
 
             # update the progress bar every frame
@@ -621,14 +692,18 @@ class Simulation:
                     statistics_fig = self.plot_statistics_graph(stat_attribute=stat_attribute)
                     statistics_fig.show()
 
-                breakpoint()
+                # breakpoint()
             # --------------------------- Plot --------------------------- #
-
+            if 'grass_scat' in globals():
+                try:  # in case it's empty
+                    grass_scat.remove()
+                except:
+                    pass
             try:
                 # Update creature positions and directions
                 num_creatures_in_last_frame = len(self.positions)
                 self.positions = np.array([creature.position for creature in self.creatures.values()])
-                sizes = np.array([creature.mass for creature in self.creatures.values()]) * config.FOOD_SIZE / 100
+                sizes = np.array([creature.mass for creature in self.creatures.values()]) * config.FOOD_SIZE  # / 10
                 colors = [creature.color for creature in self.creatures.values()]
 
                 U, V = [], []
@@ -646,11 +721,14 @@ class Simulation:
                     if num_creatures_after_step == num_creatures_in_last_frame:
                         # Update scatter and quiver plot (positions & directions)
                         scat.set_offsets(self.positions)
+                        scat.set_facecolor(colors)
+                        scat.set_sizes(sizes)
                         quiv.set_offsets(self.positions)
+                        quiv.set_facecolor(colors)
                         quiv.set_UVC(U, V)  # Update U (x-component) and V (y-component)
                     else:
                         # Clear scatter and quiver plots (positions & directions)
-                        for obj_name in ['quiv', 'scat', 'grass_scat', 'leaves_scat', 'agent_scat']:
+                        for obj_name in ['quiv', 'scat', 'grass_scat', 'leaves_scat']:  # , 'agent_scat']:
                             obj = globals()[obj_name]
                             try:  # in case it's empty
                                 obj.remove()
@@ -675,7 +753,8 @@ class Simulation:
                     #     grass_scat.set_offsets(np.array(self.env.grass_points))
                     # else:
                     grass_points = np.array(self.env.grass_points)
-                    grass_scat = ax_env.scatter(grass_points[:, 0], grass_points[:, 1], c='lightgreen', edgecolors='black',
+                    grass_scat = ax_env.scatter(grass_points[:, 0], grass_points[:, 1], c='lightgreen',
+                                                edgecolors='black',
                                                 s=10)
 
                 # num_leaf_points_in_last_frame = TODO
@@ -685,10 +764,27 @@ class Simulation:
                     #     leaves_scat.set_offsets(np.array(self.env.leaf_points))
                     # else:
                     leaf_points = np.array(self.env.leaf_points)
-                    leaves_scat = ax_env.scatter(leaf_points[:, 0], leaf_points[:, 1], c='darkgreen', edgecolors='black',
+                    leaves_scat = ax_env.scatter(leaf_points[:, 0], leaf_points[:, 1], c='darkgreen',
+                                                 edgecolors='black',
                                                  s=20)
 
                 ax_env.set_title(f"Evolution Simulation ({frame=}, step={self.step_counter})")
+
+                # ----------------- update lineage scat ------------------
+
+                trait_stacked_colored_histogram(
+                    ax=ax_lineage,
+                    creatures=self.creatures,
+                    trait_name='mass',
+                    num_bins=30, min_value=0, max_value=2)
+
+                # ----------------- update traits scat -------------------
+                traits_scat = plot_traits_scatter(ax=ax_traits,
+                                                  creatures=self.creatures,
+                                                  trait_x='mass', trait_y='height',
+                                                  trait_x_min=0, trait_x_max=2,
+                                                  trait_y_min=0, trait_y_max=0.2)
+
                 # --------------------- focus on one agent ----------------------------
 
                 if len(self.creatures) > 0:
@@ -699,39 +795,27 @@ class Simulation:
                         else:
                             self.focus_ID = np.random.choice(list(self.creatures.keys()))
                     agent = self.creatures[self.focus_ID]
-                    agent_scat = ax_env.scatter(
-                        [agent.position[0]] * 2, [agent.position[1]] * 2,  # Repeat position for N=2 rings
-                        s=[60, 500],  # Different sizes for bullseye rings # config.FOOD_SIZE
-                        facecolors=['none', 'none'],
-                        edgecolors=['black', 'black'],
-                        linewidth=2.5,
-                        marker='o'  # or 'x'
-                    )
+                    agent_scat.set_offsets([agent.position, agent.position])
                     agent.brain.plot(ax_brain)
                     # ax_agent_info.clear()
-                    agent.plot_live_status(ax_agent_info)
-                    agent.plot_acc_status(ax_zoom, plot_type=1, curr_step=self.step_counter)
-                    # Create zoomed-in inset
-                    # axins = zoomed_inset_axes(ax_env, zoom=100, loc="upper right")  # zoom=2 means 2x zoom
-                    # axins = inset_axes(ax_env, width="30%", height="30%", loc="upper right")
-                    # axins.set_xlim(agent.position[0] - 100, agent.position[0] + 100)  # Set zoom-in limits
-                    # axins.set_ylim(agent.position[1] - 100, agent.position[1] + 100)  # Adjust zoom region
-                    # axins.set_xticks([])  # Hide x-axis ticks
-                    # axins.set_yticks([])  # Hide y-axis ticks
+                    agent.plot_rebalance(ax_agent_info_1, mode='energy')
+                    agent.plot_rebalance(ax_agent_info_2, mode='speed')
+                    agent.plot_live_status(ax_life, plot_horizontal=False)
+                    agent.plot_acc_status(ax_agent_events, plot_type=1, curr_step=self.step_counter)
 
             except Exception as e:
                 print(f'Error in simulation (update_func): cannot plot because {e}.')
-                breakpoint()
+                # breakpoint()
 
-            return scat, quiv, grass_scat, leaves_scat, agent_scat
+            return scat, quiv, grass_scat, leaves_scat, agent_scat, traits_scat
 
         # Run simulation
         try:
             init_fig()
             self.update_statistics_logs(child_ids=[], dead_ids=[], step=-1)
             ani = animation.FuncAnimation(fig=fig, func=update_func, init_func=init_func, blit=True,
-                                      frames=config.NUM_FRAMES, interval=config.FRAME_INTERVAL)
-            print('\nSimulation completed successfully. saving progress...')
+                                          frames=config.NUM_FRAMES, interval=config.FRAME_INTERVAL)
+            # print('\nSimulation completed successfully. saving progress...')
 
         except KeyboardInterrupt:
             print('Simulation interrupted. saving progress...')
@@ -742,7 +826,7 @@ class Simulation:
             plt.close(fig)
             print(f'Simulation animation saved as {config.ANIMATION_FILEPATH.stem}.')
 
-            # Plot statistics summary graph
+            # Plot creature statistics summary graph
             from matplotlib import use
             use('TkAgg')
             for stat_attribute in self.stat_attributes:
@@ -753,64 +837,10 @@ class Simulation:
                 statistics_fig.savefig(fname=statistics_fig_filepath)
                 print(f'statistics fig saved as {statistics_fig_filepath.stem}.')
 
+            # plot env statistics summary graph
             env_fig, ax = plt.subplots(1, 1)
-            ax[0].plot(self.num_grass_history, 'g.-', label='num grass')
-            ax[0].plot(self.num_leaves_history, 'k.-', label='num leaves')
-            ax[0].legend()
+            ax.plot(self.num_grass_history, 'g.-', label='num grass')  # was ax[0]
+            ax.plot(self.num_leaves_history, 'k.-', label='num leaves')
+            ax.legend()
             env_fig.show()
             env_fig.savefig(fname=config.ENV_FIG_FILE_PATH)
-
-    def plot_statistics_graph(self, stat_attribute: str):
-        """
-        Plot a graph showing the number of current/new/dead creatures in every step and
-        a graph showing the min/mstatistics_ax/mean/std energy of all creatures alive in every step.
-        :return:
-        """
-
-        # Plot number of alive/new/dead creatures in every step
-        num_creatures_per_step = np.array(self.num_creatures_per_step)
-        num_new_creatures_per_step = np.array(self.num_new_creatures_per_step)
-        num_dead_creatures_per_step = np.array(self.num_dead_creatures_per_step)
-
-        statistics_fig, statistics_ax = plt.subplots(2, 1, sharex='all')
-        statistics_ax[0].plot(num_creatures_per_step, 'b.-', label='alive')
-        statistics_ax[0].axhline(y=config.MAX_NUM_CREATURES,
-                                 linestyle='--', color='b', label='max num creatures')
-        statistics_ax[0].tick_params(axis='y', colors='b')
-        statistics_ax[0].set_title('num creatures per step')
-        statistics_ax[0].legend()
-
-        # plot number of alive creatures in second y-axis for clarity
-        statistics_ax2 = statistics_ax[0].twinx()
-        statistics_ax2.plot(num_new_creatures_per_step, 'g.-', label='new')
-        statistics_ax2.plot(num_dead_creatures_per_step, 'r.-', label='dead')
-        statistics_ax2.legend()
-
-        # plot min/max/mean/std attribute (speed or energy) of all creatures alive in every step
-        statistics_ax[1].plot(getattr(self, f'min_creature_{stat_attribute}_per_step'), '.-',
-                              label=f'min {stat_attribute}')
-        statistics_ax[1].plot(getattr(self, f'max_creature_{stat_attribute}_per_step'), '.-',
-                              label=f'max {stat_attribute}')
-        statistics_ax[1].errorbar(x=np.arange(len(getattr(self, f'mean_creature_{stat_attribute}_per_step'))),
-                                  y=getattr(self, f'mean_creature_{stat_attribute}_per_step'),
-                                  yerr=getattr(self, f'std_creature_{stat_attribute}_per_step'), linestyle='-',
-                                  marker='.',
-                                  label=f'mean and std {stat_attribute}')
-        if stat_attribute == 'energy':
-            statistics_ax[1].axhline(y=config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY,
-                                     linestyle='--', color='r', label='reproduction threshold')
-        statistics_ax[1].set_title(f'{stat_attribute} statistics per step')
-        statistics_ax[1].set_xlabel('step number')
-        statistics_ax[1].legend()
-
-        return statistics_fig
-
-
-# for debug (run by selecting all line and press Alt+Shift+E)
-if False:
-    from matplotlib import use
-
-    use('TkAgg')
-    for stat_attribute in self.stat_attributes:
-        statistics_fig = self.plot_statistics_graph(stat_attribute=stat_attribute)
-        statistics_fig.show()

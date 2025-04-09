@@ -44,6 +44,7 @@ class Environment:
         self.leaf_points = []
 
         self.new_grass_points = []
+        self.grass_remove_list = []
 
         self.grass_kd_tree = self.build_grass_kd_tree()
 
@@ -73,6 +74,11 @@ class Environment:
             choices = self.tree_indices[np.random.choice(len(self.tree_indices), num_new_leaves, replace=True)]
             for pt in choices:
                 self.leaf_points.append([pt[1], pt[0]])
+
+    def remove_grass_points(self):
+        for grass_point in self.grass_remove_list:
+            self.grass_points.remove(grass_point)
+        self.grass_remove_list = []
 
     def get_extent(self):
         """

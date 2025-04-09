@@ -25,7 +25,7 @@ np.random.seed = 0
 class Config:
     # Simulation parameters
     DT = 2.5  # time passing from frame to frame (relevant when calculating velocities) and what is the resolution of every calculation?
-    NUM_FRAMES = 120  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+    NUM_FRAMES = 250  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
     UPDATE_ANIMATION_INTERVAL = 40  # 30  # update the animation every n steps = every n*dt seconds
     FRAME_INTERVAL = 75  # interval between frames in animation [in ms]
     STATUS_EVERY_STEP = True  # choose if to update every step or every frame
@@ -59,7 +59,7 @@ class Config:
     INIT_MAX_ENERGY = 20000  # maybe useful for maturity test before reproduction
     REPRODUCTION_ENERGY = 10000  # energy cost of reproduction
     MIN_LIFE_ENERGY = 5000  # energy to be left after reproduction
-    GRASS_ENERGY = 500
+    GRASS_ENERGY = 1000
     LEAF_ENERGY = 2000
     INIT_DIGEST_DICT = {'grass': 1, 'leaf': 0.5, 'creature': 0}
 

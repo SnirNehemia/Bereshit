@@ -164,6 +164,7 @@ class Simulation:
                     if len(self.env.grass_points) > 0:
                         kd_tree = self.env.grass_kd_tree
                         candidate_points = np.array(self.env.grass_points)
+                        # candidate_ids = self.env.grass_ids
                 # elif channel == 'leaves':
                 #     if len(self.env.leaf_points) > 0:
                 #         candidate_points = np.array(self.env.leaf_points)
@@ -185,11 +186,11 @@ class Simulation:
 
         return channel_results
 
-    def use_brain(self, creature: Creature, dt: float, noise_std: float = 0.0):
+    def use_brain(self, creature: Creature, dt: float, seek_results: dict, noise_std: float = 0.0):
         try:
             # get brain input
-            seek_results = self.seek(creature=creature, noise_std=noise_std)
-            eyes_inputs = [self.prepare_eye_input(seek_results, creature.vision_limit) for seek_results in
+            # seek_results = self.seek(creature=creature, noise_std=noise_std)  # REMOVE
+            eyes_inputs = [self.prepare_eye_input(seek_result, creature.vision_limit) for seek_result in
                            seek_results.values()]
             brain_input = []
             brain_input.append(np.array([creature.hunger, creature.thirst]))
@@ -226,7 +227,7 @@ class Simulation:
         if detection_result is None:
             return np.array([0, vision_limit, 0])
         else:
-            distance, angle = detection_result
+            distance, angle = detection_result[0:2]
             return np.array([1, distance, angle])
 
     @staticmethod
@@ -259,7 +260,7 @@ class Simulation:
         candidate_indices = kd_tree.query_ball_point(eye_position, creature.vision_limit)
         best_distance = float('inf')
         detected_info = None
-        # Evaluate each candidate.
+        # Evaluate each candidate - which was sorted by the KDtree.
         for idx in candidate_indices:
             candidate = candidate_points[idx]
             # Skip if the candidate is the creature itself.
@@ -281,7 +282,7 @@ class Simulation:
                 angle += np.random.normal(0, noise_std)
             if distance < best_distance:
                 best_distance = distance
-                detected_info = (distance, angle)
+                detected_info = (distance, angle, idx)  # TODO: make sure to save the index too for fast removal
         return detected_info
 
     def kill(self, creature_id):
@@ -299,15 +300,21 @@ class Simulation:
         Then, moves creatures and updates the vegetation.
         """
 
+        # ------------------ seek creatures' targets ------------------------------
+        # TODO: bookmark
+        seek_results = {}
+        for creature_id, creature in self.creatures.items():
+            seek_results[creature_id] = self.seek(creature=creature, noise_std=noise_std)
         # -------------------- Use brain and update creature velocities --------------------------
 
         for creature_id, creature in self.creatures.items():
-            self.use_brain(creature=creature, dt=dt, noise_std=noise_std)
+            self.use_brain(creature=creature, dt=dt, seek_results=seek_results[creature_id], noise_std=noise_std)
 
         # ----------------- die / eat / reproduce (+create list of creatures to die or reproduce) ----------------------
 
         list_creatures_reproduce = []
         list_creature_die = []
+        is_eat_grass = False
 
         for creature_id, creature in self.creatures.items():
             # death from age or fatigue
@@ -318,16 +325,21 @@ class Simulation:
                 creature.age += config.DT
 
                 # check for food (first grass, if not found search for leaf if tall enough)
-                is_found_food = self.eat_food(creature=creature, food_type='grass')
-                if not is_found_food and creature.height >= config.LEAF_HEIGHT:
+                is_eat = self.eat_food(creature=creature, seek_result = seek_results[creature_id], food_type='grass')
+                if not is_eat and creature.height >= config.LEAF_HEIGHT:
                     _ = self.eat_food(creature=creature, food_type='leaf')
+
+                if is_eat:  # record if something was eaten
+                    is_eat_grass = True
 
                 # reproduce if able
                 if (creature.energy > creature.reproduction_energy + config.MIN_LIFE_ENERGY and
                         creature.can_reproduce(self.step_counter)):
                     list_creatures_reproduce.append(creature_id)
                     creature.reproduced_at = self.step_counter
-
+        if is_eat_grass:
+            self.env.remove_grass_points()
+            self.env.update_grass_kd_tree()
         # ------------------------ add the purge to the killing list ----------------------------
 
         if config.DO_PURGE:
@@ -391,28 +403,40 @@ class Simulation:
 
         return child_ids, dead_ids
 
-    def eat_food(self, creature: Creature, food_type: str):
+    def eat_food(self, creature: Creature, seek_result: dict, food_type: str):
         # check if creature is full
         if creature.energy >= creature.max_energy:
             return False
 
         # get food points
-        is_found_food = False
+        is_eat = False
         food_points, food_energy = [], 0
+
+        # This for serves the case of several eyes
+        for key, value in seek_result.items():
+            if key.startswith(food_type) and not value == None:
+                food_points.append(value)
+
         if food_type == 'grass':
-            food_points = self.env.grass_points
             food_energy = config.GRASS_ENERGY
         elif food_type == 'leaf':
-            food_points = self.env.leaf_points
             food_energy = config.LEAF_ENERGY
 
         if len(food_points) > 0:
-            # candidate_indices = kd_tree.query_ball_point(eye_position, creature.vision_limit) TODO: use the kd_tree here too!
-            food_distances = [np.linalg.norm(food_point - creature.position)
-                              for food_point in food_points]
-
-            closest_food_distance = np.min(food_distances)
-            closest_food_point = self.env.grass_points[np.argmin(food_distances)]
+            if len(food_points) > 1:
+                # candidate_indices = kd_tree.query_ball_point(eye_position, creature.vision_limit) TODO: use the kd_tree here too!
+                food_distances = [food_point[:2] for food_point in food_points]
+                # DELETE: food_distances = [np.linalg.norm(food_point[:2] - creature.position)
+                #                   for food_point in food_points]
+                closest_food_index = np.argmin(food_distances)
+            else:
+                food_distances = food_points[0][:2]
+                closest_food_index = 0
+            closest_food_distance = np.min(food_distances[closest_food_index])
+            closest_food_point = self.env.grass_points[food_points[closest_food_index][2]]
+            # if someone got there first
+            if closest_food_point in self.env.grass_remove_list:
+                return False
 
             if closest_food_distance <= config.FOOD_DISTANCE_THRESHOLD:
                 # creature eat food
@@ -420,11 +444,12 @@ class Simulation:
                 creature.log_eat.append(self.step_counter)
 
                 # remove food from environment
-                self.env.grass_points.remove(closest_food_point)
-                self.env.update_grass_kd_tree()
-                is_found_food = True
+                self.env.grass_remove_list.append(closest_food_point)
+                # self.env.grass_points.remove(closest_food_point)  # TODO:moved outside - check if it's fine
+                # self.env.update_grass_kd_tree()  # TODO:moved outside - check if it's fine
+                is_eat = True
 
-        return is_found_food
+        return is_eat
 
     def update_statistics_logs(self, child_ids, dead_ids, step):
         try:

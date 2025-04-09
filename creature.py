@@ -194,8 +194,8 @@ class Creature(StaticTraits):
             reaction_friction_force = kinetic_friction_force
 
         # drag force (air resistence)
-        linear_drag_force = - physical_model.gamma * self.velocity
-        quadratic_drag_force = - physical_model.c_drag * self.speed ** 2 * current_direction
+        linear_drag_force = - physical_model.gamma * self.height * self.velocity
+        quadratic_drag_force = - physical_model.c_drag * self.height * self.speed ** 2 * current_direction
         drag_force = linear_drag_force + quadratic_drag_force
 
         # calc new velocity and position
@@ -228,7 +228,7 @@ class Creature(StaticTraits):
         c_d = physical_model.energy_conversion_factors['digest']
         c_h = physical_model.energy_conversion_factors['height']
         rest_energy = physical_model.energy_conversion_factors['rest'] * self.mass ** 0.75  # called BMR energy
-        inner_energy = rest_energy + c_d * np.sum(list(self.digest_dict.values())) + c_h * self.height
+        inner_energy = rest_energy + c_d * np.sum(list(self.digest_dict.values()))
         return inner_energy
 
     @staticmethod

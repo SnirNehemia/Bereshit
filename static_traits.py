@@ -31,6 +31,7 @@ class StaticTraits:
 
         # for constraining dynamic traits
         self.max_age = max_age
+        self.adulescence = self.max_age / 4
         self.max_mass = max_mass
         self.max_height = max_height
         self.max_strength = max_strength

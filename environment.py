@@ -53,7 +53,7 @@ class Environment:
         Note: Over time these lists may become large.
         """
         # Generate new grass points.
-        if len(self.grass_points) >= config.MAX_GRASS_NUM:
+        if len(self.grass_points) + len(self.new_grass_points) >= config.MAX_GRASS_NUM:
             num_new_grass = 0
         else:
             num_new_grass = int(self.grass_generation_rate)

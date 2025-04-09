@@ -66,11 +66,13 @@ class Simulation:
         self.animation_update_interval = config.UPDATE_ANIMATION_INTERVAL  # Set update interval for animation frames
         self.step_counter = 0  # Initialize step counter
         self.id_count = config.NUM_CREATURES - 1
-        self.focus_ID = 0
+        self.make_agent(0)
+
         self.purge = True  # flag for purge events
 
         if config.DEBUG_MODE:
             np.seterr(all='raise')  # Convert NumPy warnings into exceptions
+
 
     @staticmethod
     def initialize_creatures(num_creatures, simulation_space, input_size, output_size,
@@ -127,6 +129,10 @@ class Simulation:
 
             creatures[creature_id] = creature
         return creatures
+
+    def make_agent(self, focus_ID):
+        self.focus_ID = focus_ID
+        self.creatures[self.focus_ID].make_agent()
 
     def build_creatures_kd_tree(self) -> KDTree:
         """
@@ -317,13 +323,15 @@ class Simulation:
                     _ = self.eat_food(creature=creature, food_type='leaf')
 
                 # reproduce if able
-                if creature.energy > creature.reproduction_energy + config.MIN_LIFE_ENERGY:
+                if (creature.energy > creature.reproduction_energy + config.MIN_LIFE_ENERGY and
+                        creature.can_reproduce(self.step_counter)):
                     list_creatures_reproduce.append(creature_id)
+                    creature.reproduced_at = self.step_counter
 
         # ------------------------ add the purge to the killing list ----------------------------
 
         if config.DO_PURGE:
-            if self.purge or len(self.creatures) > config.MAX_NUM_CREATURES * config.STUCK_PERCENTAGE:
+            if self.purge or len(self.creatures) > config.MAX_NUM_CREATURES * config.PURGE_POP_PERCENTAGE:
                 purge_count = 0
                 self.purge = False
                 for creature_id, creature in self.creatures.items():
@@ -479,6 +487,7 @@ class Simulation:
             global fig, ax_env, ax_brain, ax_agent_info_1, ax_agent_info_2, ax_agent_events, ax_life, progress_bar
 
             # init fig with the grid layout with uneven ratios
+            # TODO: fig, axes = set_animation_figure()
             fig = plt.figure(figsize=(16, 8))
             fig_grid = gridspec.GridSpec(2, 3, width_ratios=[1, 2, 1], height_ratios=[2, 1])  # 2:1 ratio for both axes
             ax_lineage = fig.add_subplot(fig_grid[0, 0])  # ancestor tree?
@@ -543,11 +552,11 @@ class Simulation:
             else:
                 update_num = config.NUM_FRAMES
 
-            progress_bar = tqdm(total=update_num, desc=f"Alive: {len(self.creatures)} | "
-                                             f"Children: {self.children_num} | "
-                                             f"Dead: {len(self.dead_creatures)} | "
-                                             f"leaves: {len(self.env.leaf_points)} | "
-                                             f"grass: {len(self.env.grass_points)} | "
+            progress_bar = tqdm(total=update_num, desc=f"Alive: {len(self.creatures):4} | "
+                                             f"Children: {self.children_num:4} | "
+                                             f"Dead: {len(self.dead_creatures):4} | "
+                                             f"leaves: {len(self.env.leaf_points):3} | "
+                                             f"grass: {len(self.env.grass_points):3} | "
                                              f"Progress")
 
         def init_func():
@@ -602,21 +611,21 @@ class Simulation:
 
                 # Update the progress bar every step
                 if config.STATUS_EVERY_STEP:
-                    progress_bar.set_description(f"Alive: {len(self.creatures)} | "
-                                             f"Children: {self.children_num} | "
-                                             f"Dead: {len(self.dead_creatures)} | "
-                                             f"leaves: {len(self.env.leaf_points)} | "
-                                             f"grass: {len(self.env.grass_points)} | "
+                    progress_bar.set_description(f"Alive: {len(self.creatures):4} | "
+                                             f"Children: {self.children_num:4} | "
+                                             f"Dead: {len(self.dead_creatures):4} | "
+                                             f"leaves: {len(self.env.leaf_points):3} | "
+                                             f"grass: {len(self.env.grass_points):3} | "
                                              f"Progress")
                     progress_bar.update(1)  # or self.animation_update_interval outside the for loop
 
             # update the progress bar every frame
             if not config.STATUS_EVERY_STEP:
-                progress_bar.set_description(f"Alive: {len(self.creatures)} | "
-                                             f"Children: {self.children_num} | "
-                                             f"Dead: {len(self.dead_creatures)} | "
-                                             f"leaves: {len(self.env.leaf_points)} | "
-                                             f"grass: {len(self.env.grass_points)} | "
+                progress_bar.set_description(f"Alive: {len(self.creatures):4} | "
+                                             f"Children: {self.children_num:4} | "
+                                             f"Dead: {len(self.dead_creatures):4} | "
+                                             f"leaves: {len(self.env.leaf_points):3} | "
+                                             f"grass: {len(self.env.grass_points):3} | "
                                              f"Progress")
                 progress_bar.update(1)  # or self.animation_update_interval outside the for loop
 
@@ -714,15 +723,15 @@ class Simulation:
                 if len(self.creatures) > 0:
                     ids = self.creatures_history[-1]
                     if self.focus_ID not in ids:
-                        if self.id_count in ids:
-                            self.focus_ID = self.id_count
+                        if self.id_count in ids:  # trying to use the youngest creature as agent
+                            self.make_agent(self.id_count)
                         else:
-                            self.focus_ID = np.random.choice(list(self.creatures.keys()))
+                            self.make_agent(np.random.choice(list(self.creatures.keys())))
                     agent = self.creatures[self.focus_ID]
                     agent_scat.set_offsets([agent.position, agent.position])
                     agent.brain.plot(ax_brain)
                     # ax_agent_info.clear()
-                    agent.plot_rebalance(ax_agent_info_1, mode='energy')
+                    agent.plot_rebalance(ax_agent_info_1, mode='energy_use')
                     agent.plot_rebalance(ax_agent_info_2, mode='speed')
                     agent.plot_live_status(ax_life, plot_horizontal=False)
                     agent.plot_acc_status(ax_agent_events, plot_type=1, curr_step=self.step_counter)

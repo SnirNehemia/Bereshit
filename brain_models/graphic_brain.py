@@ -51,6 +51,7 @@ class Brain:
         self.pos = 'none'
         self.random_magnitude = 0.2  # TODO: change to something from config
         self.self_connected = []
+        self.size = len(self.graph.nodes)
 
     def add_node(self, node_type='hidden', activation='tanh'):
         """Add a node with a given type (input, output, or hidden) and initial value."""
@@ -231,6 +232,7 @@ class Brain:
 
         self.forget(brain_mutation_rate[
                         'forget_magnitude'])  # reduce the current value of the nodes as a forget mechanism between generations
+        self.size = len(self.graph.nodes)
         return self
 
     def normalize_input(self, input):

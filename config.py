@@ -24,15 +24,15 @@ np.random.seed = 0
 @dataclasses.dataclass
 class Config:
     # Simulation parameters
-    DT = 10.0  # time passing from frame to frame (relevant when calculating velocities) and what is the resolution of every calculation?
-    NUM_FRAMES = 1200  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
-    UPDATE_ANIMATION_INTERVAL = 3  # 30  # update the animation every n steps = every n*dt seconds
+    DT = 2.5  # time passing from frame to frame (relevant when calculating velocities) and what is the resolution of every calculation?
+    NUM_FRAMES = 120  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+    UPDATE_ANIMATION_INTERVAL = 40  # 30  # update the animation every n steps = every n*dt seconds
     FRAME_INTERVAL = 75  # interval between frames in animation [in ms]
     STATUS_EVERY_STEP = True  # choose if to update every step or every frame
-    UPDATE_KDTREE_INTERVAL = 90  # update the kdtree every n steps
+    UPDATE_KDTREE_INTERVAL = 120  # update the kdtree every n steps
     DEBUG_MODE = False  # breakpoint in update_func after each frame (not step!)
-    REBALANCE = False
-    STUCK_PERCENTAGE = 0.75  # percentage of MAX_NUM_CREATURES to stuck simulation
+    REBALANCE = True
+    PURGE_POP_PERCENTAGE = 0.75  # percentage of MAX_NUM_CREATURES to stuck simulation
 
     # Purge parameters
     DO_PURGE = True
@@ -57,7 +57,7 @@ class Config:
 
     # Energy parameters
     INIT_MAX_ENERGY = 20000  # maybe useful for maturity test before reproduction
-    REPRODUCTION_ENERGY = 12000  # energy cost of reproduction
+    REPRODUCTION_ENERGY = 10000  # energy cost of reproduction
     MIN_LIFE_ENERGY = 5000  # energy to be left after reproduction
     GRASS_ENERGY = 500
     LEAF_ENERGY = 2000
@@ -69,7 +69,9 @@ class Config:
     # Creatures parameters
     NUM_CREATURES = 800  # init size of population
     MAX_NUM_CREATURES = 1250
-    INIT_MAX_AGE = 8000  # [steps]
+    INIT_MAX_AGE = 15000  # [sec]
+    ADOLESCENCE_AGE_FRACTION = 0.25  # [0-1] fraction of INIT_MAX_AGE for adulthood
+    REPRODUCTION_COOLDOWN = 300  # [sec] minimal time between reproduction events
     INIT_MAX_MASS = 10  # [kg]
     INIT_MAX_HEIGHT = 0.5  # [m]
     INIT_MAX_STRENGTH = 25  # [N]
@@ -97,8 +99,8 @@ class Config:
 
     # Mutations
     MUTATION_CHANCE = 0.3  # number between 0-1 indicating chance of trait to be mutated
-    MAX_MUTATION_FACTORS = {
-        'color': np.array([0.01, 0.01, 0.01]),  # +-in each RGB color
+    STD_MUTATION_FACTORS = {
+        'color': np.ones(3) * 0.05,  # +-in each RGB color
 
         'max_age': 2,
         'max_mass': 1,

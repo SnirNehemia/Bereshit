@@ -7,8 +7,10 @@ from config import Config as config
 from physical_model import PhysicalModel as physical_model
 
 import importlib
+
 brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
 Brain = getattr(brain_module, 'Brain')
+
 
 class Creature(StaticTraits):
     """
@@ -65,7 +67,8 @@ class Creature(StaticTraits):
         self.height = np.random.uniform(low=0.01, high=0.1) * self.max_height
         self.strength = np.random.uniform(low=0.01, high=0.1) * self.max_strength
 
-        self.energy = 0.8 * (config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY) # TODO: patch for runability | was self.max_energy
+        self.energy = 0.8 * (
+                    config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY)  # TODO: patch for runability | was self.max_energy
         self.velocity = (np.random.rand(2) - 0.5) * self.max_speed
         self.max_speed_exp = np.linalg.norm(self.velocity)
         self.calc_speed()
@@ -207,9 +210,9 @@ class Creature(StaticTraits):
 
         # kinetic friction force
         mu_kinetic = physical_model.mu_kinetic
-        alpha_mu = physical_model.alpha_mu
-        mu_total = mu_kinetic + (mu_static - mu_kinetic) * np.exp(-alpha_mu * self.speed)
-        kinetic_friction_force = - mu_total * np.linalg.norm(normal_force) * global_propulsion_force_direction
+        # alpha_mu = physical_model.alpha_mu
+        # mu_total = mu_kinetic + (mu_static - mu_kinetic) * np.exp(-alpha_mu * self.speed)
+        kinetic_friction_force = - mu_kinetic * np.linalg.norm(normal_force) * global_propulsion_force_direction
 
         # reaction friction force used for movement:
         # when propulsion force is within the static friction force limit
@@ -220,8 +223,8 @@ class Creature(StaticTraits):
             reaction_friction_force = kinetic_friction_force
 
         # drag force (air resistence)
-        linear_drag_force = - physical_model.gamma * self.velocity
-        quadratic_drag_force = - physical_model.c_drag * self.speed ** 2 * current_direction
+        linear_drag_force = - physical_model.gamma * self.height * self.velocity
+        quadratic_drag_force = - physical_model.c_drag * self.height * self.speed ** 2 * current_direction
         drag_force = linear_drag_force + quadratic_drag_force
 
         # calc new velocity and position

@@ -24,11 +24,11 @@ np.random.seed = 0
 @dataclasses.dataclass
 class Config:
     # Simulation parameters
-    DT = 2.5  # time passing from frame to frame (relevant when calculating velocities) and what is the resolution of every calculation?
+    DT = 2.5  # time passing between consecutive steps (relevant for age and movement)
     NUM_FRAMES = 250  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
     UPDATE_ANIMATION_INTERVAL = 40  # 30  # update the animation every n steps = every n*dt seconds
     FRAME_INTERVAL = 75  # interval between frames in animation [in ms]
-    STATUS_EVERY_STEP = True  # choose if to update every step or every frame
+    STATUS_EVERY_STEP = False  # choose if to update every step or every frame
     UPDATE_KDTREE_INTERVAL = 120  # update the kdtree every n steps
     DEBUG_MODE = False  # breakpoint in update_func after each frame (not step!)
     REBALANCE = True

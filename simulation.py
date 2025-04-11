@@ -330,7 +330,7 @@ class Simulation:
                 # check for food (first grass, if not found search for leaf if tall enough)
                 is_eat = self.eat_food(creature=creature, seek_result = seek_results[creature_id], food_type='grass')
                 if not is_eat and creature.height >= config.LEAF_HEIGHT:
-                    _ = self.eat_food(creature=creature, food_type='leaf')
+                    _ = self.eat_food(creature=creature, seek_result = seek_results[creature_id], food_type='leaf')
 
                 if is_eat:  # record if something was eaten
                     is_eat_grass = True
@@ -676,7 +676,7 @@ class Simulation:
 
                     # breakpoint()
 
-                ax_env.set_title(f"Evolution Simulation ({frame=}, step={self.step_counter})")
+                ax_env.set_title(f"Evolution Simulation ({frame=:5}, Time={self.step_counter * config.DT:.0f} s)")
                 progress_bar.update(self.animation_update_interval)
                 self.step_counter += self.animation_update_interval
 

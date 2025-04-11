@@ -92,7 +92,6 @@ class Creature(StaticTraits):
         self.log_propulsion_energy = []
         self.log_inner_energy = []
         self.log_energy_consumption = []
-        self.agent_age = int(self.age)
 
     def get_heading(self):
         """
@@ -248,6 +247,8 @@ class Creature(StaticTraits):
             self.log_propulsion_energy.append(propulsion_energy)
             self.log_inner_energy.append(inner_energy)
             self.log_energy_consumption.append(inner_energy + propulsion_energy)
+            if self.log_energy_consumption[-1] < 0:
+                raise ValueError('Energy consumption cannot be negative')
         self.energy -= propulsion_energy + inner_energy
 
     @staticmethod
@@ -315,13 +316,16 @@ class Creature(StaticTraits):
             plt.ion()
             fig, ax = plt.subplots(1, 1)
         ax.clear()
-        if len(self.log_eat) > 0 and len(self.log_energy_consumption) > 0:
-            title = (f"Power cons. = {np.mean(self.log_energy_consumption) / config.DT:.1f} J/sec | "
-                     f"Meals freq. = {np.mean(np.diff([self.birth_step] + self.log_eat)) / config.DT:.1f} sec | "
-                     f"Meal worth = {np.mean(self.log_excess_energy):.1f} J")
+        if len(self.log_eat) > 0 and len(self.log_energy_consumption) > 3:  # TODO: make sure energy consumption exclude eating events
+            title = (f"P out = {np.mean(self.log_energy_consumption[-2:]) / (self.age * config.DT):.1f} J/sec | "
+                     f"Meals dt = {np.mean(np.diff([self.birth_step] + self.log_eat)) *
+                                      (self.age * config.DT):.0f} [sec] | "
+                     f"Meal E = {np.mean(self.log_excess_energy):.0f} J | "
+                     f"[m, h] = {np.mean(self.mass):.1f} Kg, {np.mean(self.height):.0f} m")
         else:
-            title = (f"Power cons. = {np.mean(np.diff(self.log_energy)) / config.DT:.1f} J/sec | "
-                     f"No eating events")
+            title = (f"P out = {np.mean(self.log_energy_consumption) / (self.age * config.DT):.1f} J/sec | "
+                     f"No eating events | "
+                     f"[m, h] = {np.mean(self.mass):.1f} Kg, {np.mean(self.height):.0f} m")
         ax.set_title(title)
         if mode == 'speed':
             ax.plot(range(int(self.age / config.DT+1)),self.log_speed, color='teal', alpha=0.5, label='Speed')
@@ -330,6 +334,7 @@ class Creature(StaticTraits):
             ax.spines['left'].set_color('maroon')
             ax.spines['right'].set_color('teal')
             ax.legend(loc='upper right')
+            ax.yaxis.set_label_position("right")
             ax.set_ylabel('Speed [m/sec]')
             ax.set_xlabel('Age [step]')
         elif mode == 'energy':
@@ -340,17 +345,19 @@ class Creature(StaticTraits):
             ax.spines['right'].set_color('teal')
             ax.legend(loc='upper left')
             ax.set_ylabel('Energy [J]')
+            ax.set_xlabel('Age [step]')
         elif mode == 'energy_use':
-            if self.agent_age < self.age:
-                ax.plot(range(int(self.agent_age / config.DT), int(self.age / config.DT)),
+            if len(self.log_propulsion_energy) > 0:
+                ax.plot(range(int(self.age / config.DT) - len(self.log_propulsion_energy), int(self.age / config.DT)),
                         self.log_propulsion_energy, color='maroon', alpha=0.5, label='Prop. E')
-                ax.plot(range(int(self.agent_age / config.DT), int(self.age / config.DT)),
+                ax.plot(range(int(self.age / config.DT) - len(self.log_inner_energy), int(self.age / config.DT)),
                         self.log_inner_energy, color='maroon', alpha=0.5, label='Inner E', linestyle='dashed')
                 ax.tick_params(axis='y', colors='maroon')
                 ax.spines['left'].set_color('maroon')
                 ax.spines['right'].set_color('teal')
                 ax.legend(loc='upper left')
                 ax.set_ylabel('Energy consumption [J]')
+                ax.set_xlabel('Age [step]')
 
     def plot_live_status(self, ax, debug=False, plot_horizontal=True):
         """
@@ -365,7 +372,6 @@ class Creature(StaticTraits):
         colors = ['green', 'grey']  # , 'red', 'blue'
         values = [getattr(self, attr) for attr in ls]  # Dynamically get values
         ax.clear()
-        ax.set_title(f'C# {self.creature_id} | Anc. = {len(self.ancestors)}')
         if plot_horizontal:
             ax.barh(ls, values, color=colors)
             if 'energy' in ls:
@@ -409,6 +415,7 @@ class Creature(StaticTraits):
         if max(self.color) > 1 or min(self.color) < 0:
             raise ('color exceed [0, 1] range')
         ax.set_facecolor(list(self.color) + [0.3])
+        ax.set_title(f'C# {self.creature_id} | Anc. = {len(self.ancestors)}')
         if plot_type == 0:
             # option 1
             values = [len(getattr(self, attr)) for attr in ls]  # Dynamically get values

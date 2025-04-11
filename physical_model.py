@@ -20,20 +20,20 @@ class PhysicalModel:
 
     # convert physical parameters to energy
     energy_conversion_factors = {
-        'activity_efficiency': 0.75,  #0.25,  # propulsion force to energy factor (higher -> efficient)
+        'activity_efficiency': 0.1,  #0.25,  # propulsion force to energy factor (higher -> efficient)
         'heat_loss': 0.01,  # propulsion force to wasted energy (higher -> more loss)
-        'rest': 0.05,  # constant for Basal Metabolic Rate (BMR) energy
+        'rest': 0.00002,  # constant for Basal Metabolic Rate (BMR) energy
         'digest': 0.05,  # [E]/[no units] convert digest factor to digest energy
         'brain_consumption': 0.005,  # [E]/[no units] convert brain size to brain consumption energy
-        'height': 25,  # [E]/[h]  # convert height to height energy
+        'height': 1,  # [E]/[h]  # convert height to height energy
         'mass': 25  # [E]/[m] = [v^2] = [m^2/sec^4]  convert mass to mass energy
     }
 
     # trait change formulas based on given energy
     trait_energy_func = lambda factor, rate, age: factor * np.exp(-rate * age)
     trait_energy_params_dict = {
-        'height': {'factor': 0.01, 'rate': 5e-4},  # [factor] = [1], [rate] = [1/sec]
-        'mass': {'factor': 0.01, 'rate': 2e-4}  # [factor] = [1], [rate] = [1/sec]
+        'height': {'factor': 0.001, 'rate': 5e-4},  # [factor] = [1], [rate] = [1/sec]
+        'mass': {'factor': 0.005, 'rate': 2e-4}  # [factor] = [1], [rate] = [1/sec]
     }
 
     # Check that sum of energy factors wasted on traits is between 0 and 1

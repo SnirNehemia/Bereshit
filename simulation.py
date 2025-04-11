@@ -71,11 +71,13 @@ class Simulation:
         self.animation_update_interval = config.UPDATE_ANIMATION_INTERVAL  # Set update interval for animation frames
         self.step_counter = 0  # Initialize step counter
         self.id_count = config.NUM_CREATURES - 1
-        self.focus_ID = 0
+        self.make_agent(0)
+
         self.purge = True  # flag for purge events
 
         if config.DEBUG_MODE:
             np.seterr(all='raise')  # Convert NumPy warnings into exceptions
+
 
     @staticmethod
     def initialize_creatures(num_creatures, simulation_space, input_size, output_size,
@@ -133,6 +135,10 @@ class Simulation:
             creatures[creature_id] = creature
         return creatures
 
+    def make_agent(self, focus_ID):
+        self.focus_ID = focus_ID
+        self.creatures[self.focus_ID].make_agent()
+
     def build_creatures_kd_tree(self) -> KDTree:
         """
         Builds a KDTree from the positions of all creatures.
@@ -184,11 +190,11 @@ class Simulation:
 
         return channel_results
 
-    def use_brain(self, creature: Creature, dt: float, noise_std: float = 0.0):
+    def use_brain(self, creature: Creature, dt: float, seek_results: dict, noise_std: float = 0.0):
         try:
             # get brain input
-            seek_results = self.seek(creature=creature, noise_std=noise_std)
-            eyes_inputs = [self.prepare_eye_input(seek_results, creature.vision_limit) for seek_results in
+            # seek_results = self.seek(creature=creature, noise_std=noise_std)  # REMOVE
+            eyes_inputs = [self.prepare_eye_input(seek_result, creature.vision_limit) for seek_result in
                            seek_results.values()]
             brain_input = []
             brain_input.append(np.array([creature.hunger, creature.thirst]))
@@ -225,7 +231,7 @@ class Simulation:
         if detection_result is None:
             return np.array([0, vision_limit, 0])
         else:
-            distance, angle = detection_result
+            distance, angle = detection_result[0:2]
             return np.array([1, distance, angle])
 
     @staticmethod
@@ -258,7 +264,7 @@ class Simulation:
         candidate_indices = kd_tree.query_ball_point(eye_position, creature.vision_limit)
         best_distance = float('inf')
         detected_info = None
-        # Evaluate each candidate.
+        # Evaluate each candidate - which was sorted by the KDtree.
         for idx in candidate_indices:
             candidate = candidate_points[idx]
             # Skip if the candidate is the creature itself.
@@ -280,7 +286,7 @@ class Simulation:
                 angle += np.random.normal(0, noise_std)
             if distance < best_distance:
                 best_distance = distance
-                detected_info = (distance, angle)
+                detected_info = (distance, angle, idx)  # TODO: make sure to save the index too for fast removal
         return detected_info
 
     def kill(self, creature_id):
@@ -298,15 +304,20 @@ class Simulation:
         Then, moves creatures and updates the vegetation.
         """
 
+        # ------------------ seek creatures' targets ------------------------------
+        seek_results = {}
+        for creature_id, creature in self.creatures.items():
+            seek_results[creature_id] = self.seek(creature=creature, noise_std=noise_std)
         # -------------------- Use brain and update creature velocities --------------------------
 
         for creature_id, creature in self.creatures.items():
-            self.use_brain(creature=creature, dt=dt, noise_std=noise_std)
+            self.use_brain(creature=creature, dt=dt, seek_results=seek_results[creature_id], noise_std=noise_std)
 
         # ----------------- die / eat / reproduce (+create list of creatures to die or reproduce) ----------------------
 
         list_creatures_reproduce = []
         list_creature_die = []
+        is_eat_grass = False
 
         for creature_id, creature in self.creatures.items():
             # death from age or fatigue
@@ -317,18 +328,25 @@ class Simulation:
                 creature.age += config.DT
 
                 # check for food (first grass, if not found search for leaf if tall enough)
-                is_found_food = self.eat_food(creature=creature, food_type='grass')
-                if not is_found_food and creature.height >= config.LEAF_HEIGHT:
+                is_eat = self.eat_food(creature=creature, seek_result = seek_results[creature_id], food_type='grass')
+                if not is_eat and creature.height >= config.LEAF_HEIGHT:
                     _ = self.eat_food(creature=creature, food_type='leaf')
 
-                # reproduce if able
-                if creature.energy > creature.reproduction_energy + config.MIN_LIFE_ENERGY:
-                    list_creatures_reproduce.append(creature_id)
+                if is_eat:  # record if something was eaten
+                    is_eat_grass = True
 
+                # reproduce if able
+                if (creature.energy > creature.reproduction_energy + config.MIN_LIFE_ENERGY and
+                        creature.can_reproduce(self.step_counter)):
+                    list_creatures_reproduce.append(creature_id)
+                    creature.reproduced_at = self.step_counter
+        if is_eat_grass:
+            self.env.remove_grass_points()
+            self.env.update_grass_kd_tree()
         # ------------------------ add the purge to the killing list ----------------------------
 
         if config.DO_PURGE:
-            if self.purge or len(self.creatures) > config.MAX_NUM_CREATURES * config.STUCK_PERCENTAGE:
+            if self.purge or len(self.creatures) > config.MAX_NUM_CREATURES * config.PURGE_POP_PERCENTAGE:
                 purge_count = 0
                 self.purge = False
                 for creature_id, creature in self.creatures.items():
@@ -388,28 +406,40 @@ class Simulation:
 
         return child_ids, dead_ids
 
-    def eat_food(self, creature: Creature, food_type: str):
+    def eat_food(self, creature: Creature, seek_result: dict, food_type: str):
         # check if creature is full
         if creature.energy >= creature.max_energy:
             return False
 
         # get food points
-        is_found_food = False
+        is_eat = False
         food_points, food_energy = [], 0
+
+        # This for serves the case of several eyes
+        for key, value in seek_result.items():
+            if key.startswith(food_type) and not value == None:
+                food_points.append(value)
+
         if food_type == 'grass':
-            food_points = self.env.grass_points
             food_energy = config.GRASS_ENERGY
         elif food_type == 'leaf':
-            food_points = self.env.leaf_points
             food_energy = config.LEAF_ENERGY
 
         if len(food_points) > 0:
-            # candidate_indices = kd_tree.query_ball_point(eye_position, creature.vision_limit) TODO: use the kd_tree here too!
-            food_distances = [np.linalg.norm(food_point - creature.position)
-                              for food_point in food_points]
-
-            closest_food_distance = np.min(food_distances)
-            closest_food_point = self.env.grass_points[np.argmin(food_distances)]
+            if len(food_points) > 1:
+                # candidate_indices = kd_tree.query_ball_point(eye_position, creature.vision_limit) TODO: use the kd_tree here too!
+                food_distances = [food_point[:2] for food_point in food_points]
+                # DELETE: food_distances = [np.linalg.norm(food_point[:2] - creature.position)
+                #                   for food_point in food_points]
+                closest_food_index = np.argmin(food_distances)
+            else:
+                food_distances = food_points[0][:2]
+                closest_food_index = 0
+            closest_food_distance = np.min(food_distances[closest_food_index])
+            closest_food_point = self.env.grass_points[food_points[closest_food_index][2]]
+            # if someone got there first
+            if closest_food_point in self.env.grass_remove_list:
+                return False
 
             if closest_food_distance <= config.FOOD_DISTANCE_THRESHOLD:
                 # creature eat food
@@ -417,11 +447,12 @@ class Simulation:
                 creature.log_eat.append(self.step_counter)
 
                 # remove food from environment
-                self.env.grass_points.remove(closest_food_point)
-                self.env.update_grass_kd_tree()
-                is_found_food = True
+                self.env.grass_remove_list.append(closest_food_point)
+                # self.env.grass_points.remove(closest_food_point)  # TODO:moved outside - check if it's fine
+                # self.env.update_grass_kd_tree()  # TODO:moved outside - check if it's fine
+                is_eat = True
 
-        return is_found_food
+        return is_eat
 
     def update_statistics_logs(self, child_ids, dead_ids, step):
         try:
@@ -529,6 +560,7 @@ class Simulation:
             global fig, ax_lineage, ax_traits, ax_env, ax_brain, ax_agent_info_1, ax_agent_info_2, ax_agent_events, ax_life, progress_bar
 
             # init fig with the grid layout with uneven ratios
+            # TODO: fig, axes = set_animation_figure()
             fig = plt.figure(figsize=(16, 8))
             fig_grid = gridspec.GridSpec(2, 3, width_ratios=[1, 2, 1], height_ratios=[2, 1])  # 2:1 ratio for both axes
             ax_lineage = fig.add_subplot(fig_grid[0, 0])  # ancestor tree?
@@ -539,7 +571,7 @@ class Simulation:
             ax_agent_info_1 = ax_agent_info
             ax_agent_info_2 = ax_agent_info_1.twinx()
             # ax_agent_status = fig.add_subplot(fig_grid[1, 2])  # Smallest subplot (1/4 x 1/4)
-            subgrid = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=fig_grid[1, 2], width_ratios=[1, 4])
+            subgrid = gridspec.GridSpecFromSubplotSpec(1,2,subplot_spec=fig_grid[1, 2], width_ratios=[1, 4])
             ax_life = fig.add_subplot(subgrid[0, 0])
             ax_agent_events = fig.add_subplot(subgrid[0, 1])
             extent = self.env.get_extent()
@@ -600,12 +632,12 @@ class Simulation:
             else:
                 update_num = config.NUM_FRAMES
 
-            progress_bar = tqdm(total=update_num, desc=f"Alive: {len(self.creatures)} | "
-                                                       f"Children: {self.children_num} | "
-                                                       f"Dead: {len(self.dead_creatures)} | "
-                                                       f"leaves: {len(self.env.leaf_points)} | "
-                                                       f"grass: {len(self.env.grass_points)} | "
-                                                       f"Progress")
+            progress_bar = tqdm(total=update_num, desc=f"Alive: {len(self.creatures):4} | "
+                                             f"Children: {self.children_num:4} | "
+                                             f"Dead: {len(self.dead_creatures):4} | "
+                                             f"leaves: {len(self.env.leaf_points):3} | "
+                                             f"grass: {len(self.env.grass_points):3} | "
+                                             f"Progress")
 
         def init_func():
             """
@@ -632,7 +664,7 @@ class Simulation:
             global lineage_graph, traits_scat, quiv, scat, grass_scat, leaves_scat, agent_scat
             global fig, ax_lineage, ax_traits, ax_env, ax_brain, ax_agent_info_1, ax_agent_info_2, ax_agent_events, ax_life, progress_bar
 
-            # abort simulation if no creatures left or there are too many creatures
+        # abort simulation if no creatures left or there are too many creatures
             if self.abort_simulation:
                 if config.DEBUG_MODE:
                     from matplotlib import use
@@ -660,21 +692,21 @@ class Simulation:
 
                 # Update the progress bar every step
                 if config.STATUS_EVERY_STEP:
-                    progress_bar.set_description(f"Alive: {len(self.creatures)} | "
-                                                 f"Children: {self.children_num} | "
-                                                 f"Dead: {len(self.dead_creatures)} | "
-                                                 f"leaves: {len(self.env.leaf_points)} | "
-                                                 f"grass: {len(self.env.grass_points)} | "
-                                                 f"Progress")
+                    progress_bar.set_description(f"Alive: {len(self.creatures):4} | "
+                                             f"Children: {self.children_num:4} | "
+                                             f"Dead: {len(self.dead_creatures):4} | "
+                                             f"leaves: {len(self.env.leaf_points):3} | "
+                                             f"grass: {len(self.env.grass_points):3} | "
+                                             f"Progress")
                     progress_bar.update(1)  # or self.animation_update_interval outside the for loop
 
             # update the progress bar every frame
             if not config.STATUS_EVERY_STEP:
-                progress_bar.set_description(f"Alive: {len(self.creatures)} | "
-                                             f"Children: {self.children_num} | "
-                                             f"Dead: {len(self.dead_creatures)} | "
-                                             f"leaves: {len(self.env.leaf_points)} | "
-                                             f"grass: {len(self.env.grass_points)} | "
+                progress_bar.set_description(f"Alive: {len(self.creatures):4} | "
+                                             f"Children: {self.children_num:4} | "
+                                             f"Dead: {len(self.dead_creatures):4} | "
+                                             f"leaves: {len(self.env.leaf_points):3} | "
+                                             f"grass: {len(self.env.grass_points):3} | "
                                              f"Progress")
                 progress_bar.update(1)  # or self.animation_update_interval outside the for loop
 
@@ -703,7 +735,7 @@ class Simulation:
                 # Update creature positions and directions
                 num_creatures_in_last_frame = len(self.positions)
                 self.positions = np.array([creature.position for creature in self.creatures.values()])
-                sizes = np.array([creature.mass for creature in self.creatures.values()]) * config.FOOD_SIZE  # / 10
+                sizes = np.array([creature.mass for creature in self.creatures.values()]) * config.FOOD_SIZE # / 10
                 colors = [creature.color for creature in self.creatures.values()]
 
                 U, V = [], []
@@ -790,15 +822,15 @@ class Simulation:
                 if len(self.creatures) > 0:
                     ids = self.creatures_history[-1]
                     if self.focus_ID not in ids:
-                        if self.id_count in ids:
-                            self.focus_ID = self.id_count
+                        if self.id_count in ids:  # trying to use the youngest creature as agent
+                            self.make_agent(self.id_count)
                         else:
-                            self.focus_ID = np.random.choice(list(self.creatures.keys()))
+                            self.make_agent(np.random.choice(list(self.creatures.keys())))
                     agent = self.creatures[self.focus_ID]
                     agent_scat.set_offsets([agent.position, agent.position])
                     agent.brain.plot(ax_brain)
                     # ax_agent_info.clear()
-                    agent.plot_rebalance(ax_agent_info_1, mode='energy')
+                    agent.plot_rebalance(ax_agent_info_1, mode='energy_use')
                     agent.plot_rebalance(ax_agent_info_2, mode='speed')
                     agent.plot_live_status(ax_life, plot_horizontal=False)
                     agent.plot_acc_status(ax_agent_events, plot_type=1, curr_step=self.step_counter)

@@ -9,8 +9,8 @@ class PhysicalModel:
     g: float = 10  # [m/sec^2]
 
     # drag force (air resistence)
-    gamma: float = 1e-5  # [F]/[v] = [kg/sec] linear drag air resistence (dominant in low speeds)
-    c_drag: float = 1e-7  # [F]/[v^2] quadratic drag air resistence (dominant in high speeds)
+    gamma: float = 1e-4  # [F]/[v] = [kg/sec] linear drag air resistence (dominant in low speeds)
+    c_drag: float = 1e-5  # [F]/[v^2] quadratic drag air resistence (dominant in high speeds)
 
     # friction force
     mu_static: float = 1.5  # [no units]  # higher mu_static means faster movement
@@ -20,19 +20,20 @@ class PhysicalModel:
 
     # convert physical parameters to energy
     energy_conversion_factors = {
-        'activity_efficiency': 0.5,  #0.25,  # propulsion force to energy factor (higher -> efficient)
+        'activity_efficiency': 0.75,  #0.25,  # propulsion force to energy factor (higher -> efficient)
         'heat_loss': 0.01,  # propulsion force to wasted energy (higher -> more loss)
-        'rest': 0.1,  # constant for Basal Metabolic Rate (BMR) energy
+        'rest': 0.05,  # constant for Basal Metabolic Rate (BMR) energy
         'digest': 0.05,  # [E]/[no units] convert digest factor to digest energy
-        'height': 0.05,  # [E]/[h]  # convert height to height energy
-        'mass': 0.05  # [E]/[m] = [v^2] = [m^2/sec^4]  convert mass to mass energy
+        'brain_consumption': 0.005,  # [E]/[no units] convert brain size to brain consumption energy
+        'height': 25,  # [E]/[h]  # convert height to height energy
+        'mass': 25  # [E]/[m] = [v^2] = [m^2/sec^4]  convert mass to mass energy
     }
 
     # trait change formulas based on given energy
     trait_energy_func = lambda factor, rate, age: factor * np.exp(-rate * age)
     trait_energy_params_dict = {
-        'height': {'factor': 0.3, 'rate': 0.1},  # [factor] = [1], [rate] = [1/sec]
-        'mass': {'factor': 0.2, 'rate': 0.2}  # [factor] = [1], [rate] = [1/sec]
+        'height': {'factor': 0.01, 'rate': 5e-4},  # [factor] = [1], [rate] = [1/sec]
+        'mass': {'factor': 0.01, 'rate': 2e-4}  # [factor] = [1], [rate] = [1/sec]
     }
 
     # Check that sum of energy factors wasted on traits is between 0 and 1

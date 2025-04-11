@@ -50,11 +50,17 @@ class Creature(StaticTraits):
         self.log_energy = None
         self.log_speed = None
         self.init_state()
+        self.log_speed = [self.speed]  # fixes an issue with the first generation
 
     def init_state(self, rebalance=config.REBALANCE):
         """
         :return:
         """
+        self.is_agent = False
+        # static trait - update for current max_age
+        self.adolescence = self.max_age * config.ADOLESCENCE_AGE_FRACTION
+        self.reproduction_cooldown = config.REPRODUCTION_COOLDOWN
+
         # dynamic traits
         self.age = 0
         self.mass = np.random.uniform(low=0.01, high=0.1) * self.max_mass
@@ -70,14 +76,23 @@ class Creature(StaticTraits):
         self.hunger = 100
         self.thirst = 100
 
+        # TODO: logs are in step units for now
         self.log_eat = []
         self.log_reproduce = []
         self.log_energy = []
         self.log_speed = []
         if rebalance:
-            self.gained_energy = []
-            self.height_energy = []
-            self.mass_energy = []
+            self.log_gained_energy = []
+            self.log_height_energy = []
+            self.log_mass_energy = []
+            self.log_excess_energy = []
+
+    def make_agent(self):
+        self.is_agent = True
+        self.log_propulsion_energy = []
+        self.log_inner_energy = []
+        self.log_energy_consumption = []
+        self.agent_age = int(self.age)
 
     def get_heading(self):
         """
@@ -99,6 +114,21 @@ class Creature(StaticTraits):
         # self.max_speed_exp = max(self.max_speed_exp, self.speed)
         self.max_speed_exp = (self.max_speed_exp + self.speed) / 2
 
+    def can_reproduce(self, step_num):
+        """
+        Returns 1 if the creature can reproduce (i.e., it is old enough and has not reproduced recently),
+        else returns 0.
+        """
+        if self.age > self.adolescence:
+            if len(self.log_reproduce) > 0:
+                if (step_num - self.log_reproduce[-1]) * config.DT > self.reproduction_cooldown:
+                    return 1
+                else: return 0
+            else: return 1  # if it's his first time reproducing
+        else:
+            return 0
+
+
     def reproduce(self):
         """
         Returns a new creature with mutated traits.
@@ -109,7 +139,6 @@ class Creature(StaticTraits):
 
         # Reduce energy of reproduction
         self.energy -= self.reproduction_energy
-
         return child
 
     def reset(self):
@@ -130,26 +159,26 @@ class Creature(StaticTraits):
         """
         mutate the desired traits.
         """
-        max_mutation_factors = config.MAX_MUTATION_FACTORS
-        for trait_key in max_mutation_factors:
+        std_mutation_factors = config.STD_MUTATION_FACTORS
+        for trait_key in std_mutation_factors:
             if np.random.rand(1) < config.MUTATION_CHANCE:
                 if trait_key == 'eyes_params':
                     # Mutate eyes_params
                     for eye_idx in range(len(self.eyes_params)):
                         for j in range(2):  # 2 for: angle offset, aperture
-                            max_mutation_factor = max_mutation_factors[trait_key]
-                            mutation_factor = np.random.uniform(-max_mutation_factor, max_mutation_factor)
+                            std_mutation_factor = std_mutation_factors[trait_key]
+                            mutation_factor = np.random.normal(scale=std_mutation_factor)
                             self.eyes_params[eye_idx][j] += mutation_factor
                 # mutate digest dict
                 elif trait_key == 'digest_dict':
-                    max_mutation_factor = np.array(list(max_mutation_factors[trait_key].values()))
-                    mutation_factor = np.random.uniform(-max_mutation_factor, max_mutation_factor)
+                    std_mutation_factor = np.array(list(std_mutation_factors[trait_key].values()))
+                    mutation_factor = np.random.normal(scale=std_mutation_factor)
                     for i, food_type in enumerate(self.digest_dict.keys()):
                         self.digest_dict[food_type] += mutation_factor[i]
                         self.digest_dict[food_type] = np.clip(self.digest_dict[food_type], 0, 1)
                 else:
-                    max_mutation_factor = max_mutation_factors[trait_key]
-                    mutation_factor = np.random.uniform(-max_mutation_factor, max_mutation_factor)
+                    std_mutation_factor = std_mutation_factors[trait_key]
+                    mutation_factor = np.random.normal(scale=std_mutation_factor)
                     setattr(self, trait_key, getattr(self, trait_key) + mutation_factor)
 
         # clip relevant traits
@@ -215,6 +244,10 @@ class Creature(StaticTraits):
         # update energy
         propulsion_energy = self.calc_propulsion_energy(global_propulsion_force)
         inner_energy = self.calc_inner_energy()
+        if self.is_agent:
+            self.log_propulsion_energy.append(propulsion_energy)
+            self.log_inner_energy.append(inner_energy)
+            self.log_energy_consumption.append(inner_energy + propulsion_energy)
         self.energy -= propulsion_energy + inner_energy
 
     @staticmethod
@@ -227,8 +260,9 @@ class Creature(StaticTraits):
     def calc_inner_energy(self):
         c_d = physical_model.energy_conversion_factors['digest']
         c_h = physical_model.energy_conversion_factors['height']
-        rest_energy = physical_model.energy_conversion_factors['rest'] * self.mass ** 0.75  # called BMR energy
-        inner_energy = rest_energy + c_d * np.sum(list(self.digest_dict.values()))
+        rest_energy = physical_model.energy_conversion_factors['rest'] * self.mass ** 0.75  # adds mass (BMR) energy
+        inner_energy = rest_energy + c_d * np.sum(list(self.digest_dict.values())) + c_h * self.height  # adds height energy
+        inner_energy = inner_energy + self.brain.size * physical_model.energy_conversion_factors['brain_consumption']
         return inner_energy
 
     @staticmethod
@@ -250,25 +284,29 @@ class Creature(StaticTraits):
 
     def eat(self, food_type, food_energy, rebalance=config.REBALANCE):
         gained_energy = self.digest_dict[food_type] * food_energy
-        self.height, height_energy = self.convert_gained_energy_to_trait(
-            trait_type='height',
-            old_trait=self.height,
-            gained_energy=gained_energy,
-            age=self.age,
-        )
 
-        self.mass, mass_energy = self.convert_gained_energy_to_trait(
-            trait_type='mass',
-            old_trait=self.mass,
-            gained_energy=gained_energy,
-            age=self.age,
-        )
+        if self.age < self.adolescence:
+            self.height, height_energy = self.convert_gained_energy_to_trait(
+                trait_type='height',
+                old_trait=self.height,
+                gained_energy=gained_energy,
+                age=self.age,
+            )
+            self.mass, mass_energy = self.convert_gained_energy_to_trait(
+                trait_type='mass',
+                old_trait=self.mass,
+                gained_energy=gained_energy,
+                age=self.age,
+            )
+        else:
+            mass_energy, height_energy = 0, 0
 
         excess_energy = gained_energy - height_energy - mass_energy
         if rebalance:
-            self.gained_energy.append(gained_energy)
-            self.height_energy.append(height_energy)
-            self.mass_energy.append(mass_energy)
+            self.log_excess_energy.append(excess_energy)
+            self.log_gained_energy.append(gained_energy)
+            self.log_height_energy.append(height_energy)
+            self.log_mass_energy.append(mass_energy)
         self.energy += excess_energy
 
     def plot_rebalance(self, ax, debug=False, mode='energy'):
@@ -277,24 +315,42 @@ class Creature(StaticTraits):
             plt.ion()
             fig, ax = plt.subplots(1, 1)
         ax.clear()
+        if len(self.log_eat) > 0 and len(self.log_energy_consumption) > 0:
+            title = (f"Power cons. = {np.mean(self.log_energy_consumption) / config.DT:.1f} J/sec | "
+                     f"Meals freq. = {np.mean(np.diff([self.birth_step] + self.log_eat)) / config.DT:.1f} sec | "
+                     f"Meal worth = {np.mean(self.log_excess_energy):.1f} J")
+        else:
+            title = (f"Power cons. = {np.mean(np.diff(self.log_energy)) / config.DT:.1f} J/sec | "
+                     f"No eating events")
+        ax.set_title(title)
         if mode == 'speed':
-            ax.plot(self.log_speed, color='teal', alpha=0.5)
+            ax.plot(range(int(self.age / config.DT+1)),self.log_speed, color='teal', alpha=0.5, label='Speed')
             ax.set_ylim(0, max(self.log_speed) * 1.1)
             ax.tick_params(axis='y', colors='teal')
             ax.spines['left'].set_color('maroon')
             ax.spines['right'].set_color('teal')
+            ax.legend(loc='upper right')
+            ax.set_ylabel('Speed [m/sec]')
+            ax.set_xlabel('Age [step]')
         elif mode == 'energy':
-            ax.plot(self.log_energy, color='maroon', alpha=0.5)
-            ax.set_ylim(0, (config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY) * 1.1)
+            ax.plot(range(int(self.age / config.DT+1)), self.log_energy, color='maroon', alpha=0.5, label='Energy')
+            ax.set_ylim(0, self.max_energy)
             ax.tick_params(axis='y', colors='maroon')
             ax.spines['left'].set_color('maroon')
             ax.spines['right'].set_color('teal')
-
-        # ax2 = ax.twinx()
-        # ax2.clear()
-        # ax2.plot(self.log_speed)
-        # ax.plot(self.height_energy)
-        # ax.plot(self.mass_energy)
+            ax.legend(loc='upper left')
+            ax.set_ylabel('Energy [J]')
+        elif mode == 'energy_use':
+            if self.agent_age < self.age:
+                ax.plot(range(int(self.agent_age / config.DT), int(self.age / config.DT)),
+                        self.log_propulsion_energy, color='maroon', alpha=0.5, label='Prop. E')
+                ax.plot(range(int(self.agent_age / config.DT), int(self.age / config.DT)),
+                        self.log_inner_energy, color='maroon', alpha=0.5, label='Inner E', linestyle='dashed')
+                ax.tick_params(axis='y', colors='maroon')
+                ax.spines['left'].set_color('maroon')
+                ax.spines['right'].set_color('teal')
+                ax.legend(loc='upper left')
+                ax.set_ylabel('Energy consumption [J]')
 
     def plot_live_status(self, ax, debug=False, plot_horizontal=True):
         """
@@ -309,28 +365,33 @@ class Creature(StaticTraits):
         colors = ['green', 'grey']  # , 'red', 'blue'
         values = [getattr(self, attr) for attr in ls]  # Dynamically get values
         ax.clear()
-        ax.set_title(f'Agent # {self.creature_id} | anc. = {len(self.ancestors)}')
+        ax.set_title(f'C# {self.creature_id} | Anc. = {len(self.ancestors)}')
         if plot_horizontal:
             ax.barh(ls, values, color=colors)
             if 'energy' in ls:
                 ax.scatter([config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY], ['energy'], color='black', s=20)
             if 'age' in ls:
                 ax.scatter([self.max_age], ['age'], color='black', s=20)
+                ax.scatter([self.adolescence], ['age'], color='black', s=20)
                 # ax.barh(['Energy', 'Hunger', 'Thirst'], [self.energy, self.hunger, self.thirst], color=['green', 'red', 'blue'])
-                ax.set_xlim(0, max(config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY, self.max_age))
+                ax.set_xlim(0, max(self.max_energy, self.max_age))
                 # ax.set_xticks([0,self.max_energy/2, self.max_energy])
                 ax.set_yticks(ls)
         else:
             ax.bar(ls, values, color=colors)
             if 'energy' in ls:
-                ax.scatter(['energy'], [config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY], color='black', s=20)
+                ax.scatter( ['energy'], [config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY], color='black', s=20)
             if 'age' in ls:
-                ax.scatter(['age'], [self.max_age], color='black', s=20)
-                ax.set_ylim(0, max(config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY, self.max_age))
+                ax.scatter( ['age'], [self.max_age], color='black', s=20)
+                ax.scatter(['age'], [self.adolescence], color='pink', s=20)
+                ax.set_ylim(0, max(self.max_energy, self.max_age))
                 ax.set_xticks(ls)
                 ax.set_xticklabels(ls, rotation=90, ha='right')
                 ax.set_yticks([])
                 ax.yaxis.set_tick_params(labelleft=False)
+
+
+
 
     def plot_acc_status(self, ax, debug=False, plot_type=1, curr_step=-1):
         """
@@ -373,7 +434,6 @@ class Creature(StaticTraits):
             ax.set_xlim([self.birth_step - 1, curr_step + 1])
             ax.set_ylim([0.5, 2.5])
             ax.legend()
-
 
 if __name__ == '__main__':
     creature = Creature(creature_id=0, gen=0, parent_id="0", birth_step=0,

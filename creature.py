@@ -223,7 +223,7 @@ class Creature(StaticTraits):
         #     reaction_friction_force = kinetic_friction_force
 
         # ----------- With this: ------------
-        if propulsion_force_mag > physical_model.mu_static * normal_force:
+        if propulsion_force_mag > physical_model.mu_static * np.linalg.norm(normal_force):
             reaction_friction_force = - physical_model.mu_kinetic * np.linalg.norm(normal_force) * global_propulsion_force_direction
         else:
             reaction_friction_force = - global_propulsion_force

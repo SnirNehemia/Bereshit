@@ -203,23 +203,30 @@ class Creature(StaticTraits):
         gravity_force = self.mass * physical_model.g
         normal_force = - gravity_force
 
-        # static friction force
-        mu_static = physical_model.mu_static
-        static_friction_force_mag = mu_static * np.linalg.norm(normal_force)
+        # ----------- I replaced this: ------------
+        # # static friction force
+        # mu_static = physical_model.mu_static
+        # static_friction_force_mag = mu_static * np.linalg.norm(normal_force)
+        #
+        # # kinetic friction force
+        # mu_kinetic = physical_model.mu_kinetic
+        # # alpha_mu = physical_model.alpha_mu
+        # # mu_total = mu_kinetic + (mu_static - mu_kinetic) * np.exp(-alpha_mu * self.speed)
+        # kinetic_friction_force = - mu_kinetic * np.linalg.norm(normal_force) * global_propulsion_force_direction
+        #
+        # # reaction friction force used for movement:
+        # # when propulsion force is within the static friction force limit
+        # # there is reaction force opposite to propulsion force else kinetic friction opposite to propulsion force
+        # if np.linalg.norm(global_propulsion_force) <= static_friction_force_mag:
+        #     reaction_friction_force = - global_propulsion_force
+        # else:
+        #     reaction_friction_force = kinetic_friction_force
 
-        # kinetic friction force
-        mu_kinetic = physical_model.mu_kinetic
-        # alpha_mu = physical_model.alpha_mu
-        # mu_total = mu_kinetic + (mu_static - mu_kinetic) * np.exp(-alpha_mu * self.speed)
-        kinetic_friction_force = - mu_kinetic * np.linalg.norm(normal_force) * global_propulsion_force_direction
-
-        # reaction friction force used for movement:
-        # when propulsion force is within the static friction force limit
-        # there is reaction force opposite to propulsion force else kinetic friction opposite to propulsion force
-        if np.linalg.norm(global_propulsion_force) <= static_friction_force_mag:
-            reaction_friction_force = - global_propulsion_force
+        # ----------- With this: ------------
+        if propulsion_force_mag > physical_model.mu_static * normal_force:
+            reaction_friction_force = - physical_model.mu_kinetic * np.linalg.norm(normal_force) * global_propulsion_force_direction
         else:
-            reaction_friction_force = kinetic_friction_force
+            reaction_friction_force = - global_propulsion_force
 
         # drag force (air resistence)
         linear_drag_force = - physical_model.gamma * self.height * self.velocity
@@ -317,15 +324,15 @@ class Creature(StaticTraits):
             fig, ax = plt.subplots(1, 1)
         ax.clear()
         if len(self.log_eat) > 0 and len(self.log_energy_consumption) > 3:  # TODO: make sure energy consumption exclude eating events
-            title = (f"P out = {np.mean(self.log_energy_consumption[-2:]) / (self.age * config.DT):.1f} J/sec | "
+            title = (f"P out = {np.mean(self.log_energy_consumption) / config.DT:.1f} J/sec | "
                      f"Meals dt = {np.mean(np.diff([self.birth_step] + self.log_eat)) *
-                                      (self.age * config.DT):.0f} [sec] | "
+                      config.DT:.0f} sec | "
                      f"Meal E = {np.mean(self.log_excess_energy):.0f} J | "
                      f"[m, h] = {np.mean(self.mass):.1f} Kg, {np.mean(self.height):.0f} m")
         else:
-            title = (f"P out = {np.mean(self.log_energy_consumption) / (self.age * config.DT):.1f} J/sec | "
+            title = (f"P out = {np.mean(self.log_energy_consumption) / config.DT:.1f} J/sec | "
                      f"No eating events | "
-                     f"[m, h] = {np.mean(self.mass):.1f} Kg, {np.mean(self.height):.0f} m")
+                     f"[m, h] = {self.mass:.1f} Kg, {self.height:.1f} m")
         ax.set_title(title)
         if mode == 'speed':
             ax.plot(range(int(self.age / config.DT+1)),self.log_speed, color='teal', alpha=0.5, label='Speed')

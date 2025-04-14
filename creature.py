@@ -3,6 +3,7 @@ import copy
 import numpy as np
 
 from static_traits import StaticTraits
+from creatures_log import CreaturesLogs
 from config import Config as config
 from physical_model import PhysicalModel as physical_model
 
@@ -45,12 +46,8 @@ class Creature(StaticTraits):
         self.hunger = None
         self.thirst = None
 
-        self.log_eat = None
-        self.log_reproduce = None
-        self.log_energy = None
-        self.log_speed = None
         self.init_state()
-        self.log_speed = [self.speed]  # fixes an issue with the first generation
+        self.log.record['speed'] = [self.speed]  # fixes an issue with the first generation
 
     def init_state(self, rebalance=config.REBALANCE):
         """
@@ -77,21 +74,11 @@ class Creature(StaticTraits):
         self.thirst = 100
 
         # TODO: logs are in step units for now
-        self.log_eat = []
-        self.log_reproduce = []
-        self.log_energy = []
-        self.log_speed = []
-        if rebalance:
-            self.log_gained_energy = []
-            self.log_height_energy = []
-            self.log_mass_energy = []
-            self.log_excess_energy = []
+        self.log = CreaturesLogs(self.creature_id)  # pay attention! the id is None for children and it is defines only later, in the simulation
+
 
     def make_agent(self):
         self.is_agent = True
-        self.log_propulsion_energy = []
-        self.log_inner_energy = []
-        self.log_energy_consumption = []
 
     def get_heading(self):
         """
@@ -119,8 +106,8 @@ class Creature(StaticTraits):
         else returns 0.
         """
         if self.age > self.adolescence:
-            if len(self.log_reproduce) > 0:
-                if (step_num - self.log_reproduce[-1]) * config.DT > self.reproduction_cooldown:
+            if len(self.log.record['reproduce']) > 0:
+                if (step_num - self.log.record['reproduce'][-1]) * config.DT > self.reproduction_cooldown:
                     return 1
                 else: return 0
             else: return 1  # if it's his first time reproducing
@@ -203,26 +190,7 @@ class Creature(StaticTraits):
         gravity_force = self.mass * physical_model.g
         normal_force = - gravity_force
 
-        # ----------- I replaced this: ------------
-        # # static friction force
-        # mu_static = physical_model.mu_static
-        # static_friction_force_mag = mu_static * np.linalg.norm(normal_force)
-        #
-        # # kinetic friction force
-        # mu_kinetic = physical_model.mu_kinetic
-        # # alpha_mu = physical_model.alpha_mu
-        # # mu_total = mu_kinetic + (mu_static - mu_kinetic) * np.exp(-alpha_mu * self.speed)
-        # kinetic_friction_force = - mu_kinetic * np.linalg.norm(normal_force) * global_propulsion_force_direction
-        #
-        # # reaction friction force used for movement:
-        # # when propulsion force is within the static friction force limit
-        # # there is reaction force opposite to propulsion force else kinetic friction opposite to propulsion force
-        # if np.linalg.norm(global_propulsion_force) <= static_friction_force_mag:
-        #     reaction_friction_force = - global_propulsion_force
-        # else:
-        #     reaction_friction_force = kinetic_friction_force
-
-        # ----------- With this: ------------
+        # reaction friction force
         if propulsion_force_mag > physical_model.mu_static * np.linalg.norm(normal_force):
             reaction_friction_force = - physical_model.mu_kinetic * np.linalg.norm(normal_force) * global_propulsion_force_direction
         else:
@@ -251,10 +219,10 @@ class Creature(StaticTraits):
         propulsion_energy = self.calc_propulsion_energy(global_propulsion_force)
         inner_energy = self.calc_inner_energy()
         if self.is_agent:
-            self.log_propulsion_energy.append(propulsion_energy)
-            self.log_inner_energy.append(inner_energy)
-            self.log_energy_consumption.append(inner_energy + propulsion_energy)
-            if self.log_energy_consumption[-1] < 0:
+            self.log.add_record('energy_propulsion', propulsion_energy)
+            self.log.add_record('energy_inner', inner_energy)
+            self.log.add_record('energy_consumption', inner_energy + propulsion_energy)
+            if self.log.record['energy_consumption'][-1] < 0:
                 raise ValueError('Energy consumption cannot be negative')
         self.energy -= propulsion_energy + inner_energy
 
@@ -311,10 +279,10 @@ class Creature(StaticTraits):
 
         excess_energy = gained_energy - height_energy - mass_energy
         if rebalance:
-            self.log_excess_energy.append(excess_energy)
-            self.log_gained_energy.append(gained_energy)
-            self.log_height_energy.append(height_energy)
-            self.log_mass_energy.append(mass_energy)
+            self.log.add_record('energy_excess',excess_energy)
+            self.log.add_record('energy_gain',gained_energy)
+            self.log.add_record('energy_height',height_energy)
+            self.log.add_record('energy_mass',mass_energy)
         self.energy += excess_energy
 
     def plot_rebalance(self, ax, debug=False, mode='energy'):
@@ -323,20 +291,20 @@ class Creature(StaticTraits):
             plt.ion()
             fig, ax = plt.subplots(1, 1)
         ax.clear()
-        if len(self.log_eat) > 0 and len(self.log_energy_consumption) > 3:  # TODO: make sure energy consumption exclude eating events
-            title = (f"P out = {np.mean(self.log_energy_consumption) / config.DT:.1f} J/sec | "
-                     f"Meals dt = {np.mean(np.diff([self.birth_step] + self.log_eat)) *
+        if len(self.log.record['eat']) > 0 and len(self.log.record['energy_consumption']) > 3:  # TODO: make sure energy consumption exclude eating events
+            title = (f"P out = {np.mean(self.log.record['energy_consumption']) / config.DT:.1f} J/sec | "
+                     f"Meals dt = {np.mean(np.diff([self.birth_step] + self.log.record['eat'])) *
                       config.DT:.0f} sec | "
-                     f"Meal E = {np.mean(self.log_excess_energy):.0f} J | "
+                     f"Meal E = {np.mean(self.log.record['energy_excess']):.0f} J | "
                      f"[m, h] = {np.mean(self.mass):.1f} Kg, {np.mean(self.height):.0f} m")
         else:
-            title = (f"P out = {np.mean(self.log_energy_consumption) / config.DT:.1f} J/sec | "
+            title = (f"P out = {np.mean(self.log.record['energy_consumption']) / config.DT:.1f} J/sec | "
                      f"No eating events | "
                      f"[m, h] = {self.mass:.1f} Kg, {self.height:.1f} m")
         ax.set_title(title)
         if mode == 'speed':
-            ax.plot(range(int(self.age / config.DT+1)),self.log_speed, color='teal', alpha=0.5, label='Speed')
-            ax.set_ylim(0, max(self.log_speed) * 1.1)
+            ax.plot(range(int(self.age / config.DT+1)),self.log.record['speed'], color='teal', alpha=0.5, label='Speed')
+            ax.set_ylim(0, max(self.log.record['speed']) * 1.1)
             ax.tick_params(axis='y', colors='teal')
             ax.spines['left'].set_color('maroon')
             ax.spines['right'].set_color('teal')
@@ -345,7 +313,7 @@ class Creature(StaticTraits):
             ax.set_ylabel('Speed [m/sec]')
             ax.set_xlabel('Age [step]')
         elif mode == 'energy':
-            ax.plot(range(int(self.age / config.DT+1)), self.log_energy, color='maroon', alpha=0.5, label='Energy')
+            ax.plot(range(int(self.age / config.DT+1)), self.log.record['energy'], color='maroon', alpha=0.5, label='Energy')
             ax.set_ylim(0, self.max_energy)
             ax.tick_params(axis='y', colors='maroon')
             ax.spines['left'].set_color('maroon')
@@ -354,11 +322,11 @@ class Creature(StaticTraits):
             ax.set_ylabel('Energy [J]')
             ax.set_xlabel('Age [step]')
         elif mode == 'energy_use':
-            if len(self.log_propulsion_energy) > 0:
-                ax.plot(range(int(self.age / config.DT) - len(self.log_propulsion_energy), int(self.age / config.DT)),
-                        self.log_propulsion_energy, color='maroon', alpha=0.5, label='Prop. E')
-                ax.plot(range(int(self.age / config.DT) - len(self.log_inner_energy), int(self.age / config.DT)),
-                        self.log_inner_energy, color='maroon', alpha=0.5, label='Inner E', linestyle='dashed')
+            if len(self.log.record['energy_propulsion']) > 0:
+                ax.plot(range(int(self.age / config.DT) - len(self.log.record['energy_propulsion']), int(self.age / config.DT)),
+                        self.log.record['energy_propulsion'], color='maroon', alpha=0.5, label='Prop. E')
+                ax.plot(range(int(self.age / config.DT) - len(self.log.record['energy_inner']), int(self.age / config.DT)),
+                        self.log.record['energy_inner'], color='maroon', alpha=0.5, label='Inner E', linestyle='dashed')
                 ax.tick_params(axis='y', colors='maroon')
                 ax.spines['left'].set_color('maroon')
                 ax.spines['right'].set_color('teal')
@@ -416,7 +384,7 @@ class Creature(StaticTraits):
             plt.ion()
             fig, ax = plt.subplots(1, 1)
         # Define attributes dynamically
-        ls = ['log_eat', 'log_reproduce']
+        ls = ['eat', 'reproduce']
         colors = ['green', 'pink']
         ax.clear()
         if max(self.color) > 1 or min(self.color) < 0:
@@ -425,7 +393,7 @@ class Creature(StaticTraits):
         ax.set_title(f'C# {self.creature_id} | Anc. = {len(self.ancestors)}')
         if plot_type == 0:
             # option 1
-            values = [len(getattr(self, attr)) for attr in ls]  # Dynamically get values
+            values = [len(self.log.record[attr]) for attr in ls]  # Dynamically get values
             ax.set_title(f'Agent # {self.id}')
             ax.bar(ls, values, color=colors, width=0.2)
             ax.set_ylim(0, 10)
@@ -435,8 +403,8 @@ class Creature(StaticTraits):
             # option 2
             if curr_step == -1: curr_step = self.max_age / config.DT + self.birth_step
             # values = [getattr(self, attr) for attr in ls]  # Dynamically get values
-            eating_frames = self.log_eat
-            reproducing_frames = self.log_reproduce
+            eating_frames = self.log.record['eat']
+            reproducing_frames = self.log.record['reproduce']
             ax.scatter(eating_frames, [1] * len(eating_frames), color='green', marker='o', s=100, label='Eating')
             ax.scatter(reproducing_frames, [2] * len(reproducing_frames), color='red', marker='D', s=100,
                        label='Reproducing')

@@ -368,12 +368,13 @@ class Simulation:
             # update creature
             creature = self.creatures[creature_id]
             child = creature.reproduce()
-            creature.log_reproduce.append(self.step_counter)
+            creature.log.add_record('reproduce', self.step_counter)
 
             # update child
             self.id_count += 1
             child.creature_id = self.id_count
             child.birth_step = self.step_counter
+            child.log.creature_id = child.creature_id
 
             # add to simulation
             self.creatures[self.id_count] = child
@@ -382,8 +383,8 @@ class Simulation:
 
         # ------------------------------- Update creatures log -------------------------------
         for creature in self.creatures.values():
-            creature.log_energy.append(creature.energy)
-            creature.log_speed.append(creature.speed)
+            creature.log.add_record('energy', creature.energy)
+            creature.log.add_record('speed', creature.speed)
 
         # ------------------------ Update KDtree (in some frames) ----------------------------
 
@@ -437,7 +438,7 @@ class Simulation:
             if closest_food_distance <= config.FOOD_DISTANCE_THRESHOLD:
                 # creature eat food
                 creature.eat(food_type=food_type, food_energy=food_energy)
-                creature.log_eat.append(self.step_counter)
+                creature.log.add_record('eat', self.step_counter)
 
                 # remove food from environment
                 self.env.grass_remove_list.append(closest_food_point)

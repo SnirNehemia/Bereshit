@@ -25,8 +25,14 @@ np.random.seed = 0
 class Config:
     # Simulation parameters
     DT = 2.5  # time passing between consecutive steps (relevant for age and movement)
-    NUM_FRAMES = 250  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
-    UPDATE_ANIMATION_INTERVAL = 40  # 30  # update the animation every n steps = every n*dt seconds
+    NUM_FRAMES = 50  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+    NUM_STEPS_FROM_FRAME_DICT = {  # key is frame number and value is num steps per frame from this frame onward
+        0: 100,
+        5: 40,
+        10: 20,
+        30: 10
+    }
+    assert list(NUM_STEPS_FROM_FRAME_DICT.keys())[0] == 0, 'first key must be 0'
     FRAME_INTERVAL = 75  # interval between frames in animation [in ms]
     STATUS_EVERY_STEP = False  # choose if to update every step or every frame
     UPDATE_KDTREE_INTERVAL = 120  # update the kdtree every n steps

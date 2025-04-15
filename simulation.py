@@ -1,9 +1,9 @@
 import numpy as np
 from scipy.spatial import KDTree
 
-# from brain_models.fully_connected_brain import Brain
 from creature import Creature
 from environment import Environment
+import simulation_utils
 from tqdm import tqdm
 from config import Config as config
 
@@ -40,23 +40,23 @@ class Simulation:
                                leaves_generation_rate=config.LEAVES_GENERATION_RATE)
 
         # Initialize creatures (ensuring they are not in forbidden areas).
-        self.creatures = self.initialize_creatures(num_creatures=config.NUM_CREATURES,
-                                                   simulation_space=self.env.size,
-                                                   input_size=config.INPUT_SIZE,
-                                                   output_size=config.OUTPUT_SIZE,
-                                                   eyes_params=config.EYES_PARAMS,
-                                                   env=self.env)
+        self.creatures = simulation_utils.initialize_creatures(num_creatures=config.NUM_CREATURES,
+                                                               simulation_space=self.env.size,
+                                                               input_size=config.INPUT_SIZE,
+                                                               output_size=config.OUTPUT_SIZE,
+                                                               eyes_params=config.EYES_PARAMS,
+                                                               env=self.env)
         self.dead_creatures = dict()
         self.positions = []
 
         # Build a KDTree for creature positions.
-        self.creatures_kd_tree = self.build_creatures_kd_tree()
+        self.creatures_kd_tree = simulation_utils.build_creatures_kd_tree(creatures=self.creatures)
         self.children_num = 0
 
         # simulation control parameters
         self.abort_simulation = False
-        self.kdtree_update_interval = config.UPDATE_KDTREE_INTERVAL  # Set update interval for KDTree
-        self.animation_update_interval = config.UPDATE_ANIMATION_INTERVAL  # Set update interval for animation frames
+        self.kdtree_update_interval = config.UPDATE_KDTREE_INTERVAL
+        self.num_steps_per_frame = 0
         self.step_counter = 0  # Initialize step counter
         self.id_count = config.NUM_CREATURES - 1
         self.focus_id = 0
@@ -70,217 +70,12 @@ class Simulation:
         if config.DEBUG_MODE:
             np.seterr(all='raise')  # Convert NumPy warnings into exceptions
 
-    @staticmethod
-    def initialize_creatures(num_creatures, simulation_space, input_size, output_size,
-                             eyes_params, env: Environment):
-        """
-        Initializes creatures ensuring they are not placed in a forbidden (black) area.
-        """
-        creatures = dict()
-
-        for creature_id in range(num_creatures):
-            # get a valid position.
-            position = []
-            valid_position = False
-            while not valid_position:
-                position = np.random.rand(2) * simulation_space
-                # Convert (x, y) to indices (col, row)
-                col, row = int(position[0]), int(position[1])
-                # height, width = env.map_data.shape[:2]
-                # Check bounds and obstacle mask.
-                if col < 0 or col >= env.width or row < 0 or row >= env.height:
-                    continue
-                if env.obstacle_mask[row, col]:
-                    continue
-                valid_position = True
-
-            # static traits
-            gen = 0
-            parent_id = None
-            birth_step = 0
-            max_age = np.random.randint(low=config.INIT_MAX_AGE * 0.8, high=config.INIT_MAX_AGE)
-            color = np.random.rand(3)  # Random RGB color.
-
-            max_mass = np.random.uniform(low=0.8, high=1) * config.INIT_MAX_MASS
-            max_height = np.random.uniform(low=0.8, high=1) * config.INIT_MAX_HEIGHT
-            max_strength = np.random.uniform(low=0.8, high=1) * config.INIT_MAX_STRENGTH
-
-            max_speed = np.random.uniform(low=0.8, high=1) * config.MAX_SPEED
-            max_energy = np.random.uniform(low=0.8, high=1) * config.INIT_MAX_ENERGY
-
-            digest_dict = config.INIT_DIGEST_DICT
-            reproduction_energy = config.REPRODUCTION_ENERGY
-
-            vision_limit = config.VISION_LIMIT
-            brain = Brain([input_size, output_size])
-
-            # init creature
-            creature = Creature(
-                creature_id=creature_id, gen=gen, parent_id=parent_id, birth_step=birth_step, color=color,
-                max_age=max_age, max_mass=max_mass, max_height=max_height,
-                max_strength=max_strength, max_speed=max_speed, max_energy=max_energy,
-                digest_dict=digest_dict, reproduction_energy=reproduction_energy,
-                eyes_params=eyes_params, vision_limit=vision_limit, brain=brain,
-                position=position)
-
-            creatures[creature_id] = creature
-        return creatures
+        print(f'Num frames = {config.NUM_FRAMES},\n'
+              f'Num steps = {simulation_utils.calc_total_num_steps(config.NUM_FRAMES)}')
 
     def make_agent(self, focus_id: int = 0):
         self.focus_id = focus_id
         self.creatures[self.focus_id].make_agent()
-
-    def build_creatures_kd_tree(self) -> KDTree:
-        """
-        Builds a KDTree from the positions of all creatures.
-        """
-        positions = [creature.position for creature in self.creatures.values()]
-        if positions:
-            return KDTree(positions)
-        else:
-            return KDTree([[0, 0]])
-
-    def update_creatures_kd_tree(self):
-        self.creatures_kd_tree = self.build_creatures_kd_tree()
-
-    def seek(self, creature: Creature, noise_std: float = 0.0):
-        """
-        Uses the specified eye (given by eye_params: (angle_offset, aperture))
-        to detect a nearby target.
-        Computes the eye's viewing direction by rotating the creature's heading by angle_offset.
-        Returns (distance, signed_angle) if a target is found within half the aperture, else None.
-        """
-        channel_results = {}
-
-        channels_list = []
-        kd_tree = []
-        for i_eye, eye_params in enumerate(creature.eyes_params):
-            for channel in config.EYE_CHANNEL:
-                candidate_points = np.array([])
-                if channel == 'grass':
-                    if len(self.env.grass_points) > 0:
-                        kd_tree = self.env.grass_kd_tree
-                        candidate_points = np.array(self.env.grass_points)
-                # elif channel == 'leaves':
-                #     if len(self.env.leaf_points) > 0:
-                #         candidate_points = np.array(self.env.leaf_points)
-                # elif channel == 'water':
-                #     candidate_points = np.array([[self.env.water_source[0], self.env.water_source[1]]])
-                elif channel == 'creatures':
-                    kd_tree = self.creatures_kd_tree
-                    candidate_points = np.array([c.position for c in self.creatures.values()])
-
-                if len(candidate_points) > 0:
-                    # kd_tree = KDTree(candidate_points)
-                    result = self.detect_target_from_kdtree(creature, eye_params, kd_tree, candidate_points, noise_std)
-                else:
-                    result = None
-
-                channel_name = f'{channel}_{i_eye}'
-                channel_results[channel_name] = result
-                channels_list.append(channel_name)
-
-        return channel_results
-
-    def use_brain(self, creature: Creature, dt: float, seek_results: dict, noise_std: float = 0.0):
-        try:
-            # get brain input
-            # seek_results = self.seek(creature=creature, noise_std=noise_std)  # REMOVE
-            eyes_inputs = [self.prepare_eye_input(seek_result, creature.vision_limit) for seek_result in
-                           seek_results.values()]
-            brain_input = []
-            brain_input.append(np.array([creature.hunger, creature.thirst]))
-            brain_input.append(creature.speed)
-            brain_input.append(np.concatenate(eyes_inputs))
-            brain_input = np.hstack(brain_input)
-            decision = creature.think(brain_input)
-            creature.move(decision=decision, dt=dt)
-        except Exception as e:
-            print(f'Error in Simulation (use_brain, movement) for creature: {creature.creature_id}:\n{e}')
-            # breakpoint()
-
-        # Collision detection: handle cases where creature's new position is inside an obstacle or outbound.
-        try:
-            col, row = map(int, creature.position)  # Convert (x, y) to image indices (col, row)
-            height, width = self.env.map_data.shape[:2]
-            if col < 0 or col >= width or row < 0 or row >= height or self.env.obstacle_mask[row, col]:
-                # choose if the velocity is set to zero or get mirrored
-                if config.BOUNDARY_CONDITION == 'zero':
-                    creature.velocity = np.array([0.0, 0.0])
-                elif config.BOUNDARY_CONDITION == 'mirror':
-                    creature.velocity = -creature.velocity
-        except Exception as e:
-            print(f'exception in use_brain for creature: {creature.creature_id}\n{e}')
-            print(f'Error in Simulation (use_brain, collision detection) for creature: {creature.creature_id}:\n{e}')
-            # breakpoint()
-
-    @staticmethod
-    def prepare_eye_input(detection_result, vision_limit):
-        """
-        Converts a detection result (distance, signed_angle) or None into a 3-element vector:
-          [detection_flag, distance, angle].
-        """
-        if detection_result is None:
-            return np.array([0, vision_limit, 0])
-        else:
-            distance, angle = detection_result[0:2]
-            return np.array([1, distance, angle])
-
-    @staticmethod
-    def detect_target_from_kdtree(creature: Creature, eye_params,
-                                  kd_tree: KDTree, candidate_points: np.ndarray,
-                                  noise_std: float = 0.0):
-        """
-        Generic function to detect the closest target from candidate_points using a KDTree.
-
-        Parameters:
-          creature: the creature performing the detection.
-          eye_params: (angle_offset,aperture) specifying the eye's viewing direction relative to the creature's heading.
-          kd_tree: a KDTree built from candidate_points.
-          candidate_points: numpy array of shape (N, 2) containing candidate target positions.
-          noise_std: standard deviation for optional Gaussian noise.
-
-        Returns:
-          A tuple (distance, signed_angle) for the detected target, or None if no target qualifies.
-        """
-        eye_position = creature.position
-        heading = creature.get_heading()
-        angle_offset, aperture = eye_params
-        # Compute the eye's viewing direction by rotating the heading by angle_offset.
-        cos_offset = np.cos(angle_offset)
-        sin_offset = np.sin(angle_offset)
-        eye_direction = np.array([
-            heading[0] * cos_offset - heading[1] * sin_offset,
-            heading[0] * sin_offset + heading[1] * cos_offset
-        ])
-        # Query the KDTree for candidate indices within the creature's vision range.
-        candidate_indices = kd_tree.query_ball_point(eye_position, creature.vision_limit)
-        best_distance = float('inf')
-        detected_info = None
-        # Evaluate each candidate - which was sorted by the KDtree.
-        for idx in candidate_indices:
-            candidate = candidate_points[idx]
-            # Skip if the candidate is the creature itself.
-            if np.allclose(candidate, creature.position):
-                continue
-            target_vector = candidate - eye_position
-            distance = np.linalg.norm(target_vector)
-            if distance == 0 or distance > creature.vision_limit:
-                continue
-            target_direction = target_vector / distance
-            dot = np.dot(eye_direction, target_direction)
-            det = eye_direction[0] * target_direction[1] - eye_direction[1] * target_direction[0]
-            angle = np.arctan2(det, dot)
-            # Only accept targets within half the aperture.
-            if abs(angle) > (aperture / 2):
-                continue
-            if noise_std > 0:
-                distance += np.random.normal(0, noise_std)
-                angle += np.random.normal(0, noise_std)
-            if distance < best_distance:
-                best_distance = distance
-                detected_info = (distance, angle, idx)  # TODO: make sure to save the index too for fast removal
-        return detected_info
 
     def kill(self, creature_id):
         self.dead_creatures[creature_id] = self.creatures[creature_id]
@@ -297,16 +92,22 @@ class Simulation:
         Then, moves creatures and updates the vegetation.
         """
 
-        # ------------------ seek creatures' targets ------------------------------
+        # ------------------ seek creatures' targets and use brain ------------------------------
         seek_results = {}
         for creature_id, creature in self.creatures.items():
-            seek_results[creature_id] = self.seek(creature=creature, noise_std=noise_std)
-        # -------------------- Use brain and update creature velocities --------------------------
+            seek_results[creature_id] = simulation_utils.seek(creatures=self.creatures,
+                                                              creatures_kd_tree=self.creatures_kd_tree,
+                                                              env=self.env,
+                                                              creature=creature, noise_std=noise_std)
+            # -------------------- Use brain and update creature velocities --------------------------
 
         for creature_id, creature in self.creatures.items():
-            self.use_brain(creature=creature, dt=dt, seek_results=seek_results[creature_id], noise_std=noise_std)
+            simulation_utils.use_brain(creature=creature,
+                                       env=self.env,
+                                       seek_results=seek_results[creature_id],
+                                       dt=dt)
 
-        # ----------------- die / eat / reproduce (+create list of creatures to die or reproduce) ----------------------
+        # ----------------- die / eat / reproduce (+create list of creatures to die or reproduce) -----------------
 
         list_creatures_reproduce = []
         list_creature_die = []
@@ -321,9 +122,13 @@ class Simulation:
                 creature.age += config.DT
 
                 # check for food (first grass, if not found search for leaf if tall enough)
-                is_eat = self.eat_food(creature=creature, seek_result=seek_results[creature_id], food_type='grass')
+                is_eat = simulation_utils.eat_food(creature=creature, env=self.env,
+                                                   seek_result=seek_results[creature_id],
+                                                   food_type='grass', step_counter=self.step_counter)
                 if not is_eat and creature.height >= config.LEAF_HEIGHT:
-                    _ = self.eat_food(creature=creature, seek_result=seek_results[creature_id], food_type='leaf')
+                    _ = simulation_utils.eat_food(creature=creature, env=self.env,
+                                                  seek_result=seek_results[creature_id],
+                                                  food_type='leaf', step_counter=self.step_counter)
 
                 if is_eat:  # record if something was eaten
                     is_eat_grass = True
@@ -393,7 +198,7 @@ class Simulation:
 
         # Update KDTree every "kdtree_update_interval" frames
         if self.step_counter % self.kdtree_update_interval == 0:
-            self.update_creatures_kd_tree()
+            self.creatures_kd_tree = simulation_utils.update_creatures_kd_tree(creatures=self.creatures)
             self.env.update_grass_kd_tree()
 
         self.step_counter += 1
@@ -546,7 +351,7 @@ class Simulation:
 
             # Initialize the progress bar to print
             if config.STATUS_EVERY_STEP:
-                update_num = config.NUM_FRAMES * config.UPDATE_ANIMATION_INTERVAL
+                update_num = simulation_utils.calc_total_num_steps(up_to_frame=config.NUM_FRAMES)
             else:
                 update_num = config.NUM_FRAMES
 
@@ -582,6 +387,9 @@ class Simulation:
             global lineage_graph, traits_scat, quiv, scat, grass_scat, leaves_scat, agent_scat
             global fig, ax_lineage, ax_traits, ax_env, ax_brain, ax_agent_info_1, ax_agent_info_2, ax_agent_events, ax_life, progress_bar
 
+            # check num steps per frame
+            self.num_steps_per_frame = simulation_utils.calc_num_steps_per_frame(frame=frame)
+
             # abort simulation if no creatures left or there are too many creatures
             if self.abort_simulation:
                 if config.DEBUG_MODE:
@@ -592,18 +400,19 @@ class Simulation:
                     # breakpoint()
 
                 ax_env.set_title(f"Evolution Simulation ({frame=}, step={self.step_counter})")
-                progress_bar.update(self.animation_update_interval)
-                self.step_counter += self.animation_update_interval
+                progress_bar.update(self.num_steps_per_frame)
+                self.step_counter += self.num_steps_per_frame
 
                 return scat, quiv, grass_scat, leaves_scat, agent_scat, traits_scat
 
             # Run steps of frame
-            for step in range(self.animation_update_interval):
+            for step in range(self.num_steps_per_frame):
                 # Do simulation step
                 child_ids, dead_ids = self.do_step(dt=config.DT, noise_std=config.NOISE_STD)
 
                 # abort simulation if there are too many creatures or no creatures left
-                self.check_abort_simulation()
+                self.abort_simulation = simulation_utils.check_abort_simulation(creatures=self.creatures,
+                                                                                step_counter=self.step_counter)
 
                 # Update statistics logs
                 self.statistics_logs.update_statistics_logs(creatures=self.creatures, env=self.env,
@@ -617,7 +426,7 @@ class Simulation:
                                                  f"leaves: {len(self.env.leaf_points):3} | "
                                                  f"grass: {len(self.env.grass_points):3} | "
                                                  f"Progress")
-                    progress_bar.update(1)  # or self.animation_update_interval outside the for loop
+                    progress_bar.update(1)  # or self.num_steps_per_frame outside the for loop
 
             # update the progress bar every frame
             if not config.STATUS_EVERY_STEP:
@@ -627,7 +436,7 @@ class Simulation:
                                              f"leaves: {len(self.env.leaf_points):3} | "
                                              f"grass: {len(self.env.grass_points):3} | "
                                              f"Progress")
-                progress_bar.update(1)  # or self.animation_update_interval outside the for loop
+                progress_bar.update(1)  # or self.num_steps_per_frame outside the for loop
 
             # Do purge if PURGE_FRAME_FREQUENCY frames passed (to clear static agents)
             if config.DO_PURGE:

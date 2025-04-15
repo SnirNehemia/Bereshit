@@ -24,11 +24,17 @@ np.random.seed = 0
 @dataclasses.dataclass
 class Config:
     # Simulation parameters
-    DT = 2.5  # time passing from frame to frame (relevant when calculating velocities) and what is the resolution of every calculation?
-    NUM_FRAMES = 1000  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
-    UPDATE_ANIMATION_INTERVAL = 40  # 30  # update the animation every n steps = every n*dt seconds
+    DT = 2.5  # time passing between consecutive steps (relevant for age and movement)
+    NUM_FRAMES = 50  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+    NUM_STEPS_FROM_FRAME_DICT = {  # key is frame number and value is num steps per frame from this frame onward
+        0: 100,
+        5: 40,
+        10: 20,
+        30: 10
+    }
+    assert list(NUM_STEPS_FROM_FRAME_DICT.keys())[0] == 0, 'first key must be 0'
     FRAME_INTERVAL = 75  # interval between frames in animation [in ms]
-    STATUS_EVERY_STEP = True  # choose if to update every step or every frame
+    STATUS_EVERY_STEP = False  # choose if to update every step or every frame
     UPDATE_KDTREE_INTERVAL = 120  # update the kdtree every n steps
     DEBUG_MODE = False  # breakpoint in update_func after each frame (not step!)
     REBALANCE = True
@@ -59,7 +65,7 @@ class Config:
     INIT_MAX_ENERGY = 20000  # maybe useful for maturity test before reproduction
     REPRODUCTION_ENERGY = 10000  # energy cost of reproduction
     MIN_LIFE_ENERGY = 5000  # energy to be left after reproduction
-    GRASS_ENERGY = 2000
+    GRASS_ENERGY = 1000
     LEAF_ENERGY = 2000
     INIT_DIGEST_DICT = {'grass': 1, 'leaf': 0.5, 'creature': 0}
 
@@ -69,7 +75,7 @@ class Config:
     # Creatures parameters
     NUM_CREATURES = 800  # init size of population
     MAX_NUM_CREATURES = 1250
-    INIT_MAX_AGE = 25000  # [sec]
+    INIT_MAX_AGE = 15000  # [sec]
     ADOLESCENCE_AGE_FRACTION = 0.25  # [0-1] fraction of INIT_MAX_AGE for adulthood
     REPRODUCTION_COOLDOWN = 300  # [sec] minimal time between reproduction events
     INIT_MAX_MASS = 10  # [kg]

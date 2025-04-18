@@ -6,6 +6,7 @@ from environment import Environment
 import simulation_utils
 from tqdm import tqdm
 from config import Config as config
+import plot_utils as plot
 
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -196,7 +197,7 @@ class Simulation:
         # Update environment vegetation (generate new points if conditions are met)
         self.env.update()
 
-        # Update KDTree every "kdtree_update_interval" frames
+        # Update KDTree every "kdtree_update_interval" steps
         if self.step_counter % self.kdtree_update_interval == 0:
             self.creatures_kd_tree = simulation_utils.update_creatures_kd_tree(creatures=self.creatures)
             self.env.update_grass_kd_tree()
@@ -204,54 +205,6 @@ class Simulation:
         self.step_counter += 1
 
         return child_ids, dead_ids
-
-    def eat_food(self, creature: Creature, seek_result: dict, food_type: str):
-        # check if creature is full
-        if creature.energy >= creature.max_energy:
-            return False
-
-        # get food points
-        is_eat = False
-        food_points, food_energy = [], 0
-
-        # This for serves the case of several eyes
-        for key, value in seek_result.items():
-            if key.startswith(food_type) and not value == None:
-                food_points.append(value)
-
-        if food_type == 'grass':
-            food_energy = config.GRASS_ENERGY
-        elif food_type == 'leaf':
-            food_energy = config.LEAF_ENERGY
-
-        if len(food_points) > 0:
-            if len(food_points) > 1:
-                # candidate_indices = kd_tree.query_ball_point(eye_position, creature.vision_limit) TODO: use the kd_tree here too!
-                food_distances = [food_point[:2] for food_point in food_points]
-                # DELETE: food_distances = [np.linalg.norm(food_point[:2] - creature.position)
-                #                   for food_point in food_points]
-                closest_food_index = np.argmin(food_distances)
-            else:
-                food_distances = food_points[0][:2]
-                closest_food_index = 0
-            closest_food_distance = np.min(food_distances[closest_food_index])
-            closest_food_point = self.env.grass_points[food_points[closest_food_index][2]]
-            # if someone got there first
-            if closest_food_point in self.env.grass_remove_list:
-                return False
-
-            if closest_food_distance <= config.FOOD_DISTANCE_THRESHOLD:
-                # creature eat food
-                creature.eat(food_type=food_type, food_energy=food_energy)
-                creature.log.add_record('eat', self.step_counter)
-
-                # remove food from environment
-                self.env.grass_remove_list.append(closest_food_point)
-                # self.env.grass_points.remove(closest_food_point)  # TODO:moved outside - check if it's fine
-                # self.env.update_grass_kd_tree()  # TODO:moved outside - check if it's fine
-                is_eat = True
-
-        return is_eat
 
     def check_abort_simulation(self):
         if len(self.creatures) > config.MAX_NUM_CREATURES:
@@ -556,10 +509,10 @@ class Simulation:
                     agent_scat.set_offsets([agent.position, agent.position])
                     agent.brain.plot(ax_brain)
                     # ax_agent_info.clear()
-                    agent.plot_rebalance(ax_agent_info_1, mode='energy_use')
-                    agent.plot_rebalance(ax_agent_info_2, mode='speed')
-                    agent.plot_live_status(ax_life, plot_horizontal=False)
-                    agent.plot_acc_status(ax_agent_events, plot_type=1, curr_step=self.step_counter)
+                    plot.plot_rebalance(ax_agent_info_1, agent, mode='energy_use')
+                    plot.plot_rebalance(ax_agent_info_2, agent, mode='speed')
+                    plot.plot_live_status(ax_life, agent, plot_horizontal=False)
+                    plot.plot_acc_status(ax_agent_events, agent, plot_type=1, curr_step=self.step_counter)
 
             except Exception as e:
                 print(f'Error in simulation (update_func): cannot plot because {e}.')

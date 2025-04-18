@@ -10,7 +10,7 @@ class PhysicalModel:
 
     # drag force (air resistence)
     gamma: float = 1e-4  # [F]/[v] = [kg/sec] linear drag air resistence (dominant in low speeds)
-    c_drag: float = 1e-5  # [F]/[v^2] quadratic drag air resistence (dominant in high speeds)
+    c_drag: float = 5e-3  # [F]/[v^2] quadratic drag air resistence (dominant in high speeds)
 
     # friction force
     mu_static: float = 1.5  # [no units]  # higher mu_static means faster movement
@@ -20,9 +20,9 @@ class PhysicalModel:
 
     # convert physical parameters to energy
     energy_conversion_factors = {
-        'activity_efficiency': 0.1,  #0.25,  # propulsion force to energy factor (higher -> efficient)
+        'activity_efficiency': 0.5,  #0.25,  # propulsion force to energy factor (higher -> efficient)
         'heat_loss': 0.01,  # propulsion force to wasted energy (higher -> more loss)
-        'rest': 0.00002,  # constant for Basal Metabolic Rate (BMR) energy
+        'rest': 0.00075,  # constant for Basal Metabolic Rate (BMR) energy
         'digest': 0.05,  # [E]/[no units] convert digest factor to digest energy
         'brain_consumption': 0.005,  # [E]/[no units] convert brain size to brain consumption energy
         'height': 1,  # [E]/[h]  # convert height to height energy

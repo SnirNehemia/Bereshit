@@ -47,7 +47,7 @@ class Creature(StaticTraits):
         self.thirst = None
 
         self.init_state()
-        self.log.record['speed'] = [self.speed]  # fixes an issue with the first generation
+        # self.log.record['speed'] = [self.speed]  # fixes an issue with the first generation
 
     def init_state(self, rebalance=config.REBALANCE):
         """
@@ -285,137 +285,6 @@ class Creature(StaticTraits):
             self.log.add_record('energy_mass',mass_energy)
         self.energy += excess_energy
 
-    def plot_rebalance(self, ax, debug=False, mode='energy'):
-        if debug:
-            import matplotlib.pyplot as plt
-            plt.ion()
-            fig, ax = plt.subplots(1, 1)
-        ax.clear()
-        if len(self.log.record['eat']) > 0 and len(self.log.record['energy_consumption']) > 3:  # TODO: make sure energy consumption exclude eating events
-            title = (f"P out = {np.mean(self.log.record['energy_consumption']) / config.DT:.1f} J/sec | "
-                     f"Meals dt = {np.mean(np.diff([self.birth_step] + self.log.record['eat'])) *
-                      config.DT:.0f} sec | "
-                     f"Meal E = {np.mean(self.log.record['energy_excess']):.0f} J | "
-                     f"[m, h] = {np.mean(self.mass):.1f} Kg, {np.mean(self.height):.0f} m")
-        else:
-            title = (f"P out = {np.mean(self.log.record['energy_consumption']) / config.DT:.1f} J/sec | "
-                     f"No eating events | "
-                     f"[m, h] = {self.mass:.1f} Kg, {self.height:.1f} m")
-        ax.set_title(title)
-        if mode == 'speed':
-            ax.plot(range(int(self.age / config.DT+1)),self.log.record['speed'], color='teal', alpha=0.5, label='Speed')
-            ax.set_ylim(0, max(self.log.record['speed']) * 1.1)
-            ax.tick_params(axis='y', colors='teal')
-            ax.spines['left'].set_color('maroon')
-            ax.spines['right'].set_color('teal')
-            ax.legend(loc='upper right')
-            ax.yaxis.set_label_position("right")
-            ax.set_ylabel('Speed [m/sec]')
-            ax.set_xlabel('Age [step]')
-        elif mode == 'energy':
-            ax.plot(range(int(self.age / config.DT+1)), self.log.record['energy'], color='maroon', alpha=0.5, label='Energy')
-            ax.set_ylim(0, self.max_energy)
-            ax.tick_params(axis='y', colors='maroon')
-            ax.spines['left'].set_color('maroon')
-            ax.spines['right'].set_color('teal')
-            ax.legend(loc='upper left')
-            ax.set_ylabel('Energy [J]')
-            ax.set_xlabel('Age [step]')
-        elif mode == 'energy_use':
-            if len(self.log.record['energy_propulsion']) > 0:
-                ax.plot(range(int(self.age / config.DT) - len(self.log.record['energy_propulsion']), int(self.age / config.DT)),
-                        self.log.record['energy_propulsion'], color='maroon', alpha=0.5, label='Prop. E')
-                ax.plot(range(int(self.age / config.DT) - len(self.log.record['energy_inner']), int(self.age / config.DT)),
-                        self.log.record['energy_inner'], color='maroon', alpha=0.5, label='Inner E', linestyle='dashed')
-                ax.tick_params(axis='y', colors='maroon')
-                ax.spines['left'].set_color('maroon')
-                ax.spines['right'].set_color('teal')
-                ax.legend(loc='upper left')
-                ax.set_ylabel('Energy consumption [J]')
-                ax.set_xlabel('Age [step]')
-
-    def plot_live_status(self, ax, debug=False, plot_horizontal=True):
-        """
-        Plots the agent's status (energy, hunger, thirst) on the given axes.
-        """
-        if debug:
-            import matplotlib.pyplot as plt
-            plt.ion()
-            fig, ax = plt.subplots(1, 1)
-        # Define attributes dynamically
-        ls = ['energy', 'age']  # , 'hunger', 'thirst'
-        colors = ['green', 'grey']  # , 'red', 'blue'
-        values = [getattr(self, attr) for attr in ls]  # Dynamically get values
-        ax.clear()
-        if plot_horizontal:
-            ax.barh(ls, values, color=colors)
-            if 'energy' in ls:
-                ax.scatter([config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY], ['energy'], color='black', s=20)
-            if 'age' in ls:
-                ax.scatter([self.max_age], ['age'], color='black', s=20)
-                ax.scatter([self.adolescence], ['age'], color='black', s=20)
-                # ax.barh(['Energy', 'Hunger', 'Thirst'], [self.energy, self.hunger, self.thirst], color=['green', 'red', 'blue'])
-                ax.set_xlim(0, max(self.max_energy, self.max_age))
-                # ax.set_xticks([0,self.max_energy/2, self.max_energy])
-                ax.set_yticks(ls)
-        else:
-            ax.bar(ls, values, color=colors)
-            if 'energy' in ls:
-                ax.scatter( ['energy'], [config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY], color='black', s=20)
-            if 'age' in ls:
-                ax.scatter( ['age'], [self.max_age], color='black', s=20)
-                ax.scatter(['age'], [self.adolescence], color='pink', s=20)
-                ax.set_ylim(0, max(self.max_energy, self.max_age))
-                ax.set_xticks(ls)
-                ax.set_xticklabels(ls, rotation=90, ha='right')
-                ax.set_yticks([])
-                ax.yaxis.set_tick_params(labelleft=False)
-
-
-
-
-    def plot_acc_status(self, ax, debug=False, plot_type=1, curr_step=-1):
-        """
-        Plots the agent's accumulated status (logs) on the given axes.
-        """
-        if debug:
-            print('debug_mode')
-            import matplotlib.pyplot as plt
-            plt.ion()
-            fig, ax = plt.subplots(1, 1)
-        # Define attributes dynamically
-        ls = ['eat', 'reproduce']
-        colors = ['green', 'pink']
-        ax.clear()
-        if max(self.color) > 1 or min(self.color) < 0:
-            raise ('color exceed [0, 1] range')
-        ax.set_facecolor(list(self.color) + [0.3])
-        ax.set_title(f'C# {self.creature_id} | Anc. = {len(self.ancestors)}')
-        if plot_type == 0:
-            # option 1
-            values = [len(self.log.record[attr]) for attr in ls]  # Dynamically get values
-            ax.set_title(f'Agent # {self.id}')
-            ax.bar(ls, values, color=colors, width=0.2)
-            ax.set_ylim(0, 10)
-            ax.set_yticks([0, 5, 10, 100])
-            ax.set_xticks(ls)
-        if plot_type == 1:
-            # option 2
-            if curr_step == -1: curr_step = self.max_age / config.DT + self.birth_step
-            # values = [getattr(self, attr) for attr in ls]  # Dynamically get values
-            eating_frames = self.log.record['eat']
-            reproducing_frames = self.log.record['reproduce']
-            ax.scatter(eating_frames, [1] * len(eating_frames), color='green', marker='o', s=100, label='Eating')
-            ax.scatter(reproducing_frames, [2] * len(reproducing_frames), color='red', marker='D', s=100,
-                       label='Reproducing')
-            ax.set_yticks([1, 2])
-            # ax.set_yticklabels(['Eating', 'Reproducing'])
-            # Label x-axis and add a title
-            ax.set_xlabel('Frame Number')
-            # ax.set_title('Event Timeline')
-            ax.set_xlim([self.birth_step - 1, curr_step + 1])
-            ax.set_ylim([0.5, 2.5])
-            ax.legend()
 
 if __name__ == '__main__':
     creature = Creature(creature_id=0, gen=0, parent_id="0", birth_step=0,

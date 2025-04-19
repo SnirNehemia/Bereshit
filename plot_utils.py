@@ -8,17 +8,20 @@ def plot_rebalance(ax, agent, debug=False, mode='energy'):
         plt.ion()
         fig, ax = plt.subplots(1, 1)
     ax.clear()
-    if len(agent.log.record['eat']) > 0 and len(
-            agent.log.record['energy_consumption']) > 3:  # TODO: make sure energy consumption exclude eating events
-        title = (f"P out = {np.mean(agent.log.record['energy_consumption']) / config.DT:.1f} J/sec | "
-                 f"Meals dt = {np.mean(np.diff([agent.birth_step] + agent.log.record['eat'])) *
-                               config.DT:.0f} sec | "
-                 f"Meal E = {np.mean(agent.log.record['energy_excess']):.0f} J | "
-                 f"[m, h] = {np.mean(agent.mass):.1f} Kg, {np.mean(agent.height):.0f} m")
-    else:
-        title = (f"P out = {np.mean(agent.log.record['energy_consumption']) / config.DT:.1f} J/sec | "
-                 f"No eating events | "
-                 f"[m, h] = {agent.mass:.1f} Kg, {agent.height:.1f} m")
+    try:
+        if len(agent.log.record['eat']) > 0 and len(
+                agent.log.record['energy_consumption']) > 3:  # TODO: make sure energy consumption exclude eating events
+            title = (f"P out = {np.mean(agent.log.record['energy_consumption']) / config.DT:.1f} J/sec | "
+                     f"Meals dt = {np.mean(np.diff([agent.birth_step] + agent.log.record['eat'])) *
+                                   config.DT:.0f} sec | "
+                     f"Meal E = {np.mean(agent.log.record['energy_excess']):.0f} J | "
+                     f"[m, h] = {np.mean(agent.mass):.1f} Kg, {np.mean(agent.height):.0f} m")
+        else:
+            title = (f"P out = {np.mean(agent.log.record['energy_consumption']) / config.DT:.1f} J/sec | "
+                     f"No eating events | "
+                     f"[m, h] = {agent.mass:.1f} Kg, {agent.height:.1f} m")
+    except:
+        title = f"No energy logs | No eating events | [m, h] = {agent.mass:.1f} Kg, {agent.height:.1f} m"
     ax.set_title(title)
     if mode == 'speed':
         ax.plot(range(int(agent.age / config.DT)), agent.log.record['speed'], color='teal', alpha=0.5, label='Speed')

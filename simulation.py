@@ -149,11 +149,12 @@ class Simulation:
                 purge_count = 0
                 self.purge = False
                 for creature_id, creature in self.creatures.items():
-                    if (len(self.creatures) > config.MAX_NUM_CREATURES * 0.95 and np.random.rand(1) < 0.1
-                            and creature_id not in list_creature_die):
+                    if (np.random.rand(1) < 0.1  # (len(self.creatures) > config.MAX_NUM_CREATURES * 0.95 and
+                            and creature_id not in list_creature_die and creature_id not in list_creatures_reproduce):
                         purge_count += 1
                         list_creature_die.append(creature_id)
-                    if creature.max_speed_exp <= config.PURGE_SPEED_THRESHOLD and creature_id not in list_creature_die:
+                    if (creature.max_speed_exp <= config.PURGE_SPEED_THRESHOLD and creature_id not in list_creature_die
+                            and creature_id not in list_creatures_reproduce):
                         purge_count += 1
                         list_creature_die.append(creature_id)
                 print(f'\nStep {self.step_counter}: Purging {purge_count} creatures.')

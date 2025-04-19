@@ -139,6 +139,7 @@ class Creature(StaticTraits):
         self.mutate()
         self.brain.mutate(brain_mutation_rate=config.MUTATION_BRAIN)
         self.init_state()
+        self.age = config.DT  # fix a delay in the logs
         self.velocity = -self.velocity  # go opposite to father
 
     def mutate(self):

@@ -3,8 +3,8 @@ import copy
 import numpy as np
 
 from static_traits import StaticTraits
-from config import Config as config
-from physical_model import PhysicalModel as physical_model
+from input.codes.config import config
+from input.codes.physical_model import physical_model
 
 import importlib
 

@@ -2,10 +2,10 @@ import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
-from matplotlib.patches import FancyArrowPatch, Circle
+from matplotlib.patches import FancyArrowPatch
 import platform, matplotlib
 import random, math
-from config import Config as config
+from input.codes.config import config
 
 # TODO: make closed loop activation tanh! or regulate it
 

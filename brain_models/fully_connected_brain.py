@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-from config import Config as config
+from input.codes.config import config
 
 
 # TODO: pay attention to activation function and run as main to check the hidden layers

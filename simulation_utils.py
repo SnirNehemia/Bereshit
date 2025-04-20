@@ -3,7 +3,7 @@ import importlib
 import numpy as np
 from scipy.spatial import KDTree
 
-from config import Config as config
+from input.codes.config import config
 from creature import Creature
 from environment import Environment
 

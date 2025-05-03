@@ -202,6 +202,14 @@ class Creature(StaticTraits):
         quadratic_drag_force = - physical_model.c_drag * self.height * self.speed ** 2 * current_direction
         drag_force = linear_drag_force + quadratic_drag_force
 
+        if self.is_agent:
+            self.log.add_record('linear_drag_force', np.linalg.norm(linear_drag_force))
+            self.log.add_record('quadratic_drag_force', np.linalg.norm(quadratic_drag_force))
+            self.log.add_record('reaction_friction_force_mag',
+                                np.linalg.norm(reaction_friction_force))
+            self.log.add_record('reaction_friction_force_angle',
+                                relative_propulsion_force_angle)
+
         # calc new velocity and position
         acceleration = (reaction_friction_force + drag_force) / self.mass
         new_velocity = self.velocity + acceleration * dt

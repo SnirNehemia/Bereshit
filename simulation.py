@@ -24,7 +24,7 @@ brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
 Brain = getattr(brain_module, 'Brain')
 
 global lineage_graph, traits_scat, quiv, scat, grass_scat, leaves_scat, agent_scat
-global fig, ax_lineage, ax_traits, ax_env, ax_brain, ax_agent_info_1, ax_agent_info_2, ax_agent_events, ax_life, progress_bar
+global fig, ax_lineage, ax_traits, ax_env, ax_brain, ax_agent_info_1, ax_agent_info_1_1, ax_agent_info_2, ax_agent_info_3, ax_agent_events, ax_life, progress_bar
 
 
 class Simulation:
@@ -226,7 +226,7 @@ class Simulation:
         Prints progress every 10 frames.
         """
         global lineage_graph, traits_scat, quiv, scat, grass_scat, leaves_scat, agent_scat
-        global fig, ax_lineage, ax_traits, ax_env, ax_brain, ax_agent_info_1, ax_agent_info_2, ax_agent_events, ax_life, progress_bar
+        global fig, ax_lineage, ax_traits, ax_env, ax_brain, ax_agent_info_1, ax_agent_info_1_1, ax_agent_info_2, ax_agent_info_3, ax_agent_events, ax_life, progress_bar
 
         def init_fig():
             """
@@ -234,19 +234,24 @@ class Simulation:
             :return:
             """
             global lineage_graph, traits_scat, quiv, scat, grass_scat, leaves_scat, agent_scat
-            global fig, ax_lineage, ax_traits, ax_env, ax_brain, ax_agent_info_1, ax_agent_info_2, ax_agent_events, ax_life, progress_bar
+            global fig, ax_lineage, ax_traits, ax_env, ax_brain, ax_agent_info_1, ax_agent_info_1_1, ax_agent_info_2, ax_agent_info_3, ax_agent_events, ax_life, progress_bar
 
             # init fig with the grid layout with uneven ratios
             # TODO: fig, axes = set_animation_figure()
             fig = plt.figure(figsize=(16, 8))
-            fig_grid = gridspec.GridSpec(2, 3, width_ratios=[1, 2, 1], height_ratios=[2, 1])  # 2:1 ratio for both axes
+            fig_grid = gridspec.GridSpec(2, 3, width_ratios=[1, 2, 1], height_ratios=[1, 1])
             ax_lineage = fig.add_subplot(fig_grid[0, 0])  # ancestor tree?
             ax_env = fig.add_subplot(fig_grid[0, 1])  # Large subplot (3/4 of figure)
             ax_brain = fig.add_subplot(fig_grid[0, 2])  # Smaller subplot (1/4 width, full height)
             ax_traits = fig.add_subplot(fig_grid[1, 0])  # placeholder
-            ax_agent_info = fig.add_subplot(fig_grid[1, 1])  # Smaller subplot (1/4 height, full width)
-            ax_agent_info_1 = ax_agent_info
-            ax_agent_info_2 = ax_agent_info_1.twinx()
+            # ax_agent_info = fig.add_subplot(fig_grid[1, 1])  # Smaller subplot (1/4 height, full width)
+            # ax_agent_info_1 = ax_agent_info
+            # ax_agent_info_2 = ax_agent_info_1.twinx()
+            subgrid = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=fig_grid[1, 1], height_ratios=[1, 1, 1])
+            ax_agent_info_1 = fig.add_subplot(subgrid[0, 0])
+            ax_agent_info_1_1 = ax_agent_info_1.twinx()
+            ax_agent_info_2 = fig.add_subplot(subgrid[1, 0])
+            ax_agent_info_3 = fig.add_subplot(subgrid[2, 0])
             # ax_agent_status = fig.add_subplot(fig_grid[1, 2])  # Smallest subplot (1/4 x 1/4)
             subgrid = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=fig_grid[1, 2], width_ratios=[1, 4])
             ax_life = fig.add_subplot(subgrid[0, 0])
@@ -325,7 +330,7 @@ class Simulation:
             :return:
             """
             global lineage_graph, traits_scat, quiv, scat, grass_scat, leaves_scat, agent_scat
-            global fig, ax_lineage, ax_traits, ax_env, ax_brain, ax_agent_info_1, ax_agent_info_2, ax_agent_events, ax_life, progress_bar
+            global fig, ax_lineage, ax_traits, ax_env, ax_brain, ax_agent_info_1, ax_agent_info_1_1, ax_agent_info_2, ax_agent_info_3, ax_agent_events, ax_life, progress_bar
 
             return scat, quiv, grass_scat, leaves_scat, agent_scat, traits_scat
 
@@ -339,7 +344,7 @@ class Simulation:
             :return: the variables that are updated (right now we are redrawing them)
             """
             global lineage_graph, traits_scat, quiv, scat, grass_scat, leaves_scat, agent_scat
-            global fig, ax_lineage, ax_traits, ax_env, ax_brain, ax_agent_info_1, ax_agent_info_2, ax_agent_events, ax_life, progress_bar
+            global fig, ax_lineage, ax_traits, ax_env, ax_brain, ax_agent_info_1, ax_agent_info_1_1, ax_agent_info_2, ax_agent_info_3, ax_agent_events, ax_life, progress_bar
 
             # check num steps per frame
             self.num_steps_per_frame = simulation_utils.calc_num_steps_per_frame(frame=frame)
@@ -510,8 +515,9 @@ class Simulation:
                     agent_scat.set_offsets([agent.position, agent.position])
                     agent.brain.plot(ax_brain)
                     # ax_agent_info.clear()
-                    plot.plot_rebalance(ax_agent_info_1, agent, mode='energy_use')
+                    plot.plot_rebalance(ax_agent_info_1, agent, mode='force', add_title=True, ax_secondary=ax_agent_info_1_1)  # 'energy_use'
                     plot.plot_rebalance(ax_agent_info_2, agent, mode='speed')
+                    plot.plot_rebalance(ax_agent_info_3, agent, mode='energy_use', add_x_label=True)
                     plot.plot_live_status(ax_life, agent, plot_horizontal=False)
                     plot.plot_acc_status(ax_agent_events, agent, plot_type=1, curr_step=self.step_counter)
 

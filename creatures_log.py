@@ -5,7 +5,7 @@ from config import Config as config
 class CreaturesLogs:
     def __init__(self, id):
         self.creature_id = id
-        # TODO: logs are in step units for now
+        # IMPORTANT: logs are in step units for now
         self.record = {'eat': [], 'reproduce': [], 'speed': [], 'energy': [], 'energy_consumption': []}
 
     def add_record(self, name, value):

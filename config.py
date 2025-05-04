@@ -25,16 +25,15 @@ np.random.seed = 0
 class Config:
     # Simulation parameters
     DT = 2.5  # time passing between consecutive steps (relevant for age and movement)
-    NUM_FRAMES = 50  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+    NUM_FRAMES = 300  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
     NUM_STEPS_FROM_FRAME_DICT = {  # key is frame number and value is num steps per frame from this frame onward
-        0: 100,
-        5: 40,
-        10: 20,
-        30: 10
+        0: 1000,
+        2: 200,
+        20: 100
     }
     assert list(NUM_STEPS_FROM_FRAME_DICT.keys())[0] == 0, 'first key must be 0'
     FRAME_INTERVAL = 75  # interval between frames in animation [in ms]
-    STATUS_EVERY_STEP = False  # choose if to update every step or every frame
+    STATUS_EVERY_STEP = True  # choose if to update every step or every frame
     UPDATE_KDTREE_INTERVAL = 120  # update the kdtree every n steps
     DEBUG_MODE = False  # breakpoint in update_func after each frame (not step!)
     REBALANCE = True
@@ -62,10 +61,10 @@ class Config:
     FOOD_SIZE = FOOD_DISTANCE_THRESHOLD / 2  # for display
 
     # Energy parameters
-    INIT_MAX_ENERGY = 20000  # maybe useful for maturity test before reproduction
+    INIT_MAX_ENERGY = 30000  # maybe useful for maturity test before reproduction
     REPRODUCTION_ENERGY = 10000  # energy cost of reproduction
-    MIN_LIFE_ENERGY = 5000  # energy to be left after reproduction
-    GRASS_ENERGY = 1000
+    MIN_LIFE_ENERGY = 10000  # energy to be left after reproduction
+    GRASS_ENERGY = 4000
     LEAF_ENERGY = 2000
     INIT_DIGEST_DICT = {'grass': 1, 'leaf': 0.5, 'creature': 0}
 
@@ -73,14 +72,14 @@ class Config:
         assert 0 <= c_digest <= 1, 'Config Error: INIT_DIGEST_DICT is not set correctly (values between 0-1).'
 
     # Creatures parameters
-    NUM_CREATURES = 800  # init size of population
-    MAX_NUM_CREATURES = 1250
-    INIT_MAX_AGE = 15000  # [sec]
-    ADOLESCENCE_AGE_FRACTION = 0.25  # [0-1] fraction of INIT_MAX_AGE for adulthood
+    NUM_CREATURES = 200  # init size of population
+    MAX_NUM_CREATURES = 800
+    INIT_MAX_AGE = 60000  # [sec]
+    ADOLESCENCE_AGE_FRACTION = 0.2  # [0-1] fraction of INIT_MAX_AGE for adulthood
     REPRODUCTION_COOLDOWN = 300  # [sec] minimal time between reproduction events
-    INIT_MAX_MASS = 10  # [kg]
+    INIT_MAX_MASS = 20  # [kg]
     INIT_MAX_HEIGHT = 0.5  # [m]
-    INIT_MAX_STRENGTH = 25  # [N]
+    INIT_MAX_STRENGTH = 150  # [N]
     MAX_SPEED = 2.5  # [m/sec] maximum speed of the creature
 
     # Eyes parameters

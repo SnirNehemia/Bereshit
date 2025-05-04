@@ -1,17 +1,14 @@
 import numpy as np
-from scipy.spatial import KDTree
 
-from creature import Creature
 from environment import Environment
 import simulation_utils
 from tqdm import tqdm
-from config import Config as config
+from input.codes.config import config
 
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.patches import Circle
 import matplotlib.gridspec as gridspec
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes, zoomed_inset_axes, mark_inset
 
 import importlib
 
@@ -70,7 +67,7 @@ class Simulation:
         if config.DEBUG_MODE:
             np.seterr(all='raise')  # Convert NumPy warnings into exceptions
 
-        print(f'Num frames = {config.NUM_FRAMES},\n'
+        print(f'Num frames = {config.NUM_FRAMES}, '
               f'Num steps = {simulation_utils.calc_total_num_steps(config.NUM_FRAMES)}')
 
     def make_agent(self, focus_id: int = 0):

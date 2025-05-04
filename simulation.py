@@ -1,18 +1,15 @@
 import numpy as np
-from scipy.spatial import KDTree
 
-from creature import Creature
 from environment import Environment
 import simulation_utils
 from tqdm import tqdm
-from config import Config as config
+from input.codes.config import config
 import plot_utils as plot
 
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.patches import Circle
 import matplotlib.gridspec as gridspec
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes, zoomed_inset_axes, mark_inset
 
 import importlib
 
@@ -71,7 +68,7 @@ class Simulation:
         if config.DEBUG_MODE:
             np.seterr(all='raise')  # Convert NumPy warnings into exceptions
 
-        print(f'Num frames = {config.NUM_FRAMES},\n'
+        print(f'Num frames = {config.NUM_FRAMES}, '
               f'Num steps = {simulation_utils.calc_total_num_steps(config.NUM_FRAMES)}')
 
     def make_agent(self, focus_id: int = 0):
@@ -279,7 +276,7 @@ class Simulation:
             axes[1].set_xlim(extent[0], extent[1])
             axes[1].set_ylim(extent[2], extent[3])
             axes[1].set_title("Evolution Simulation")
-            
+
             # axes[0] = fig.add_subplot(fig_grid[0, 0])  # ancestor tree?
             # axes[1] = fig.add_subplot(fig_grid[0, 1])  # Large subplot (3/4 of figure)
             # axes[2] = fig.add_subplot(fig_grid[0, 2])  # Smaller subplot (1/4 width, full height)

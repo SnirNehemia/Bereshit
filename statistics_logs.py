@@ -1,6 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
-from config import Config as config
+from input.codes.config import config
 from creature import Creature
 from environment import Environment
 

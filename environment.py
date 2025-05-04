@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import KDTree
 
-from config import Config as config
+from input.codes.config import config
 
 
 class Environment:

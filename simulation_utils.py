@@ -262,7 +262,7 @@ def eat_food(creature: Creature, env: Environment,
         if closest_food_distance <= config.FOOD_DISTANCE_THRESHOLD:
             # creature eat food
             creature.eat(food_type=food_type, food_energy=food_energy)
-            creature.log_eat.append(step_counter)
+            creature.log.add_record('eat', step_counter)
 
             # remove food from environment
             env.grass_remove_list.append(closest_food_point)

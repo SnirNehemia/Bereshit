@@ -3,6 +3,7 @@ import copy
 import numpy as np
 
 from static_traits import StaticTraits
+from creatures_log import CreaturesLogs
 from input.codes.config import config
 from input.codes.physical_model import physical_model
 
@@ -45,12 +46,8 @@ class Creature(StaticTraits):
         self.hunger = None
         self.thirst = None
 
-        self.log_eat = None
-        self.log_reproduce = None
-        self.log_energy = None
-        self.log_speed = None
         self.init_state()
-        self.log_speed = [self.speed]  # fixes an issue with the first generation
+        # self.log.record['speed'] = [self.speed]  # fixes an issue with the first generation
 
     def init_state(self, rebalance=config.REBALANCE):
         """
@@ -77,22 +74,11 @@ class Creature(StaticTraits):
         self.thirst = 100
 
         # TODO: logs are in step units for now
-        self.log_eat = []
-        self.log_reproduce = []
-        self.log_energy = []
-        self.log_speed = []
-        if rebalance:
-            self.log_gained_energy = []
-            self.log_height_energy = []
-            self.log_mass_energy = []
-            self.log_excess_energy = []
+        self.log = CreaturesLogs(self.creature_id)  # pay attention! the id is None for children and it is defines only later, in the simulation
+
 
     def make_agent(self):
         self.is_agent = True
-        self.log_propulsion_energy = []
-        self.log_inner_energy = []
-        self.log_energy_consumption = []
-        self.agent_age = int(self.age)
 
     def get_heading(self):
         """
@@ -120,8 +106,8 @@ class Creature(StaticTraits):
         else returns 0.
         """
         if self.age > self.adolescence:
-            if len(self.log_reproduce) > 0:
-                if (step_num - self.log_reproduce[-1]) * config.DT > self.reproduction_cooldown:
+            if len(self.log.record['reproduce']) > 0:
+                if (step_num - self.log.record['reproduce'][-1]) * config.DT > self.reproduction_cooldown:
                     return 1
                 else: return 0
             else: return 1  # if it's his first time reproducing
@@ -153,6 +139,7 @@ class Creature(StaticTraits):
         self.mutate()
         self.brain.mutate(brain_mutation_rate=config.MUTATION_BRAIN)
         self.init_state()
+        self.age = config.DT  # fix a delay in the logs
         self.velocity = -self.velocity  # go opposite to father
 
     def mutate(self):
@@ -204,28 +191,24 @@ class Creature(StaticTraits):
         gravity_force = self.mass * physical_model.g
         normal_force = - gravity_force
 
-        # static friction force
-        mu_static = physical_model.mu_static
-        static_friction_force_mag = mu_static * np.linalg.norm(normal_force)
-
-        # kinetic friction force
-        mu_kinetic = physical_model.mu_kinetic
-        # alpha_mu = physical_model.alpha_mu
-        # mu_total = mu_kinetic + (mu_static - mu_kinetic) * np.exp(-alpha_mu * self.speed)
-        kinetic_friction_force = - mu_kinetic * np.linalg.norm(normal_force) * global_propulsion_force_direction
-
-        # reaction friction force used for movement:
-        # when propulsion force is within the static friction force limit
-        # there is reaction force opposite to propulsion force else kinetic friction opposite to propulsion force
-        if np.linalg.norm(global_propulsion_force) <= static_friction_force_mag:
-            reaction_friction_force = - global_propulsion_force
+        # reaction friction force
+        if propulsion_force_mag > physical_model.mu_static * np.linalg.norm(normal_force):
+            reaction_friction_force = - physical_model.mu_kinetic * np.linalg.norm(normal_force) * global_propulsion_force_direction
         else:
-            reaction_friction_force = kinetic_friction_force
+            reaction_friction_force = - global_propulsion_force
 
         # drag force (air resistence)
         linear_drag_force = - physical_model.gamma * self.height * self.velocity
         quadratic_drag_force = - physical_model.c_drag * self.height * self.speed ** 2 * current_direction
         drag_force = linear_drag_force + quadratic_drag_force
+
+        # if self.is_agent:
+        self.log.add_record('linear_drag_force', np.linalg.norm(linear_drag_force))
+        self.log.add_record('quadratic_drag_force', np.linalg.norm(quadratic_drag_force))
+        self.log.add_record('reaction_friction_force_mag',
+                            np.linalg.norm(reaction_friction_force))
+        self.log.add_record('reaction_friction_force_angle',
+                            relative_propulsion_force_angle)
 
         # calc new velocity and position
         acceleration = (reaction_friction_force + drag_force) / self.mass
@@ -244,10 +227,12 @@ class Creature(StaticTraits):
         # update energy
         propulsion_energy = self.calc_propulsion_energy(global_propulsion_force)
         inner_energy = self.calc_inner_energy()
-        if self.is_agent:
-            self.log_propulsion_energy.append(propulsion_energy)
-            self.log_inner_energy.append(inner_energy)
-            self.log_energy_consumption.append(inner_energy + propulsion_energy)
+        # if self.is_agent:
+        self.log.add_record('energy_propulsion', propulsion_energy)
+        self.log.add_record('energy_inner', inner_energy)
+        self.log.add_record('energy_consumption', inner_energy + propulsion_energy)
+        if self.log.record['energy_consumption'][-1] < 0:
+            raise ValueError('Energy consumption cannot be negative')
         self.energy -= propulsion_energy + inner_energy
 
     @staticmethod
@@ -303,137 +288,14 @@ class Creature(StaticTraits):
 
         excess_energy = gained_energy - height_energy - mass_energy
         if rebalance:
-            self.log_excess_energy.append(excess_energy)
-            self.log_gained_energy.append(gained_energy)
-            self.log_height_energy.append(height_energy)
-            self.log_mass_energy.append(mass_energy)
+            self.log.add_record('energy_excess',excess_energy)
+            self.log.add_record('energy_gain',gained_energy)
+            self.log.add_record('energy_height',height_energy)
+            self.log.add_record('energy_mass',mass_energy)
+        else:
+            self.log.add_record('energy_excess', excess_energy)
         self.energy += excess_energy
 
-    def plot_rebalance(self, ax, debug=False, mode='energy'):
-        if debug:
-            import matplotlib.pyplot as plt
-            plt.ion()
-            fig, ax = plt.subplots(1, 1)
-        ax.clear()
-        if len(self.log_eat) > 0 and len(self.log_energy_consumption) > 0:
-            title = (f"Power cons. = {np.mean(self.log_energy_consumption) / config.DT:.1f} J/sec | "
-                     f"Meals freq. = {np.mean(np.diff([self.birth_step] + self.log_eat)) / config.DT:.1f} sec | "
-                     f"Meal worth = {np.mean(self.log_excess_energy):.1f} J")
-        else:
-            title = (f"Power cons. = {np.mean(np.diff(self.log_energy)) / config.DT:.1f} J/sec | "
-                     f"No eating events")
-        ax.set_title(title)
-        if mode == 'speed':
-            ax.plot(range(int(self.age / config.DT+1)),self.log_speed, color='teal', alpha=0.5, label='Speed')
-            ax.set_ylim(0, max(self.log_speed) * 1.1)
-            ax.tick_params(axis='y', colors='teal')
-            ax.spines['left'].set_color('maroon')
-            ax.spines['right'].set_color('teal')
-            ax.legend(loc='upper right')
-            ax.set_ylabel('Speed [m/sec]')
-            ax.set_xlabel('Age [step]')
-        elif mode == 'energy':
-            ax.plot(range(int(self.age / config.DT+1)), self.log_energy, color='maroon', alpha=0.5, label='Energy')
-            ax.set_ylim(0, self.max_energy)
-            ax.tick_params(axis='y', colors='maroon')
-            ax.spines['left'].set_color('maroon')
-            ax.spines['right'].set_color('teal')
-            ax.legend(loc='upper left')
-            ax.set_ylabel('Energy [J]')
-        elif mode == 'energy_use':
-            if self.agent_age < self.age:
-                ax.plot(range(int(self.agent_age / config.DT), int(self.age / config.DT)),
-                        self.log_propulsion_energy, color='maroon', alpha=0.5, label='Prop. E')
-                ax.plot(range(int(self.agent_age / config.DT), int(self.age / config.DT)),
-                        self.log_inner_energy, color='maroon', alpha=0.5, label='Inner E', linestyle='dashed')
-                ax.tick_params(axis='y', colors='maroon')
-                ax.spines['left'].set_color('maroon')
-                ax.spines['right'].set_color('teal')
-                ax.legend(loc='upper left')
-                ax.set_ylabel('Energy consumption [J]')
-
-    def plot_live_status(self, ax, debug=False, plot_horizontal=True):
-        """
-        Plots the agent's status (energy, hunger, thirst) on the given axes.
-        """
-        if debug:
-            import matplotlib.pyplot as plt
-            plt.ion()
-            fig, ax = plt.subplots(1, 1)
-        # Define attributes dynamically
-        ls = ['energy', 'age']  # , 'hunger', 'thirst'
-        colors = ['green', 'grey']  # , 'red', 'blue'
-        values = [getattr(self, attr) for attr in ls]  # Dynamically get values
-        ax.clear()
-        ax.set_title(f'C# {self.creature_id} | Anc. = {len(self.ancestors)}')
-        if plot_horizontal:
-            ax.barh(ls, values, color=colors)
-            if 'energy' in ls:
-                ax.scatter([config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY], ['energy'], color='black', s=20)
-            if 'age' in ls:
-                ax.scatter([self.max_age], ['age'], color='black', s=20)
-                ax.scatter([self.adolescence], ['age'], color='black', s=20)
-                # ax.barh(['Energy', 'Hunger', 'Thirst'], [self.energy, self.hunger, self.thirst], color=['green', 'red', 'blue'])
-                ax.set_xlim(0, max(self.max_energy, self.max_age))
-                # ax.set_xticks([0,self.max_energy/2, self.max_energy])
-                ax.set_yticks(ls)
-        else:
-            ax.bar(ls, values, color=colors)
-            if 'energy' in ls:
-                ax.scatter( ['energy'], [config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY], color='black', s=20)
-            if 'age' in ls:
-                ax.scatter( ['age'], [self.max_age], color='black', s=20)
-                ax.scatter(['age'], [self.adolescence], color='pink', s=20)
-                ax.set_ylim(0, max(self.max_energy, self.max_age))
-                ax.set_xticks(ls)
-                ax.set_xticklabels(ls, rotation=90, ha='right')
-                ax.set_yticks([])
-                ax.yaxis.set_tick_params(labelleft=False)
-
-
-
-
-    def plot_acc_status(self, ax, debug=False, plot_type=1, curr_step=-1):
-        """
-        Plots the agent's accumulated status (logs) on the given axes.
-        """
-        if debug:
-            print('debug_mode')
-            import matplotlib.pyplot as plt
-            plt.ion()
-            fig, ax = plt.subplots(1, 1)
-        # Define attributes dynamically
-        ls = ['log_eat', 'log_reproduce']
-        colors = ['green', 'pink']
-        ax.clear()
-        if max(self.color) > 1 or min(self.color) < 0:
-            raise ('color exceed [0, 1] range')
-        ax.set_facecolor(list(self.color) + [0.3])
-        if plot_type == 0:
-            # option 1
-            values = [len(getattr(self, attr)) for attr in ls]  # Dynamically get values
-            ax.set_title(f'Agent # {self.id}')
-            ax.bar(ls, values, color=colors, width=0.2)
-            ax.set_ylim(0, 10)
-            ax.set_yticks([0, 5, 10, 100])
-            ax.set_xticks(ls)
-        if plot_type == 1:
-            # option 2
-            if curr_step == -1: curr_step = self.max_age / config.DT + self.birth_step
-            # values = [getattr(self, attr) for attr in ls]  # Dynamically get values
-            eating_frames = self.log_eat
-            reproducing_frames = self.log_reproduce
-            ax.scatter(eating_frames, [1] * len(eating_frames), color='green', marker='o', s=100, label='Eating')
-            ax.scatter(reproducing_frames, [2] * len(reproducing_frames), color='red', marker='D', s=100,
-                       label='Reproducing')
-            ax.set_yticks([1, 2])
-            # ax.set_yticklabels(['Eating', 'Reproducing'])
-            # Label x-axis and add a title
-            ax.set_xlabel('Frame Number')
-            # ax.set_title('Event Timeline')
-            ax.set_xlim([self.birth_step - 1, curr_step + 1])
-            ax.set_ylim([0.5, 2.5])
-            ax.legend()
 
 if __name__ == '__main__':
     creature = Creature(creature_id=0, gen=0, parent_id="0", birth_step=0,

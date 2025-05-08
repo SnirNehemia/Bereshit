@@ -42,7 +42,7 @@ class StatisticsLogs:
             self.update_trait_statistics_logs(creatures=creatures, trait='speed')
 
             # Update eating logs
-            self.log_num_eats.append(np.sum([len(creature.log_eat) for creature in creatures.values()]))
+            self.log_num_eats.append(np.sum([len(creature.log.record['eat']) for creature in creatures.values()]))
 
     def update_trait_statistics_logs(self, creatures: dict[int, Creature], trait: str):
         creatures_trait = [getattr(creature, trait) for creature in creatures.values()]

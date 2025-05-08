@@ -243,7 +243,8 @@ class Simulation:
             # [2] -> brain
             # [3] -> traits scatter
             # [4] -> live status
-                # force + angle
+                # force
+                # force angle
                 # speed
                 # energy
             # [5] -> event status
@@ -257,13 +258,15 @@ class Simulation:
             # axes[4][0][0] = ax_agent_info
             # axes[4][1] = axes[4][0][0].twinx()
             axes.append([])
-            subgrid = gridspec.GridSpecFromSubplotSpec(3, 1, subplot_spec=fig_grid[1, 1], height_ratios=[1, 1 ,1])
-            axes[-1].append([])
-            axes[-1][-1].append(fig.add_subplot(subgrid[0, 0]))
-            twin_axis = axes[-1][-1][-1].twinx()
-            axes[-1][-1].append(twin_axis)
+            subgrid = gridspec.GridSpecFromSubplotSpec(2, 2, subplot_spec=fig_grid[1, 1], height_ratios=[1, 1])
+            axes[-1].append(fig.add_subplot(subgrid[0, 0]))
             axes[-1].append(fig.add_subplot(subgrid[1, 0]))
-            axes[-1].append(fig.add_subplot(subgrid[2, 0]))
+            # axes[-1].append([])
+            # axes[-1][-1].append(fig.add_subplot(subgrid[0, 0]))
+            # twin_axis = axes[-1][-1][-1].twinx()
+            # axes[-1][-1].append(twin_axis)
+            axes[-1].append(fig.add_subplot(subgrid[0, 1]))
+            axes[-1].append(fig.add_subplot(subgrid[1, 1]))
             # axes[-1].append(fig.add_subplot(subgrid[1, 1]))
             # ax_agent_status = fig.add_subplot(fig_grid[1, 2])  # Smallest subplot (1/4 x 1/4)
             axes.append([])
@@ -552,9 +555,11 @@ class Simulation:
                     agent_scat.set_offsets([agent.position, agent.position])
                     agent.brain.plot(axes[2])
                     # ax_agent_info.clear()
-                    plot.plot_rebalance(axes[4][0][0], agent, mode='force', add_title=True, ax_secondary=axes[4][0][1])  # 'energy_use'
-                    plot.plot_rebalance(axes[4][1], agent, mode='speed', add_x_label=True)
-                    plot.plot_rebalance(axes[4][2], agent, mode='energy_use')
+                    # plot.plot_rebalance(axes[4][0][0], agent, mode='force', add_title=True, ax_secondary=None)  # ax_secondary=axes[4][0][1]
+                    plot.plot_rebalance(axes[4][0], agent, mode='force', add_title=True)
+                    plot.plot_rebalance(axes[4][1], agent, mode='friction angle', add_x_label=False)
+                    plot.plot_rebalance(axes[4][2], agent, mode='speed')
+                    plot.plot_rebalance(axes[4][3], agent, mode='energy_use', add_x_label=True)
                     # plot.plot_rebalance(axes[4][3], agent, mode='power', add_x_label=True)
                     plot.plot_live_status(axes[5][2], agent, plot_horizontal=True)
                     plot.plot_live_status_power(axes[5][1], agent, plot_horizontal=True)

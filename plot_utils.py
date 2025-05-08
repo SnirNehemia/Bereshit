@@ -1,6 +1,6 @@
 
 import numpy as np
-from config import Config as config
+from input.codes.config import config
 
 def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x_label=False, ax_secondary=None):
     # TODO: rename | assiggn better colors | remove title and x label for most | show angle friction in RHS
@@ -82,39 +82,47 @@ def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x
                         color='violet', alpha=0.5, label='Friction angle')
                 ax_secondary.set_ylim(max(agent.log.record['reaction_friction_force_angle']) * 180 / (np.pi * 2))
                 ax_secondary.set_ylabel('friction [degrees]')
-            else:
-                ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['reaction_friction_force_angle']),
-                          int(agent.age / config.DT)),
-                    [angle * max_force / (np.pi * 2) for angle in agent.log.record['reaction_friction_force_angle']],
-                    color='blueviolet', alpha=0.5, label='Friction angle')
-
-        elif mode == 'power':
-            if 'energy_consumption' in agent.log.record and len(
-                    agent.log.record['energy_consumption']) > 0:
-                if 'energy_excess' in agent.log.record and len(agent.log.record['energy_excess']) > 0:
-                    ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['energy_excess']),
-                                  int(agent.age / config.DT)),
-                            np.sum(agent.log.record['energy_excess'])/(agent.age / config.DT), color='coral', alpha=0.5,
-                            label='Power gain')
-                else:
-                    ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['energy_excess']),
-                                  int(agent.age / config.DT)),
-                            np.sum(agent.log.record['energy_excess']) / (agent.age / config.DT), color='coral',
-                            alpha=0.5,
-                            label='Power gain')
-                ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['energy_consumption']),
+            # else:
+            #     ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['reaction_friction_force_angle']),
+            #               int(agent.age / config.DT)),
+            #         [angle * max_force / (np.pi * 2) for angle in agent.log.record['reaction_friction_force_angle']],
+            #         color='blueviolet', alpha=0.5, label='Friction angle')
+    elif mode == 'friction angle':
+        ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['reaction_friction_force_angle']),
+                      int(agent.age / config.DT)),
+                agent.log.record['reaction_friction_force_angle'],
+                color='blueviolet', alpha=0.5, label='Friction angle')
+        ax.tick_params(axis='y', colors='blueviolet')
+        ax.spines['left'].set_color('blueviolet')
+        # ax.spines['right'].set_color('violet')
+        ax.set_ylabel('angle [rad]')
+    elif mode == 'power':
+        if 'energy_consumption' in agent.log.record and len(
+                agent.log.record['energy_consumption']) > 0:
+            if 'energy_excess' in agent.log.record and len(agent.log.record['energy_excess']) > 0:
+                ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['energy_excess']),
                               int(agent.age / config.DT)),
-                        np.sum(agent.log.record['energy_consumption']) / (agent.age / config.DT), color='lawngreen', alpha=0.5,
-                        label='Power use')
-                ax.tick_params(axis='y', colors='brown')
-                ax.spines['left'].set_color('brown')
-                ax.legend(loc='upper left')
-                ax.set_ylabel('Power [Watt]')
+                        np.sum(agent.log.record['energy_excess'])/(agent.age / config.DT), color='coral', alpha=0.5,
+                        label='Power gain')
+            else:
+                ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['energy_excess']),
+                              int(agent.age / config.DT)),
+                        np.sum(agent.log.record['energy_excess']) / (agent.age / config.DT), color='coral',
+                        alpha=0.5,
+                        label='Power gain')
+            ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['energy_consumption']),
+                          int(agent.age / config.DT)),
+                    np.sum(agent.log.record['energy_consumption']) / (agent.age / config.DT), color='lawngreen', alpha=0.5,
+                    label='Power use')
+            ax.tick_params(axis='y', colors='brown')
+            ax.spines['left'].set_color('brown')
+            ax.legend(loc='upper left')
+            ax.set_ylabel('Power [Watt]')
 
-        if add_x_label:
-            ax.set_xlabel('Age [step]')
-        else:
-            ax.set_xticks([])
+    if add_x_label:
+        ax.set_xlabel('Age [step]')
+    else:
+        ax.set_xticks([])
 
 
 

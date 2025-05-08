@@ -3,6 +3,7 @@ import copy
 import numpy as np
 
 from static_traits import StaticTraits
+from creatures_log import CreaturesLogs
 from input.codes.config import config
 from input.codes.physical_model import physical_model
 

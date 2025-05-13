@@ -87,8 +87,8 @@ class ParametricDashboard:
             self.axes.append(ax)
 
         slider_top = 0.95
-        slider_height = 0.03
-        slider_gap = 0.01
+        slider_height = 0.02
+        slider_gap = 0.025
 
         for i, args in enumerate(self.init_struct_list):
             slider_group = []
@@ -101,25 +101,32 @@ class ParametricDashboard:
                 values = {k: v for k, v in zip(keys, args)}
 
             for j, (key, lim) in enumerate(zip(keys, self.param_limits[i])):
+
                 if key == self.x_attr_list[i]:
                     continue
+                val = values[key]
+                if isinstance(val, (list, np.ndarray)):
+                    continue  # skip array-valued keys (e.g. x values)
+                if lim[0] is None or lim[1] is None:
+                    continue  # skip if slider limits are invalid
                 label = self.slider_names[i][j] if self.slider_names and self.slider_names[i][j] else key
                 if label in self.slider_refs:
                     slider = self.slider_refs[label]
                     slider_group.append(slider)
                     continue
                 slider_bottom = slider_top - slider_height
-                ax_slider = self.fig.add_axes([0.05, slider_bottom, 0.25, slider_height])
-                val = values[key]
-                if isinstance(val, (list, np.ndarray)):
-                    continue  # skip array-valued keys (e.g. x values)
-                if lim[0] is None or lim[1] is None:
-                    continue  # skip if slider limits are invalid
-                slider = Slider(ax_slider, label, lim[0], lim[1], valinit=val)
+                ax_slider = self.fig.add_axes([0.05, slider_bottom, 0.15, slider_height])
+                ax_slider.set_title(label, fontsize=7, pad=4)
+                ax_slider.set_frame_on(False)
+                ax_slider.get_xaxis().set_visible(False)
+                ax_slider.get_yaxis().set_visible(False)
+
+
+                slider = Slider(ax_slider, '', lim[0], lim[1], valinit=val)
                 slider.on_changed(self.update)
                 if self.slider_marks and self.slider_marks[i][j]:
                     for mark in self.slider_marks[i][j]:
-                        ax_slider.axvline(x=mark, color='gray', linestyle=':', alpha=0.5)
+                        ax_slider.axvline(x=mark, color='black', linestyle='-', alpha=0.3)
                 slider_group.append(slider)
                 self.slider_refs[label] = slider
                 slider_top -= (slider_height + slider_gap)
@@ -162,6 +169,13 @@ class ParametricDashboard:
         if isinstance(val, (int, float)):
             return np.array([val])
         return np.asarray(val)
+
+    def _x_from_struct(self, struct, attr):
+        val = struct[attr]
+        if isinstance(val, (int, float)):
+            return np.array([val])
+        return np.asarray(val)
+
 
 # ------------------ TODO:The physical model - it should be in a seperate module and imported here ------------------
 
@@ -328,7 +342,7 @@ if __name__ == '__main__':
     x_labels.append('Mass [kg]')
     y_labels.append('Friction Force [N]')
     slider_marks.append([(),(physical_model.g*0.1, physical_model.g*0.5), (physical_model.mu_static*0.1, physical_model.mu_static*0.5)])
-    slider_names.append(['None','g [m/s^2]', '\mu_static'])
+    slider_names.append(['None','g [m/s^2]', 'mu_static'])
     func_colors.append(['black'])
     func_legends.append(['Friction Force'])
 

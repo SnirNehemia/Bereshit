@@ -1,6 +1,16 @@
 
 import numpy as np
-from input.codes.config import config
+
+from input.codes.config import load_config
+from input.codes.physical_model import load_physical_model
+
+# Load config
+config_yaml_relative_path = r"input\yamls\2025_04_18_config.yaml"
+config = load_config(yaml_relative_path=config_yaml_relative_path)
+
+# Load physical model
+physical_model_yaml_relative_path = r"input\yamls\2025_04_18_physical_model.yaml"
+physical_model = load_physical_model(yaml_relative_path=physical_model_yaml_relative_path)
 
 def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x_label=False, ax_secondary=None):
     # TODO: rename | assiggn better colors | remove title and x label for most | show angle friction in RHS
@@ -220,3 +230,241 @@ def plot_acc_status(ax, agent, debug=False, plot_type=1, curr_step=-1):
         ax.set_xlim([agent.birth_step - 1, curr_step + 1])
         ax.set_ylim([0.5, 2.5])
         ax.legend()
+
+
+"""" 
+--------------------------------------------------------------------------------------------------------------
+------------------------------------------ balance plots -----------------------------------------------------
+--------------------------------------------------------------------------------------------------------------
+"""
+
+import matplotlib
+matplotlib.use('TkAgg')
+import numpy as np
+import matplotlib.pyplot as plt
+
+def plot_parametric_variation(f_list, x, args_list, x_label='x', y_label='f(x)', title=None, colors=None,
+                              func_labels=None, styles=None, args_name='Args', ax=None):
+    """
+    Plots multiple functions over the same x and args_list, with varying alpha for args and color for function.
+
+    Parameters:
+    - f_list: list of functions of form f(x, *args) -> y
+    - x: vector of x values
+    - args_list: list of argument tuples to be unpacked into f
+    - x_label: label for x-axis
+    - y_label: label for y-axis
+    - title: optional title for the plot
+    - colors: list of colors corresponding to each function
+    - func_labels: list of labels for each function (for legend)
+    - styles: list of line styles corresponding to each function (e.g. '-', '--', ':', '-.')
+    - args_name: name for the varying argument (used in legend)
+    - ax: optional matplotlib Axes object to plot into
+    """
+    if len(f_list) != len(colors) or len(f_list) != len(func_labels) or len(f_list) != len(styles):
+        raise ValueError('f_list, colors, func_labels, and styles must have the same length')
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(8, 5))
+    base_alpha = 0.1
+    alpha_step = (1.0 - base_alpha) / max(len(args_list) - 1, 1)
+
+    if colors is None:
+        colors = ['black'] * len(f_list)
+    if func_labels is None:
+        func_labels = [f'f{i}' for i in range(len(f_list))]
+    if styles is None:
+        styles = ['-'] * len(f_list)
+
+    if len(f_list) == 1:
+        for j, (f, color, func_label, style) in enumerate(zip(f_list, colors, func_labels, styles)):
+            for i, args in enumerate(args_list):
+                y = f(x, args)
+                alpha = 1
+                label = f'{func_label}, {args_name}={args}'
+                ax.plot(x, y, alpha=alpha, color=color, linestyle=style)
+    else:
+        for j, (f, color, func_label, style) in enumerate(zip(f_list, colors, func_labels, styles)):
+            for i, args in enumerate(args_list):
+                y = f(x, args)
+                alpha = base_alpha + i * alpha_step
+                label = f'{func_label}, {args_name}={args}'
+                ax.plot(x, y, alpha=alpha, label=label, color=color, linestyle=style)
+                ax.legend(title="Function and Args", fontsize=6)
+
+    ax.set_xlabel(x_label, fontsize=8)
+    ax.set_ylabel(y_label, fontsize=8)
+    if title:
+        ax.set_title(title, fontsize=10)
+
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
+    ax.tick_params(axis='both', which='major', labelsize=10)
+    if ax is None:
+        plt.tight_layout()
+        plt.show()
+
+# -------------------------------- Force Calculations --------------------------------
+
+def linear_drag(speed, height):
+    # args[0] = height, args[1] = speed
+    linear_drag_force = - physical_model.gamma * height ** 2 * speed
+    # linear_drag_force = - physical_model.gamma * agent.height * agent.speed
+    return linear_drag_force
+
+def quadratic_drag(speed, height):
+    # args[0] = height, args[1] = speed
+    # quadratic_drag_force = - physical_model.c_drag * agent.height * agent.speed ** 2
+    quadratic_drag_force = - physical_model.c_drag * height ** 2 * speed ** 2
+    return quadratic_drag_force
+
+def friction(mass, x=0):
+    # args[0] = height, args[1] = speed
+    # friction_force = - physical_model.mu_kinetic * agent.mass * physical_model.g
+    friction_force = - physical_model.mu_kinetic * mass * physical_model.g
+    return friction_force
+
+# -------------------------------- Energy Calculations --------------------------------
+
+def calc_propulsion_energy(propulsion_force, x=0):
+    eta = physical_model.energy_conversion_factors['activity_efficiency']
+    c_heat = physical_model.energy_conversion_factors['heat_loss']
+    propulsion_energy = (1 / eta + c_heat) * propulsion_force
+    return propulsion_energy
+
+
+def calc_inner_energy(self):
+    c_d = physical_model.energy_conversion_factors['digest']
+    c_h = physical_model.energy_conversion_factors['height']
+    rest_energy = physical_model.energy_conversion_factors['rest'] * self.mass ** 0.75  # adds mass (BMR) energy
+    inner_energy = rest_energy + c_d * np.sum(list(self.digest_dict.values())) + c_h * self.height  # adds height energy
+    inner_energy = inner_energy + self.brain.size * physical_model.energy_conversion_factors['brain_consumption']
+    return inner_energy
+
+
+def calc_trait_energy(trait_type, gained_energy, age):
+    trait_energy_params = physical_model.trait_energy_params_dict[trait_type]
+    factor = trait_energy_params['factor']
+    rate = trait_energy_params['rate']
+    trait_energy_func = physical_model.trait_energy_func(factor=factor, rate=rate, age=age)
+    trait_energy = trait_energy_func * gained_energy
+    return trait_energy
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider
+
+def create_dashboard(f_list, x_list, init_args_list, param_limits, x_labels, y_labels):
+    """
+    Creates a dashboard with sliders for each parameter and subplots for each function.
+
+    Parameters:
+    - f_list: list of functions, each of form f(x, *params)
+    - x_list: list of x arrays for each function
+    - init_args_list: list of initial parameter tuples
+    - param_limits: list of tuples (min, max) for each parameter (list of lists per function)
+    - x_labels: list of x-axis labels
+    - y_labels: list of y-axis labels
+    """
+    num_funcs = len(f_list)
+    fig, axs = plt.subplots(num_funcs, 1, figsize=(8, 3 * num_funcs), squeeze=False)
+    sliders = []
+
+    # Initial plot
+    plots = []
+    for i in range(num_funcs):
+        ax = axs[i, 0]
+        y = f_list[i](x_list[i], *init_args_list[i])
+        line, = ax.plot(x_list[i], y, label='Initial')
+        ax.set_xlabel(x_labels[i])
+        ax.set_ylabel(y_labels[i])
+        ax.grid(True)
+        plots.append((line, f_list[i], x_list[i], init_args_list[i]))
+
+    # Add sliders for parameters under all plots
+    slider_axes = []
+    slider_y = 0.05
+    for i, args in enumerate(init_args_list):
+        sliders.append([])
+        for j, (val, lim) in enumerate(zip(args, param_limits[i])):
+            ax_slider = fig.add_axes([0.25, slider_y, 0.65, 0.03])
+            slider = Slider(ax_slider, f'Func {i} Param {j}', lim[0], lim[1], valinit=val)
+            sliders[i].append(slider)
+            slider_y += 0.04
+
+    # Update function
+    def update(val):
+        for i, (line, f, x, _) in enumerate(plots):
+            current_args = tuple(slider.val for slider in sliders[i])
+            y = f(x, *current_args)
+            line.set_ydata(y)
+        fig.canvas.draw_idle()
+
+    # Connect sliders
+    for slider_group in sliders:
+        for slider in slider_group:
+            slider.on_changed(update)
+
+    plt.tight_layout(rect=[0, slider_y, 1, 1])
+    plt.show()
+
+
+if __name__ == '__main__':
+    def f1(x, a): return np.sin(a * x)
+
+
+    def f2(x, b, c): return np.exp(-b * x) * np.cos(c * x)
+
+
+    create_dashboard(
+        f_list=[f1, f2],
+        x_list=[np.linspace(0, 2 * np.pi, 200), np.linspace(0, 5, 200)],
+        init_args_list=[(1,), (0.5, 3)],
+        param_limits=[[(0.1, 5)], [(0.1, 2), (1, 10)]],
+        x_labels=['x (rad)', 'time (s)'],
+        y_labels=['sin(a·x)', 'damped oscillation']
+    )
+
+    # # ---------------------------------------- Force graphs -----------------------------------------------
+    # fig, axs = plt.subplots(2,1,figsize=(8, 5))
+    # # Drag forces
+    # height = [config.INIT_MAX_HEIGHT * 0.01, config.INIT_MAX_HEIGHT * 0.1, config.INIT_MAX_HEIGHT * 0.5]
+    # x = np.linspace(0, config.MAX_SPEED, 301)
+    # plot_parametric_variation([linear_drag,
+    #                            quadratic_drag,
+    #                            lambda x, h: (quadratic_drag(x, h) + linear_drag(x, h))],
+    #                           x, height, x_label='Speed [m/s]',
+    #                           y_label='Force [N]',
+    #                           title='Quad Drag vs Speed for multiple heights',
+    #                           args_name='Height [m]',
+    #                           colors=['teal', 'violet', 'black'], func_labels=['Linear Drag', 'Quadratic Drag', 'Sum'],
+    #                           styles=['--', '--', '-'],
+    #                           ax=axs[0])
+    # # # Friction force
+    # dummy = [0]
+    # x = np.linspace(config.INIT_MAX_MASS*0.8, config.INIT_MAX_MASS*1, 101)
+    # plot_parametric_variation([friction],
+    #                           x, dummy, x_label='mass [Kg]',
+    #                           y_label='Force [N]',
+    #                           title='friction vs mass',
+    #                           args_name='',
+    #                           colors=['black'], func_labels=['Friction'],
+    #                           styles=['-'],
+    #                           ax=axs[1])
+    # plt.tight_layout()
+    # # plt.show()
+    #
+    # # ---------------------------------------- Energy graphs -----------------------------------------------
+    # fig, axs = plt.subplots(2, 1, figsize=(8, 5))
+    # # Propulsion energy
+    # dummy = [0]
+    # x = np.linspace(config.INIT_MAX_MASS*0.8, config.INIT_MAX_MASS*1, 101)
+    # x = friction(x)
+    # plot_parametric_variation([calc_propulsion_energy],
+    #                           x, dummy, x_label='Force [N]',
+    #                           y_label='Energy [J]',
+    #                           title='Energy vs Force',
+    #                           args_name='',
+    #                           colors=['black'], func_labels=['Propulsion Energy'],
+    #                           styles=['-'],
+    #                           ax=axs[0])
+    #

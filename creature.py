@@ -198,8 +198,8 @@ class Creature(StaticTraits):
             reaction_friction_force = - global_propulsion_force
 
         # drag force (air resistence)
-        linear_drag_force = - physical_model.gamma * self.height * self.velocity
-        quadratic_drag_force = - physical_model.c_drag * self.height * self.speed ** 2 * current_direction
+        linear_drag_force = - physical_model.gamma * self.height ** 2 * self.velocity
+        quadratic_drag_force = - physical_model.c_drag * self.height ** 2 * self.speed ** 2 * current_direction
         drag_force = linear_drag_force + quadratic_drag_force
 
         # if self.is_agent:

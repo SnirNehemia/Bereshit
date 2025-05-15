@@ -244,7 +244,7 @@ class Creature(StaticTraits):
 
     def calc_inner_energy(self):
         c_d = physical_model.energy_conversion_factors['digest']
-        c_h = physical_model.energy_conversion_factors['height']
+        c_h = physical_model.energy_conversion_factors['height_energy']
         rest_energy = physical_model.energy_conversion_factors['rest'] * self.mass ** 0.75  # adds mass (BMR) energy
         inner_energy = rest_energy + c_d * np.sum(list(self.digest_dict.values())) + c_h * self.height  # adds height energy
         inner_energy = inner_energy + self.brain.size * physical_model.energy_conversion_factors['brain_consumption']
@@ -272,13 +272,13 @@ class Creature(StaticTraits):
 
         if self.age < self.adolescence:
             self.height, height_energy = self.convert_gained_energy_to_trait(
-                trait_type='height',
+                trait_type='height_change',
                 old_trait=self.height,
                 gained_energy=gained_energy,
                 age=self.age,
             )
             self.mass, mass_energy = self.convert_gained_energy_to_trait(
-                trait_type='mass',
+                trait_type='mass_change',
                 old_trait=self.mass,
                 gained_energy=gained_energy,
                 age=self.age,

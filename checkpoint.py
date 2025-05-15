@@ -170,6 +170,12 @@ class ParametricDashboard:
             return np.array([val])
         return np.asarray(val)
 
+    def _x_from_struct(self, struct, attr):
+        val = struct[attr]
+        if isinstance(val, (int, float)):
+            return np.array([val])
+        return np.asarray(val)
+
 
 # ------------------ TODO:The physical model - it should be in a seperate module and imported here ------------------
 
@@ -353,8 +359,8 @@ if __name__ == '__main__':
     f_list.append([])
     f_list[-1].append(lambda agent, g, mu_static, h, gamma: calc_propulsion_energy(friction(agent.mass, g, mu_static), h, gamma))
     f_list[-1].append(calc_inner_energy)
-    # f_list[-1].append(lambda x, h, gamma, c_drag: quadratic_drag(x, h, c_drag) + linear_drag(x, h, gamma))
-    # x_list.append(np.linspace(config.INIT_MAX_MASS * 0.01, config.INIT_MAX_MASS * 10, 101))
+    f_list[-1].append(lambda x, h, gamma, c_drag: quadratic_drag(x, h, c_drag) + linear_drag(x, h, gamma))
+    x_list.append(np.linspace(config.INIT_MAX_MASS * 0.01, config.INIT_MAX_MASS * 10, 101))
     init_args_list.append([physical_model.g, physical_model.mu_static])
 
 

@@ -16,7 +16,7 @@ def profileit(output_dir=OUTPUT_DIR):
             os.makedirs(output_dir, exist_ok=True)
 
             # get filename with timestamp
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             filename = f"{output_dir}/{func.__name__}_{timestamp}.prof"
 
             profiler = cProfile.Profile()
@@ -33,18 +33,19 @@ def profileit(output_dir=OUTPUT_DIR):
 
     return decorator
 
-# ---------- Guidelines ---------
+
+# ---------- Instructions ---------
 
 # 1. pip install snakeviz
 # 2. add decorator @profileit() to your function
-# 3. after running write in Terminal: snakeviz {path to your profiler .prof file}
+# 3. after running write in Terminal: snakeviz {path_to_your_profiler_.prof_file}
 
 # --------- Example case --------
+if __name__ == '__main__':
+    @profileit()
+    def my_function():
+        for i in range(1000):
+            sum([j for j in range(100)])
 
-# @profileit()
-# def my_function():
-#     for i in range(1000):
-#         sum([j for j in range(100)])
-#
-#
-# my_function()
+
+    my_function()

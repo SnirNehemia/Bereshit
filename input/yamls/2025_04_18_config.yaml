@@ -1,16 +1,16 @@
 # Simulation parameters
 VERSION: 2.0
 DT: 2.5  # time passing between consecutive steps (relevant for age and movement)
-NUM_FRAMES: 10  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+NUM_FRAMES: 5  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
 
 # key is frame number and value is num steps per frame from this frame onward
 NUM_STEPS_FROM_FRAME_DICT: { 0: 100,
-                             5: 40,
-                             10: 20,
-                             30: 10 }
+                             1: 100,
+                             10: 100,
+                             30: 100 }
 
 FRAME_INTERVAL: 75  # interval between frames in animation [in ms]
-STATUS_EVERY_STEP: False  # choose if to update every step or every frame
+STATUS_EVERY_STEP: True  # choose if to update every step or every frame
 UPDATE_KDTREE_INTERVAL: 120  # update the kdtree every n steps
 DEBUG_MODE: False  # breakpoint in update_func after each frame (not step!)
 REBALANCE: True
@@ -19,7 +19,7 @@ PURGE_POP_PERCENTAGE: 0.75  # percentage of MAX_NUM_CREATURES to stuck simulatio
 # Purge parameters
 DO_PURGE: True
 PURGE_PERCENTAGE: 0.1  # percentage out of MAX_NUM_CREATURES to do purge
-PURGE_SPEED_THRESHOLD: 1  # if the creature's speed is below this threshold at first reproduction, it will be removed
+PURGE_SPEED_THRESHOLD: 0.1  # if the creature's speed is below this threshold at first reproduction, it will be removed
 PURGE_FRAME_FREQUENCY: 50  # do purge every PURGE_FRAME_FREQUENCY frames
 
 # Environment parameters
@@ -38,7 +38,7 @@ FOOD_DISTANCE_THRESHOLD: 75
 
 # Energy parameters
 INIT_MAX_ENERGY: 20000  # maybe useful for maturity test before reproduction
-REPRODUCTION_ENERGY: 10000  # energy cost of reproduction
+REPRODUCTION_ENERGY: 5000  # energy cost of reproduction
 MIN_LIFE_ENERGY: 5000  # energy to be left after reproduction
 GRASS_ENERGY: 1000
 LEAF_ENERGY: 2000
@@ -47,10 +47,10 @@ INIT_DIGEST_DICT: { 'grass': 1,
                     'creature': 0 }
 
 # Creatures parameters
-NUM_CREATURES: 800  # init size of population
+NUM_CREATURES: 200  # init size of population
 MAX_NUM_CREATURES: 1250
-INIT_MAX_AGE: 15000  # [sec]
-ADOLESCENCE_AGE_FRACTION: 0.25  # [0-1] fraction of INIT_MAX_AGE for adulthood
+INIT_MAX_AGE: 20000  # [sec]
+ADOLESCENCE_AGE_FRACTION: 0.1  # [0-1] fraction of INIT_MAX_AGE for adulthood
 REPRODUCTION_COOLDOWN: 300  # [sec] minimal time between reproduction events
 INIT_MAX_MASS: 10  # [kg]
 INIT_MAX_HEIGHT: 0.5  # [m]

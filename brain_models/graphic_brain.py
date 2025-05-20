@@ -230,6 +230,9 @@ class Brain:
                 connection = list(self.graph.edges)[ind]
                 self.break_connection(*connection)
 
+        for u, v in self.graph.edges():
+            if u == v:
+                self.set_activation(u, 'sigmoid')
         self.forget(brain_mutation_rate[
                         'forget_magnitude'])  # reduce the current value of the nodes as a forget mechanism between generations
         self.size = len(self.graph.nodes)

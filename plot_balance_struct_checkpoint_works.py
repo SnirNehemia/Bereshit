@@ -56,15 +56,76 @@ class ParametricDashboard:
     def _set_nested_attr(self, obj, attr_path, value):
         parts = attr_path.split('.')
         for part in parts[:-1]:
-            obj = getattr(obj, part)
-        if not hasattr(obj, parts[-1]):
-            raise AttributeError('Attribute not found')
-        setattr(obj, parts[-1], value)
+            if isinstance(obj, dict):
+                if part not in obj:
+                    raise AttributeError('Attribute not found')
+                obj = obj[part]
+            else:
+                if not hasattr(obj, part):
+                    raise AttributeError('Attribute not found')
+                obj = getattr(obj, part)
+        final_part = parts[-1]
+        if isinstance(obj, dict):
+            if final_part not in obj:
+                raise AttributeError('Attribute not found')
+            obj[final_part] = value
+        else:
+            if not hasattr(obj, final_part):
+                raise AttributeError('Attribute not found')
+            setattr(obj, final_part, value)
 
     def _get_nested_attr(self, obj, attr_path):
         for part in attr_path.split('.'):
-            obj = getattr(obj, part)
+            if isinstance(obj, dict):
+                if part not in obj:
+                    raise AttributeError('Attribute not found')
+                obj = obj[part]
+            else:
+                if not hasattr(obj, part):
+                    raise AttributeError('Attribute not found')
+                obj = getattr(obj, part)
         return obj
+
+    # def _set_nested_attr(self, obj, attr_path, value):
+    #     parts = attr_path.split('.')
+    #     for part in parts[:-1]:
+    #         if isinstance(obj, dict):
+    #             if part not in obj:
+    #                 raise AttributeError('Attribute not found')
+    #             obj = obj[part]
+    #         else:
+    #             obj = getattr(obj, part)
+    #     final_part = parts[-1]
+    #     if isinstance(obj, dict):
+    #         if final_part not in obj:
+    #             raise AttributeError('Attribute not found')
+    #         obj[final_part] = value
+    #     else:
+    #         if not hasattr(obj, final_part):
+    #             raise AttributeError('Attribute not found')
+    #         setattr(obj, final_part, value)
+    #
+    #
+    # def _get_nested_attr(self, obj, attr_path):
+    #     for part in attr_path.split('.'):
+    #         if isinstance(obj, dict):
+    #             obj = obj[part]
+    #         else:
+    #             obj = getattr(obj, part)
+    #     return obj
+
+    # def _set_nested_attr(self, obj, attr_path, value):
+    #     parts = attr_path.split('.')
+    #     for part in parts[:-1]:
+    #         obj = getattr(obj, part)
+    #     if not hasattr(obj, parts[-1]):
+    #         raise AttributeError('Attribute not found')
+    #     setattr(obj, parts[-1], value)
+    #
+    # def _get_nested_attr(self, obj, attr_path):
+    #     for part in attr_path.split('.'):
+    #         obj = getattr(obj, part)
+    #     return obj
 
     def f_vector(self, f, attr, x_vector, agent, extra):
         f_vector = [
@@ -186,17 +247,26 @@ class ParametricDashboard:
 
         plt.show()
 
+    # def update(self, val):
+    #     for i, (lines, funcs, x_attr) in enumerate(self.plots):
+    #         args = self.init_struct_list[i]
+    #         if isinstance(args, (tuple, list)) and not isinstance(args[0], (int, float, str)):
+    #             agent, extra = args
+    #             new_agent = agent # agent.copy()
+    #             new_extra = extra # extra.copy()
+    #             updated = False
+    #             for label, slider in self.slider_refs.items():
+    #                 if '.' in label:
+    #                     label = label.split('.')[0] + "['" + label.split('.')[1] + "']"
     def update(self, val):
         for i, (lines, funcs, x_attr) in enumerate(self.plots):
             args = self.init_struct_list[i]
             if isinstance(args, (tuple, list)) and not isinstance(args[0], (int, float, str)):
                 agent, extra = args
-                new_agent = agent # agent.copy()
-                new_extra = extra # extra.copy()
-                updated = False
+                new_agent = agent  # agent.copy()
+                new_extra = extra  # extra.copy()
                 for label, slider in self.slider_refs.items():
-                    if '.' in label:
-                        label = label.split('.')[0] + "['" + label.split('.')[1] + "']"
+                    updated = False
                     try:
                         self._set_nested_attr(agent, label, slider.val)
                         updated = True

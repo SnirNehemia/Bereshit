@@ -313,6 +313,8 @@ class ParametricDashboard:
 import numpy as np
 from types import SimpleNamespace
 
+# -------------- Energy functions --------------
+
 def calc_inner_energy(agent, physical_model):
     c_d = physical_model.energy_conversion_factors['digest']
     c_h = physical_model.energy_conversion_factors['height_energy']
@@ -328,6 +330,8 @@ def calc_propulsion_energy(agent, physical_model):
     propulsion_energy = (1 / eta + c_heat) * propulsion_force
     return propulsion_energy
 
+# -------------- Force functions --------------
+
 def linear_force(agent, physical_model):
     linear_drag_force = - physical_model.gamma * agent.height ** 2 * agent.speed
     return linear_drag_force
@@ -341,6 +345,37 @@ def total_drag_force(agent, physical_model):
     quadratic_drag_force = - physical_model.c_drag * agent.height ** 2 * agent.speed ** 2
     drag_force = linear_drag_force + quadratic_drag_force
     return drag_force
+
+# ---------------- General functions ----------------
+
+def energy_over_time(creature, physical_model, average_eating_rate):
+    distance = 5
+    angle = np.radians(5)
+    eyes_inputs = np.array([1, distance, angle])  # change to a specific policy
+    children_count = 0
+    eat_count = 0
+    step_num = int(agent.max_age/config.DT) + 1
+    energy_log = np.zeros(step_num)
+    for i_t in range(step_num):
+        brain_input = []
+        brain_input.append(np.array([creature.hunger, creature.thirst]))
+        brain_input.append(creature.speed)
+        brain_input.append(np.concatenate(eyes_inputs))
+        brain_input = np.hstack(brain_input)
+        decision = creature.think(brain_input)
+        creature.move(decision=decision, dt=config.DT)
+        if t%average_eating_rate:
+            creature.eat(food_type='grass', food_energy=config.GRASS_ENERGY)
+            eat_count += 1
+        if creature.energy > creature.reproduction_energy + config.MIN_LIFE_ENERGY:
+            creature.energy -= creature.reproduction_energy
+            children_count += 1
+            if creature.energy <= 0:
+                break
+        energy_log[i_t] = creature.energy
+
+    return energy_log
+
 
 # create agent:
 from environment import Environment
@@ -432,7 +467,39 @@ slider_marks.append([(), (config.INIT_MAX_HEIGHT * 0.1, config.INIT_MAX_HEIGHT *
 func_colors.append(['blueviolet', 'violet', 'black'])
 func_legends.append(['Linear Drag', 'Quadratic Drag', 'Linear + Quadratic Drag'])
 
+# Actual energy plot
 
+f_list.append(energy_over_time)
+x_attr_list.append('speed')
+# x_list.append(np.linspace(0, config.MAX_SPEED, 101))
+init_struct_list.append((agent, physical_model))
+slider_names.append(['mass',
+                     'height',
+                     'strength',
+                     'brain.size',
+                     'energy_conversion_factors.digest',
+                     'energy_conversion_factors.height_energy',
+                     'energy_conversion_factors.rest',
+                     'energy_conversion_factors.brain_consumption',
+                     'g',
+                     'average_eating_rate'])
+param_limits.append([
+    (0.1, 80),  # mass (x)
+    (1.4, 2.0),  # height
+    (0.5, 3.0),  # strength
+    (1, 30),  # brain.size
+    (0.5, 3.0),  # energy_conversion_factors.digest
+    (1.0, 3.0),  # energy_conversion_factors.height
+    (0.5, 1.5),  # energy_conversion_factors.rest
+    (2.0, 5.0),  # energy_conversion_factors.brain_consumption
+    (5.0, 15.0),  # physical_model.g
+    (1, 500)  # average_eating_rate
+    ])
+x_labels.append('time [s]')
+y_labels.append('Energy [J]')
+slider_marks.append([(), (), (), (), (), (), (), (), (), ()])
+func_colors.append(['black'])
+func_legends.append(['Energy'])
 
 
 ParametricDashboard(

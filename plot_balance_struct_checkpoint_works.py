@@ -348,7 +348,7 @@ def total_drag_force(agent, physical_model):
 
 # ---------------- General functions ----------------
 
-def energy_over_time(creature, physical_model, average_eating_rate):
+def energy_over_time(creature, physical_model, average_eating_rate, t):
     distance = 5
     angle = np.radians(5)
     eyes_inputs = np.array([1, distance, angle])  # change to a specific policy
@@ -469,8 +469,9 @@ func_legends.append(['Linear Drag', 'Quadratic Drag', 'Linear + Quadratic Drag']
 
 # Actual energy plot
 
+t = np.linspace(0, agent.max_age, config.DT)
 f_list.append(energy_over_time)
-x_attr_list.append('speed')
+x_attr_list.append('t')
 # x_list.append(np.linspace(0, config.MAX_SPEED, 101))
 init_struct_list.append((agent, physical_model))
 slider_names.append(['mass',

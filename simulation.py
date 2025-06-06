@@ -243,13 +243,13 @@ class Simulation:
             # [2] -> brain
             # [3] -> traits scatter
             # [4] -> live status
-                # force
-                # force angle
-                # speed
-                # energy
+            # force
+            # force angle
+            # speed
+            # energy
             # [5] -> event status
-                # energy and age
-                # reproduce and meals
+            # energy and age
+            # reproduce and meals
             axes.append(fig.add_subplot(fig_grid[0, 0]))  # ancestor tree?
             axes.append(fig.add_subplot(fig_grid[0, 1]))  # Large subplot (3/4 of figure)
             axes.append(fig.add_subplot(fig_grid[0, 2]))  # Smaller subplot (1/4 width, full height)
@@ -314,7 +314,7 @@ class Simulation:
             colors = [creature.color for creature in self.creatures.values()]
             sizes = np.array([creature.mass for creature in self.creatures.values()]) * config.FOOD_SIZE / 100
             scat = axes[1].scatter(self.positions[:, 0], self.positions[:, 1], c=colors, s=sizes,
-                                  transform=axes[1].transData)
+                                   transform=axes[1].transData)
 
             # Create quiver arrows for creature headings
             U, V = [], []
@@ -326,7 +326,7 @@ class Simulation:
                     U.append(0)
                     V.append(0)
             quiv = axes[1].quiver(self.positions[:, 0], self.positions[:, 1], U, V,
-                                 color=colors, scale=150, width=0.005)  # 'black'
+                                  color=colors, scale=150, width=0.005)  # 'black'
 
             # Scatter food points for vegetation
             grass_scat = axes[1].scatter([], [], c='lightgreen', edgecolors='black', s=10)
@@ -494,9 +494,9 @@ class Simulation:
 
                         # Redraw scatter and quiver plots (positions & directions)
                         scat = axes[1].scatter(self.positions[:, 0], self.positions[:, 1],
-                                              c=colors, s=sizes)
+                                               c=colors, s=sizes)
                         quiv = axes[1].quiver(self.positions[:, 0], self.positions[:, 1], U, V,
-                                             color=colors, scale=150, width=0.005)
+                                              color=colors, scale=150, width=0.005)
                 else:
                     # plot place holder
                     scat = axes[1].scatter([1], [1])
@@ -511,8 +511,8 @@ class Simulation:
                     # else:
                     grass_points = np.array(self.env.grass_points)
                     grass_scat = axes[1].scatter(grass_points[:, 0], grass_points[:, 1], c='lightgreen',
-                                                edgecolors='black',
-                                                s=10)
+                                                 edgecolors='black',
+                                                 s=10)
 
                 # num_leaf_points_in_last_frame = TODO
                 num_leaf_points_after_step = len(self.env.leaf_points)
@@ -522,8 +522,8 @@ class Simulation:
                     # else:
                     leaf_points = np.array(self.env.leaf_points)
                     leaves_scat = axes[1].scatter(leaf_points[:, 0], leaf_points[:, 1], c='darkgreen',
-                                                 edgecolors='black',
-                                                 s=20)
+                                                  edgecolors='black',
+                                                  s=20)
 
                 axes[1].set_title(f"Evolution Simulation ({frame=}, step={self.step_counter})")
 

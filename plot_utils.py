@@ -1,6 +1,6 @@
-
 import numpy as np
 from input.codes.config import config
+
 
 def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x_label=False, ax_secondary=None):
     # TODO: rename | assiggn better colors | remove title and x label for most | show angle friction in RHS
@@ -12,10 +12,10 @@ def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x
     try:
         if add_title:
             if len(agent.log.record['eat']) > 0 and len(
-                    agent.log.record['energy_consumption']) > 3:  # TODO: make sure energy consumption exclude eating events
+                    agent.log.record[
+                        'energy_consumption']) > 3:  # TODO: make sure energy consumption exclude eating events
                 title = (f"P out = {np.mean(agent.log.record['energy_consumption']) / config.DT:.1f} J/sec | "
-                         f"Meals dt = {np.mean(np.diff([agent.birth_step] + agent.log.record['eat'])) *
-                                       config.DT:.0f} sec | "
+                         f"Meals dt = {np.mean(np.diff([agent.birth_step] + agent.log.record['eat'])) * config.DT:.0f} sec | "
                          f"Meal E = {np.mean(agent.log.record['energy_excess']):.0f} J | "
                          f"[m, h] = {np.mean(agent.mass):.1f} Kg, {np.mean(agent.height):.0f} m")
             else:
@@ -37,7 +37,8 @@ def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x
         ax.yaxis.set_label_position("right")
         ax.set_ylabel('Speed [m/sec]')
     elif mode == 'energy':
-        ax.plot(range(int(agent.age / config.DT + 1)), agent.log.record['energy'], color='maroon', alpha=0.5, label='Energy')
+        ax.plot(range(int(agent.age / config.DT + 1)), agent.log.record['energy'], color='maroon', alpha=0.5,
+                label='Energy')
         ax.set_ylim(0, agent.max_energy)
         ax.tick_params(axis='y', colors='maroon')
         ax.spines['left'].set_color('maroon')
@@ -46,17 +47,20 @@ def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x
         ax.set_ylabel('Energy [J]')
     elif mode == 'energy_use':
         if 'energy_consumption' in agent.log.record and len(agent.log.record['energy_consumption']) > 0:
-            ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['energy_propulsion']), int(agent.age / config.DT)),
+            ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['energy_propulsion']),
+                          int(agent.age / config.DT)),
                     agent.log.record['energy_propulsion'], color='maroon', alpha=0.5, label='Prop. E')
-            ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['energy_inner']), int(agent.age / config.DT)),
-                    agent.log.record['energy_inner'], color='maroon', alpha=0.5, label='Inner E', linestyle='dashed')
+            ax.plot(
+                range(int(agent.age / config.DT) - len(agent.log.record['energy_inner']), int(agent.age / config.DT)),
+                agent.log.record['energy_inner'], color='maroon', alpha=0.5, label='Inner E', linestyle='dashed')
             ax.tick_params(axis='y', colors='maroon')
             ax.spines['left'].set_color('maroon')
             ax.spines['right'].set_color('teal')
             ax.legend(loc='upper left')
             ax.set_ylabel('Energy consumption [J]')
     elif mode == 'force':
-        if 'reaction_friction_force_mag' in agent.log.record and len(agent.log.record['reaction_friction_force_mag']) > 0:
+        if 'reaction_friction_force_mag' in agent.log.record and len(
+                agent.log.record['reaction_friction_force_mag']) > 0:
             max_force = max(agent.log.record['reaction_friction_force_mag'])
             ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['reaction_friction_force_mag']),
                           int(agent.age / config.DT)),
@@ -76,10 +80,11 @@ def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x
             ax.set_ylabel('Force [N]')
             if ax_secondary is not None:
                 ax_secondary.clear()
-                ax_secondary.plot(range(int(agent.age / config.DT) - len(agent.log.record['reaction_friction_force_angle']),
-                              int(agent.age / config.DT)),
-                        [angle * 180 / (np.pi * 2) for angle in agent.log.record['reaction_friction_force_angle']],
-                        color='violet', alpha=0.5, label='Friction angle')
+                ax_secondary.plot(
+                    range(int(agent.age / config.DT) - len(agent.log.record['reaction_friction_force_angle']),
+                          int(agent.age / config.DT)),
+                    [angle * 180 / (np.pi * 2) for angle in agent.log.record['reaction_friction_force_angle']],
+                    color='violet', alpha=0.5, label='Friction angle')
                 ax_secondary.set_ylim(max(agent.log.record['reaction_friction_force_angle']) * 180 / (np.pi * 2))
                 ax_secondary.set_ylabel('friction [degrees]')
             # else:
@@ -102,7 +107,7 @@ def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x
             if 'energy_excess' in agent.log.record and len(agent.log.record['energy_excess']) > 0:
                 ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['energy_excess']),
                               int(agent.age / config.DT)),
-                        np.sum(agent.log.record['energy_excess'])/(agent.age / config.DT), color='coral', alpha=0.5,
+                        np.sum(agent.log.record['energy_excess']) / (agent.age / config.DT), color='coral', alpha=0.5,
                         label='Power gain')
             else:
                 ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['energy_excess']),
@@ -112,7 +117,8 @@ def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x
                         label='Power gain')
             ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['energy_consumption']),
                           int(agent.age / config.DT)),
-                    np.sum(agent.log.record['energy_consumption']) / (agent.age / config.DT), color='lawngreen', alpha=0.5,
+                    np.sum(agent.log.record['energy_consumption']) / (agent.age / config.DT), color='lawngreen',
+                    alpha=0.5,
                     label='Power use')
             ax.tick_params(axis='y', colors='brown')
             ax.spines['left'].set_color('brown')
@@ -123,7 +129,6 @@ def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x
         ax.set_xlabel('Age [step]')
     else:
         ax.set_xticks([])
-
 
 
 def plot_live_status(ax, agent, debug=False, plot_horizontal=True):
@@ -145,7 +150,7 @@ def plot_live_status(ax, agent, debug=False, plot_horizontal=True):
             ax.scatter([config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY], ['energy'], color='black', s=20)
         if 'age' in ls:
             ax.scatter([agent.max_age], ['age'], color='black', s=20)
-            ax.scatter([agent.adolescence],['age'], color='pink', s=20)
+            ax.scatter([agent.adolescence], ['age'], color='pink', s=20)
             # ax.barh(['Energy', 'Hunger', 'Thirst'], [agent.energy, agent.hunger, agent.thirst], color=['green', 'red', 'blue'])
             ax.set_xlim(0, max(agent.max_energy, agent.max_age))
             # ax.set_xticks([0,agent.max_energy/2, agent.max_energy])
@@ -163,6 +168,7 @@ def plot_live_status(ax, agent, debug=False, plot_horizontal=True):
             ax.set_yticks([])
             ax.yaxis.set_tick_params(labelleft=False)
 
+
 def plot_live_status_power(ax, agent, debug=False, plot_horizontal=True):
     ax.clear()
     if 'energy_consumption' in agent.log.record and len(
@@ -177,6 +183,7 @@ def plot_live_status_power(ax, agent, debug=False, plot_horizontal=True):
             ax.barh(['Power gain', 'Power use'], [P_gain, P_used], color=colors, height=0.2)
         else:
             ax.bar(['Power gain', 'Power use'], [P_gain, P_used], color=colors, width=0.5)
+
 
 def plot_acc_status(ax, agent, debug=False, plot_type=1, curr_step=-1):
     """

@@ -49,7 +49,7 @@ INIT_DIGEST_DICT: { 'grass': 1,
 # Creatures parameters
 NUM_CREATURES: 1000  # init size of population
 MAX_NUM_CREATURES: 1500
-INIT_MAX_AGE: 50000  # [sec]
+INIT_MAX_AGE: 5000  # [sec]
 ADOLESCENCE_AGE_FRACTION: 0.05  # [0-1] fraction of INIT_MAX_AGE for adulthood
 REPRODUCTION_COOLDOWN: 300  # [sec] minimal time between reproduction events
 INIT_MAX_MASS: 10  # [kg]

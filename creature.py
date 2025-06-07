@@ -60,9 +60,12 @@ class Creature(StaticTraits):
 
         # dynamic traits
         self.age = 0
-        self.mass = np.random.uniform(low=0.01, high=0.1) * self.max_mass
-        self.height = np.random.uniform(low=0.01, high=0.1) * self.max_height
-        self.strength = np.random.uniform(low=0.01, high=0.1) * self.max_strength
+        self.mass = 0.1 * self.max_mass
+        self.height = 0.1 * self.max_height
+        self.strength = 0.1 * self.max_strength
+        # self.mass = np.random.uniform(low=0.01, high=0.1) * self.max_mass
+        # self.height = np.random.uniform(low=0.01, high=0.1) * self.max_height
+        # self.strength = np.random.uniform(low=0.01, high=0.1) * self.max_strength
 
         self.energy = 0.8 * (
                     config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY)  # TODO: patch for runability | was self.max_energy
@@ -171,7 +174,8 @@ class Creature(StaticTraits):
         # clip relevant traits
         self.color = np.clip(self.color, 0, 1)
 
-    def move(self, decision: np.array([float]), dt: float = config.DT):
+    def move(self, decision: np.array([float]), dt: float = config.DT,
+              debug_position = False, debug_energy = False, debug_force = False):
 
         # constrain propulsion force based on strength
         propulsion_force_mag, relative_propulsion_force_angle = decision
@@ -201,7 +205,11 @@ class Creature(StaticTraits):
         linear_drag_force = - physical_model.gamma * self.height ** 2 * self.velocity
         quadratic_drag_force = - physical_model.c_drag * self.height ** 2 * self.speed ** 2 * current_direction
         drag_force = linear_drag_force + quadratic_drag_force
-
+        if debug_force:
+            print(f'\t\t{linear_drag_force=}\n'
+                  f'\t\t{quadratic_drag_force=}\n'
+                  f'\t\t{reaction_friction_force=}\n'
+                  f'\t\t{drag_force=}')
         # if self.is_agent:
         self.log.add_record('linear_drag_force', np.linalg.norm(linear_drag_force))
         self.log.add_record('quadratic_drag_force', np.linalg.norm(quadratic_drag_force))
@@ -218,13 +226,17 @@ class Creature(StaticTraits):
         # print(f'{acceleration=}\n'
         #       f'{self.velocity=} --> {new_velocity=}\n'
         #       f'{self.position} --> {new_position}')
-
+        if debug_position:
+            print(f'\t\t{acceleration=}\n'
+                  f'\t\t{self.velocity=} --> {new_velocity=}\n'
+                  f'\t\t{self.position} --> {new_position}')
         # update position, velocity and speed
         self.velocity = new_velocity
         self.calc_speed()
         self.position = new_position
 
         # update energy
+        if debug_energy: print(f'\t\t{global_propulsion_force=}')
         propulsion_energy = self.calc_propulsion_energy(global_propulsion_force)
         inner_energy = self.calc_inner_energy()
         # if self.is_agent:
@@ -233,6 +245,7 @@ class Creature(StaticTraits):
         self.log.add_record('energy_consumption', inner_energy + propulsion_energy)
         if self.log.record['energy_consumption'][-1] < 0:
             raise ValueError('Energy consumption cannot be negative')
+        if debug_energy: print(f'\t\t{propulsion_energy=:.1f} | {inner_energy=:.1f}')
         self.energy -= propulsion_energy + inner_energy
 
     @staticmethod

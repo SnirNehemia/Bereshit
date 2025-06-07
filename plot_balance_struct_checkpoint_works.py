@@ -1,3 +1,5 @@
+from math import floor
+
 import numpy as np
 import matplotlib
 matplotlib.use('TkAgg')
@@ -18,10 +20,13 @@ physical_model = load_physical_model(yaml_relative_path=physical_model_yaml_rela
 class ParametricDashboard:
     def __init__(self, f_list, x_attr_list, init_struct_list, param_limits, x_labels, y_labels, layout=None,
                  slider_marks=None, slider_names=None, func_colors=None, func_legends=None,
-                 shared_slider_labels=None):
+                 shared_slider_labels=None, sample_num=None):
         self.f_list = f_list
         self.init_struct_list = init_struct_list  # list of tuples or lists (agent_dict, extra_args_dict) or just args
-        self.param_limits = param_limits           # list of lists of (min, max) tuples
+        if len(param_limits) != len(x_attr_list):          # list of lists of (min, max) tuples
+            self.param_limits = [param_limits] * len(x_attr_list)
+        else:
+            self.param_limits = param_limits
         self.x_labels = x_labels
         self.y_labels = y_labels
         self.num_funcs = len(f_list)
@@ -31,12 +36,22 @@ class ParametricDashboard:
         self.plots = []
         self.axes = []
         self.layout = layout if layout else (self.num_funcs, 1)
-        self.slider_marks = slider_marks
-        self.slider_names = slider_names
+        if len(slider_marks) != len(x_attr_list):
+            self.slider_marks = [slider_marks] * len(x_attr_list)
+        else:
+            self.slider_marks = slider_marks
+        if len(slider_names) != len(x_attr_list):
+            self.slider_names = [slider_names] * len(x_attr_list)
+        else:
+            self.slider_names = slider_names
         self.func_colors = func_colors
         self.func_legends = func_legends
         self.x_vector = {}
         self.shared_slider_labels = shared_slider_labels if shared_slider_labels else {}
+        if sample_num == None:
+            sample_num = [101] * len(x_attr_list)
+        else:
+            self.sample_num = sample_num
         self.build_dashboard()
 
     def _flatten_object(self, obj, parent_key='', sep='.'):
@@ -155,7 +170,7 @@ class ParametricDashboard:
                 for j, (name, lim) in enumerate(zip(self.slider_names[i], self.param_limits[i])):
                     if name == self.x_attr_list[i]:
                         k = self.slider_names[i].index(name)
-                        self.x_vector[name] = np.linspace(self.param_limits[i][k][0], self.param_limits[i][k][1], 101)
+                        self.x_vector[name] = np.linspace(self.param_limits[i][k][0], self.param_limits[i][k][1], self.sample_num[i])
                         continue
                 try:
                     x_vals = self._x_from_struct(agent, self.x_attr_list[i])
@@ -228,7 +243,7 @@ class ParametricDashboard:
                     slider_group.append(slider)
                     continue
                 slider_bottom = slider_top - slider_height
-                ax_slider = self.fig.add_axes([0.05, slider_bottom, 0.25, slider_height])
+                ax_slider = self.fig.add_axes([0.05, slider_bottom, 0.15, slider_height])
                 ax_slider.set_title(label, fontsize=10, pad=4)
                 val = values[key]
                 if isinstance(val, (list, np.ndarray)):
@@ -348,33 +363,96 @@ def total_drag_force(agent, physical_model):
 
 # ---------------- General functions ----------------
 
-def energy_over_time(creature, physical_model, average_eating_rate, t):
+def run_simulation(creature, physical_model,
+                   debug_energy = False, debug_position = False, debug_force = False):
+    average_eating_rate = agent.average_eating_rate
     distance = 5
     angle = np.radians(5)
     eyes_inputs = np.array([1, distance, angle])  # change to a specific policy
-    children_count = 0
-    eat_count = 0
-    step_num = int(agent.max_age/config.DT) + 1
-    energy_log = np.zeros(step_num)
-    for i_t in range(step_num):
-        brain_input = []
-        brain_input.append(np.array([creature.hunger, creature.thirst]))
-        brain_input.append(creature.speed)
-        brain_input.append(np.concatenate(eyes_inputs))
-        brain_input = np.hstack(brain_input)
-        decision = creature.think(brain_input)
-        creature.move(decision=decision, dt=config.DT)
-        if t%average_eating_rate:
-            creature.eat(food_type='grass', food_energy=config.GRASS_ENERGY)
-            eat_count += 1
-        if creature.energy > creature.reproduction_energy + config.MIN_LIFE_ENERGY:
-            creature.energy -= creature.reproduction_energy
-            children_count += 1
-            if creature.energy <= 0:
-                break
-        energy_log[i_t] = creature.energy
+    if debug_energy: print(f'{creature.t:.1f} starting -> {creature.energy:.1f}')
+    if debug_position: print(f'{creature.t:.1f} starting -> {np.linalg.norm(creature.position)=:.1f}')
+    if creature.t >= creature.max_age:
+        if debug_energy or debug_position: print('finished simulation')
+        if debug_energy: print(f'{creature.live_count=} | {creature.dead_count=} | {creature.energy=}'
+                               f' | {creature.eat_count=} | {creature.children_count=}')
+        if debug_position: print(f'{np.linalg.norm(creature.position)=:.1f}')
+    if creature.t == 0:
+        if debug_energy: print('restart simulation')
+        creature.init_state()
+        creature.live_count = 0
+        creature.dead_count = 0
+        creature.eat_count = 0
+        creature.children_count = 0
+        creature.energy = 0.8 * (
+                config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY)
+        creature.position = [0, 0]
+        creature.velocity = np.array([0.01, 0.01])
+        creature.speed = np.linalg.norm(creature.velocity)
+        return 0
+    if creature.energy <= 0:
+        creature.energy = 0
+        creature.dead_count += 1
+        return 0
+    creature.live_count += 1
+    brain_input = [np.array([creature.hunger, creature.thirst]), creature.speed, eyes_inputs]
+    # brain_input.append(np.concatenate(eyes_inputs))
+    brain_input = np.hstack(brain_input)
+    if debug_energy: print(f'\t\t{brain_input=}')
+    decision = creature.think(brain_input)
+    if creature.override_decision == 1: decision[0], decision[1] = 1, 0
+    if debug_energy: print(f'\t{creature.t:.1f} after thinking -> \t{creature.energy:.1f}')
+    if debug_energy: print(f'\t\t{decision=}')
+    creature.move(decision=decision, dt=config.DT,
+                  debug_energy=debug_energy, debug_position=debug_position, debug_force=debug_force)
+    if debug_position: print(f'\t{creature.t:.1f} after moving -> \t{np.linalg.norm(creature.position)=:.1f}')
+    if debug_energy: print(f'\t{creature.t:.1f} after moving -> \t{creature.energy:.1f}')
+    if creature.override_decision == 1:
+        if np.linalg.norm(creature.position) >= average_eating_rate:
+            creature.position = [0, 0]
+            creature.energy += creature.digest_dict['grass'] * physical_model.GRASS_ENERGY
+            creature.eat_count += 1
+    else:
+        if agent.rand_t[floor(agent.t / config.DT)] * average_eating_rate < config.DT:
+            # creature.eat(food_type='grass', food_energy=config.GRASS_ENERGY)  # TODO: make it work!
+            creature.energy += creature.digest_dict['grass'] * physical_model.GRASS_ENERGY
+            creature.eat_count += 1
+    if creature.energy > creature.reproduction_energy + config.MIN_LIFE_ENERGY:
+        creature.energy -= creature.reproduction_energy
+        creature.children_count += 1
 
-    return energy_log
+def energy_over_time(creature, physical_model, debug_energy = False):
+    run_simulation(creature, physical_model, debug_energy=debug_energy)
+    return creature.energy
+
+def position_over_time(creature, physical_model, debug_position = False):
+    run_simulation(creature, physical_model, debug_position=debug_position, debug_force=debug_position)
+    return np.linalg.norm(creature.position)
+
+def velocity_over_time(creature, physical_model, debug_position=False):
+    run_simulation(creature, physical_model, debug_position=debug_position, debug_force=debug_position)
+    return creature.speed
+
+    # step_num = len(creature.t)
+    # energy_log = np.zeros(step_num)
+    # for i_t in range(step_num):
+    #     brain_input = []
+    #     brain_input.append(np.array([creature.hunger, creature.thirst]))
+    #     brain_input.append(creature.speed)
+    #     brain_input.append(np.concatenate(eyes_inputs))
+    #     brain_input = np.hstack(brain_input)
+    #     decision = creature.think(brain_input)
+    #     creature.move(decision=decision, dt=config.DT)
+    #     if creature.t[i_t]%average_eating_rate:
+    #         creature.eat(food_type='grass', food_energy=config.GRASS_ENERGY)
+    #         eat_count += 1
+    #     if creature.energy > creature.reproduction_energy + config.MIN_LIFE_ENERGY:
+    #         creature.energy -= creature.reproduction_energy
+    #         children_count += 1
+    #         if creature.energy <= 0:
+    #             break
+    #     energy_log[i_t] = creature.energy
+    #
+    # return energy_log
 
 
 # create agent:
@@ -394,20 +472,79 @@ agents = simulation_utils.initialize_creatures(num_creatures=1,
                                                        env=env)
 
 agent = agents[0]
+agent.t = np.arange(0, agent.max_age) * config.DT  # time vector
+agent.average_eating_rate = 500
+agent.rand_t = np.random.rand(int(agent.max_age//config.DT)+1)
+agent.override_decision = 1
 
+physical_model.GRASS_ENERGY = config.GRASS_ENERGY
+
+slider_names = ['mass',
+                'height',
+                'strength',
+                'brain.size',
+                'energy_conversion_factors.digest',
+                'energy_conversion_factors.height_energy',
+                'energy_conversion_factors.rest',
+                'energy_conversion_factors.brain_consumption',
+                'g',
+                'speed',
+                'gamma',
+                'c_drag',
+                't',
+                'average_eating_rate',
+                'override_decision',
+                'GRASS_ENERGY']
+param_limits = [
+    (0.1, 80),  # mass (x)
+    (config.INIT_MAX_HEIGHT * 0.01, config.INIT_MAX_HEIGHT),  # height
+    (0.5, 3.0),  # strength
+    (1, 30),  # brain.size
+    (0.05, 1.0),  # energy_conversion_factors.digest
+    (1.0, 30.0),  # energy_conversion_factors.height
+    (0.0001, 0.001),  # energy_conversion_factors.rest
+    (0.001, 5.0),  # energy_conversion_factors.brain_consumption
+    (5.0, 15.0),  # physical_model.g
+    (0, config.MAX_SPEED*10),  # speed
+    (physical_model.gamma * 0.1, physical_model.gamma * 10),  # physical_model.gamma
+    (physical_model.c_drag * 0.1, physical_model.c_drag * 10),  # physical_model.c_drag
+    (0, agent.max_age),  # t
+    (1, 500),  # average_eating_rate
+    (0, 1),  # override decision
+    (1000, 10000),  # GRASS_ENERGY
+    ]
+slider_marks = [
+    [config.INIT_MAX_MASS],  # mass (x)
+    [config.INIT_MAX_HEIGHT],  # height
+    [config.INIT_MAX_STRENGTH],  # strength
+    [],  # brain.size
+    [physical_model.energy_conversion_factors['digest']],  # energy_conversion_factors.digest
+    [physical_model.energy_conversion_factors['height_energy']],  # energy_conversion_factors.height
+    [physical_model.energy_conversion_factors['rest']],  # energy_conversion_factors.rest
+    [physical_model.energy_conversion_factors['brain_consumption']],  # energy_conversion_factors.brain_consumption
+    [physical_model.g],  # physical_model.g
+    [config.MAX_SPEED],  # speed
+    [physical_model.gamma],  # physical_model.gamma
+    [physical_model.c_drag * 0.1, physical_model.c_drag * 10],  # physical_model.c_drag
+    [0, agent.max_age],  # t
+    [1, 500],  # average_eating_rate
+    [0, 1],  # override decision
+    [1000, 10000],  # GRASS_ENERGY
+    ]
 # TODO: add physical_model parameters support and write a functin that get the nested one out (chiech if we need it
 # TODO: make sure that it works with two function, and make strength a slider.
 
 f_list = []
 x_attr_list = []
 init_struct_list = []
-param_limits = []
+# param_limits = []
 x_labels = []
 y_labels = []
-slider_marks = []
-slider_names = []
+# slider_marks = []
+# slider_names = []
 func_colors = []
 func_legends = []
+sample_num = []
 
 # energy plot
 
@@ -415,31 +552,32 @@ f_list.append([])
 f_list[-1].append(calc_inner_energy)
 f_list[-1].append(calc_propulsion_energy)
 x_attr_list.append('height')
+sample_num.append(101)
 # x_list.append(np.linspace(0, config.MAX_SPEED, 101))
 init_struct_list.append((agent, physical_model))
-slider_names.append(['mass',
-                     'height',
-                     'strength',
-                     'brain.size',
-                     'energy_conversion_factors.digest',
-                     'energy_conversion_factors.height_energy',
-                     'energy_conversion_factors.rest',
-                     'energy_conversion_factors.brain_consumption',
-                     'g'])
-param_limits.append([
-    (0.1, 80),  # mass (x)
-    (1.4, 2.0),  # height
-    (0.5, 3.0),  # strength
-    (1, 30),  # brain.size
-    (0.5, 3.0),  # energy_conversion_factors.digest
-    (1.0, 3.0),  # energy_conversion_factors.height
-    (0.5, 1.5),  # energy_conversion_factors.rest
-    (2.0, 5.0),  # energy_conversion_factors.brain_consumption
-    (5.0, 15.0)  # physical_model.g
-    ])
+# slider_names.append(['mass',
+#                      'height',
+#                      'strength',
+#                      'brain.size',
+#                      'energy_conversion_factors.digest',
+#                      'energy_conversion_factors.height_energy',
+#                      'energy_conversion_factors.rest',
+#                      'energy_conversion_factors.brain_consumption',
+#                      'g'])
+# param_limits.append([
+#     (0.1, 80),  # mass (x)
+#     (1.4, 2.0),  # height
+#     (0.5, 3.0),  # strength
+#     (1, 30),  # brain.size
+#     (0.5, 3.0),  # energy_conversion_factors.digest
+#     (1.0, 3.0),  # energy_conversion_factors.height
+#     (0.5, 1.5),  # energy_conversion_factors.rest
+#     (2.0, 5.0),  # energy_conversion_factors.brain_consumption
+#     (5.0, 15.0)  # physical_model.g
+#     ])
 x_labels.append('height [m]')
 y_labels.append('Inner Energy [units]')
-slider_marks.append([(), (), (), (), (), (), (), (), ()])
+# slider_marks.append([(), (), (), (), (), (), (), (), ()])
 func_colors.append(['blueviolet', 'violet'])
 func_legends.append(['Inner Energy', 'Propulsion Energy'])
 
@@ -451,57 +589,104 @@ f_list[-1].append(linear_force)
 f_list[-1].append(quadratic_force)
 f_list[-1].append(total_drag_force)
 x_attr_list.append('speed')
+sample_num.append(101)
 # x_list.append(np.linspace(0, config.MAX_SPEED, 101))
 init_struct_list.append((agent, physical_model))
-slider_names.append(['speed',
-                     'height',
-                     'gamma',
-                     'c_drag'])
-param_limits.append([(0, config.MAX_SPEED),
-                     (config.INIT_MAX_HEIGHT * 0.01, config.INIT_MAX_HEIGHT),
-                     (physical_model.gamma * 0.1, physical_model.gamma * 10),
-                     (physical_model.c_drag * 0.1, physical_model.c_drag * 10)])
+# slider_names.append(['speed',
+#                      'height',
+#                      'gamma',
+#                      'c_drag'])
+# param_limits.append([(0, config.MAX_SPEED),
+#                      (config.INIT_MAX_HEIGHT * 0.01, config.INIT_MAX_HEIGHT),
+#                      (physical_model.gamma * 0.1, physical_model.gamma * 10),
+#                      (physical_model.c_drag * 0.1, physical_model.c_drag * 10)])
 x_labels.append('velocity [m/s]')
 y_labels.append('Drag Force [N]')
-slider_marks.append([(), (config.INIT_MAX_HEIGHT * 0.1, config.INIT_MAX_HEIGHT * 0.5), (), ()])
+# slider_marks.append([(), (config.INIT_MAX_HEIGHT * 0.1, config.INIT_MAX_HEIGHT * 0.5), (), ()])
 func_colors.append(['blueviolet', 'violet', 'black'])
 func_legends.append(['Linear Drag', 'Quadratic Drag', 'Linear + Quadratic Drag'])
 
-# Actual energy plot
+# Simulated energy plot
 
-t = np.linspace(0, agent.max_age, config.DT)
 f_list.append(energy_over_time)
 x_attr_list.append('t')
+sample_num.append(int(agent.max_age//config.DT))
 # x_list.append(np.linspace(0, config.MAX_SPEED, 101))
 init_struct_list.append((agent, physical_model))
-slider_names.append(['mass',
-                     'height',
-                     'strength',
-                     'brain.size',
-                     'energy_conversion_factors.digest',
-                     'energy_conversion_factors.height_energy',
-                     'energy_conversion_factors.rest',
-                     'energy_conversion_factors.brain_consumption',
-                     'g',
-                     'average_eating_rate'])
-param_limits.append([
-    (0.1, 80),  # mass (x)
-    (1.4, 2.0),  # height
-    (0.5, 3.0),  # strength
-    (1, 30),  # brain.size
-    (0.5, 3.0),  # energy_conversion_factors.digest
-    (1.0, 3.0),  # energy_conversion_factors.height
-    (0.5, 1.5),  # energy_conversion_factors.rest
-    (2.0, 5.0),  # energy_conversion_factors.brain_consumption
-    (5.0, 15.0),  # physical_model.g
-    (1, 500)  # average_eating_rate
-    ])
+# slider_names.append(['t',
+#                      'mass',
+#                      'height',
+#                      'strength',
+#                      'brain.size',
+#                      'energy_conversion_factors.digest',
+#                      'energy_conversion_factors.height_energy',
+#                      'energy_conversion_factors.rest',
+#                      'energy_conversion_factors.brain_consumption',
+#                      'g',
+#                      'average_eating_rate',
+#                      'override_decision',
+#                      'GRASS_ENERGY'])
+# param_limits.append([
+#     (0, agent.max_age),
+#     (0.1, 80),  # mass (x)
+#     (1.4, 2.0),  # height
+#     (0.5, 3.0),  # strength
+#     (1, 30),  # brain.size
+#     (0.5, 3.0),  # energy_conversion_factors.digest
+#     (1.0, 3.0),  # energy_conversion_factors.height
+#     (0.5, 1.5),  # energy_conversion_factors.rest
+#     (2.0, 5.0),  # energy_conversion_factors.brain_consumption
+#     (5.0, 15.0),  # physical_model.g
+#     (1, 500),  # average_eating_rate
+#     (0, 1),  # override decision
+#     (1000, 10000),  # GRASS_ENERGY
+#     ])
 x_labels.append('time [s]')
 y_labels.append('Energy [J]')
-slider_marks.append([(), (), (), (), (), (), (), (), (), ()])
+# slider_marks.append([(), (), (), (), (), (), (), (), (), (), (), (), ()])
 func_colors.append(['black'])
 func_legends.append(['Energy'])
 
+# Simulated position plot
+
+f_list.append(position_over_time)
+x_attr_list.append('t')
+sample_num.append(int(agent.max_age//config.DT))
+# x_list.append(np.linspace(0, config.MAX_SPEED, 101))
+init_struct_list.append((agent, physical_model))
+# slider_names.append(['t',
+#                      'mass',
+#                      'height',
+#                      'strength',
+#                      'brain.size',
+#                      'energy_conversion_factors.digest',
+#                      'energy_conversion_factors.height_energy',
+#                      'energy_conversion_factors.rest',
+#                      'energy_conversion_factors.brain_consumption',
+#                      'g',
+#                      'average_eating_rate',
+#                      'override_decision',
+#                      'GRASS_ENERGY'])
+# param_limits.append([
+#     (0, agent.max_age),
+#     (0.1, 80),  # mass (x)
+#     (1.4, 2.0),  # height
+#     (0.5, 3.0),  # strength
+#     (1, 30),  # brain.size
+#     (0.5, 3.0),  # energy_conversion_factors.digest
+#     (1.0, 3.0),  # energy_conversion_factors.height
+#     (0.5, 1.5),  # energy_conversion_factors.rest
+#     (2.0, 5.0),  # energy_conversion_factors.brain_consumption
+#     (5.0, 15.0),  # physical_model.g
+#     (1, 500),  # average_eating_rate
+#     (0, 1),  # override decision
+#     (1000, 10000),  # GRASS_ENERGY
+#     ])
+x_labels.append('time [s]')
+y_labels.append('Position [m]')
+# slider_marks.append([(), (), (), (), (), (), (), (), (), (), (), (), ()])
+func_colors.append(['black'])
+func_legends.append(['|r|'])
 
 ParametricDashboard(
     f_list=f_list,
@@ -513,5 +698,6 @@ ParametricDashboard(
     slider_names=slider_names,
     slider_marks=slider_marks,
     func_colors=func_colors,
-    func_legends=func_legends
+    func_legends=func_legends,
+    sample_num=sample_num
 )

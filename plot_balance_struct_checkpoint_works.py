@@ -155,7 +155,7 @@ class ParametricDashboard:
         self.fig, axs = plt.subplots(*self.layout, figsize=(fig_width, fig_height))
         axs = np.array(axs).reshape(-1)
 
-        plt.subplots_adjust(left=0.3, right=0.95)
+        plt.subplots_adjust(wspace=0.25, hspace=0.5, left=0.3, right=0.95)
 
         for i in range(self.num_funcs):
             ax = axs[i]
@@ -179,10 +179,10 @@ class ParametricDashboard:
                         x_vector = self.x_vector[self.x_attr_list[i]]
                         if isinstance(x_vector, (np.ndarray, list)):
                             y = np.array(self.f_vector(f, self.x_attr_list[i], x_vector, agent, extra))
-                            line, = ax.plot(x_vector, y, label=label, color=color)
+                            line, = ax.plot(x_vector, y, label=label, color=color, alpha = 0.5)
                         else:
                             y = f(agent, extra)
-                            line, = ax.plot(x_vals, y, label=label, color=color)
+                            line, = ax.plot(x_vals, y, label=label, color=color, alpha = 0.5)
                         lines.append(line)
                         continue
                 except AttributeError:
@@ -200,8 +200,10 @@ class ParametricDashboard:
                     line = ax.plot(x_vals, y, label=label, color=color)
                     lines.append(line)
 
-            ax.set_xlabel(self.x_labels[i], labelpad=10)
-            ax.set_ylabel(self.y_labels[i], labelpad=10)
+            ax.set_xlabel(self.x_labels[i], fontsize=8, labelpad=2)
+            ax.set_ylabel(self.y_labels[i], fontsize=8, labelpad=2)
+            plt.xticks(fontsize=8)
+            plt.yticks(fontsize=8)
             ax.grid(True)
             if any(labels):
                 ax.legend()
@@ -209,7 +211,7 @@ class ParametricDashboard:
             self.axes.append(ax)
 
         slider_top = 0.95
-        slider_height = 0.045
+        slider_height = 0.02
         slider_gap = 0.02
         # self.x_vector = {}
         # TODO: make sure we take physical properties into account, for each key (in physical or agent) check which one it fits.
@@ -237,14 +239,14 @@ class ParametricDashboard:
                 if key.endswith('id'): continue
                 label = self.slider_names[i][j]
                 # print(f'{label=} | {key=} | {self.slider_names[i][j]=} | {self.slider_names=}')
-                print(f'{label=}')
+                # print(f'{label=}')
                 if label in self.slider_refs:
                     slider = self.slider_refs[label]
                     slider_group.append(slider)
                     continue
                 slider_bottom = slider_top - slider_height
                 ax_slider = self.fig.add_axes([0.05, slider_bottom, 0.15, slider_height])
-                ax_slider.set_title(label, fontsize=10, pad=4)
+                ax_slider.set_title(label, fontsize=8, pad=2)
                 val = values[key]
                 if isinstance(val, (list, np.ndarray)):
                     continue  # skip array-valued keys (e.g. x values)
@@ -361,76 +363,100 @@ def total_drag_force(agent, physical_model):
     drag_force = linear_drag_force + quadratic_drag_force
     return drag_force
 
+def sim_linear_force(agent, physical_model):
+    index = min([floor(agent.t / config.DT), len(agent.log.record['reaction_friction_force_mag'])-1])
+    return agent.log.record['linear_drag_force'][index]
+
+def sim_total_drag_force(agent, physical_model):
+    index = min([floor(agent.t / config.DT), len(agent.log.record['reaction_friction_force_mag'])-1])
+    return agent.log.record['linear_drag_force'][index] + agent.log.record['quadratic_drag_force'][index]
+
+def sim_propulsion_force(agent, physical_model):
+    index = min([floor(agent.t / config.DT), len(agent.log.record['reaction_friction_force_mag'])-1])
+    return agent.log.record['reaction_friction_force_mag'][index]
+
 # ---------------- General functions ----------------
 
-def run_simulation(creature, physical_model,
+def run_simulation(agent, physical_model,
                    debug_energy = False, debug_position = False, debug_force = False):
     average_eating_rate = agent.average_eating_rate
     distance = 5
     angle = np.radians(5)
     eyes_inputs = np.array([1, distance, angle])  # change to a specific policy
-    if debug_energy: print(f'{creature.t:.1f} starting -> {creature.energy:.1f}')
-    if debug_position: print(f'{creature.t:.1f} starting -> {np.linalg.norm(creature.position)=:.1f}')
-    if creature.t >= creature.max_age:
+    if debug_energy: print(f'{agent.t:.1f} starting -> {agent.energy:.1f}')
+    if debug_position: print(f'{agent.t:.1f} starting -> {np.linalg.norm(agent.position)=:.1f}')
+    if agent.t >= agent.max_age:
         if debug_energy or debug_position: print('finished simulation')
-        if debug_energy: print(f'{creature.live_count=} | {creature.dead_count=} | {creature.energy=}'
-                               f' | {creature.eat_count=} | {creature.children_count=}')
-        if debug_position: print(f'{np.linalg.norm(creature.position)=:.1f}')
-    if creature.t == 0:
+        if debug_energy: print(f'{agent.live_count=} | {agent.dead_count=} | {agent.energy=}'
+                               f' | {agent.eat_count=} | {agent.children_count=}')
+        if debug_position: print(f'{np.linalg.norm(agent.position)=:.1f}')
+    if agent.t == 0:
         if debug_energy: print('restart simulation')
-        creature.init_state()
-        creature.live_count = 0
-        creature.dead_count = 0
-        creature.eat_count = 0
-        creature.children_count = 0
-        creature.energy = 0.8 * (
+        agent.init_state(balance=True)
+        agent.live_count = 0
+        agent.dead_count = 0
+        agent.eat_count = 0
+        agent.children_count = 0
+        agent.energy = 0.8 * (
                 config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY)
-        creature.position = [0, 0]
-        creature.velocity = np.array([0.01, 0.01])
-        creature.speed = np.linalg.norm(creature.velocity)
+        agent.position = [0, 0]
+        agent.velocity = np.array([0.01, 0.01])
+        agent.speed = np.linalg.norm(agent.velocity)
         return 0
-    if creature.energy <= 0:
-        creature.energy = 0
-        creature.dead_count += 1
+    if agent.energy <= 0:
+        agent.energy = 0
+        agent.dead_count += 1
         return 0
-    creature.live_count += 1
-    brain_input = [np.array([creature.hunger, creature.thirst]), creature.speed, eyes_inputs]
+    agent.live_count += 1
+    brain_input = [np.array([agent.hunger, agent.thirst]), agent.speed, eyes_inputs]
     # brain_input.append(np.concatenate(eyes_inputs))
     brain_input = np.hstack(brain_input)
     if debug_energy: print(f'\t\t{brain_input=}')
-    decision = creature.think(brain_input)
-    if creature.override_decision == 1: decision[0], decision[1] = 1, 0
-    if debug_energy: print(f'\t{creature.t:.1f} after thinking -> \t{creature.energy:.1f}')
+    decision = agent.think(brain_input)
+    if 0.5 < agent.own_0_const_1_rand_2 < 1.5:
+        decision[0], decision[1] = agent.decision, 0
+    if 1.5 < agent.own_0_const_1_rand_2 < 2.5:
+        decision[0], decision[1] = (
+            agent.randn_t[floor(agent.t / config.DT)] * agent.decision_rand_mag + agent.decision, 0)
+    if debug_energy: print(f'\t{agent.t:.1f} after thinking -> \t{agent.energy:.1f}')
     if debug_energy: print(f'\t\t{decision=}')
-    creature.move(decision=decision, dt=config.DT,
+    agent.move(decision=decision, dt=config.DT,
                   debug_energy=debug_energy, debug_position=debug_position, debug_force=debug_force)
-    if debug_position: print(f'\t{creature.t:.1f} after moving -> \t{np.linalg.norm(creature.position)=:.1f}')
-    if debug_energy: print(f'\t{creature.t:.1f} after moving -> \t{creature.energy:.1f}')
-    if creature.override_decision == 1:
-        if np.linalg.norm(creature.position) >= average_eating_rate:
-            creature.position = [0, 0]
-            creature.energy += creature.digest_dict['grass'] * physical_model.GRASS_ENERGY
-            creature.eat_count += 1
+    if debug_position: print(f'\t{agent.t:.1f} after moving -> \t{np.linalg.norm(agent.position)=:.1f}')
+    if debug_energy: print(f'\t{agent.t:.1f} after moving -> \t{agent.energy:.1f}')
+    if agent.own_0_const_1_rand_2 > 0.5:
+        if np.linalg.norm(agent.position) >= average_eating_rate:
+            agent.position = [0, 0]
+            agent.energy += agent.digest_dict['grass'] * physical_model.GRASS_ENERGY
+            agent.eat_count += 1
     else:
         if agent.rand_t[floor(agent.t / config.DT)] * average_eating_rate < config.DT:
             # creature.eat(food_type='grass', food_energy=config.GRASS_ENERGY)  # TODO: make it work!
-            creature.energy += creature.digest_dict['grass'] * physical_model.GRASS_ENERGY
-            creature.eat_count += 1
-    if creature.energy > creature.reproduction_energy + config.MIN_LIFE_ENERGY:
-        creature.energy -= creature.reproduction_energy
-        creature.children_count += 1
+            agent.energy += agent.digest_dict['grass'] * physical_model.GRASS_ENERGY
+            agent.eat_count += 1
+    if agent.energy > agent.reproduction_energy + config.MIN_LIFE_ENERGY:
+        agent.energy -= agent.reproduction_energy
+        agent.children_count += 1
 
-def energy_over_time(creature, physical_model, debug_energy = False):
-    run_simulation(creature, physical_model, debug_energy=debug_energy)
-    return creature.energy
+def energy_over_time(agent, physical_model, debug_energy = False):
+    run_simulation(agent, physical_model, debug_energy=debug_energy)
+    return agent.energy
 
-def position_over_time(creature, physical_model, debug_position = False):
-    run_simulation(creature, physical_model, debug_position=debug_position, debug_force=debug_position)
-    return np.linalg.norm(creature.position)
+def position_over_time(agent, physical_model, debug_position = False):
+    run_simulation(agent, physical_model, debug_position=debug_position, debug_force=debug_position)
+    return np.linalg.norm(agent.position)
 
-def velocity_over_time(creature, physical_model, debug_position=False):
-    run_simulation(creature, physical_model, debug_position=debug_position, debug_force=debug_position)
-    return creature.speed
+def speed_over_time(agent, physical_model):
+    index = min([floor(agent.t / config.DT), len(agent.log.record['speed']) - 1])
+    return agent.log.record['speed'][index]
+
+def sim_energy_inner(agent, physical_model):
+    index = min([floor(agent.t / config.DT), len(agent.log.record['energy_inner']) - 1])
+    return agent.log.record['energy_inner'][index]
+
+def sim_energy_propulsion(agent, physical_model):
+    index = min([floor(agent.t / config.DT), len(agent.log.record['energy_propulsion']) - 1])
+    return agent.log.record['energy_propulsion'][index]
 
     # step_num = len(creature.t)
     # energy_log = np.zeros(step_num)
@@ -475,13 +501,19 @@ agent = agents[0]
 agent.t = np.arange(0, agent.max_age) * config.DT  # time vector
 agent.average_eating_rate = 500
 agent.rand_t = np.random.rand(int(agent.max_age//config.DT)+1)
-agent.override_decision = 1
+agent.randn_t = np.random.randn(int(agent.max_age//config.DT)+1)
+agent.own_0_const_1_rand_2 = 1
+agent.decision = 1
+agent.decision_rand_mag = 0.5
+agent.move(decision=[agent.decision, 0], dt=config.DT)
 
 physical_model.GRASS_ENERGY = config.GRASS_ENERGY
 
 slider_names = ['mass',
                 'height',
                 'strength',
+                'mu_static',
+                'mu_kinetic',
                 'brain.size',
                 'energy_conversion_factors.digest',
                 'energy_conversion_factors.height_energy',
@@ -493,12 +525,16 @@ slider_names = ['mass',
                 'c_drag',
                 't',
                 'average_eating_rate',
-                'override_decision',
+                'own_0_const_1_rand_2',
+                'decision',
+                'decision_rand_mag',
                 'GRASS_ENERGY']
 param_limits = [
     (0.1, 80),  # mass (x)
     (config.INIT_MAX_HEIGHT * 0.01, config.INIT_MAX_HEIGHT),  # height
-    (0.5, 3.0),  # strength
+    (0.5, 30),  # strength
+    (0, 2),  # mu_static
+    (0, 2),  # mu_kinetic
     (1, 30),  # brain.size
     (0.05, 1.0),  # energy_conversion_factors.digest
     (1.0, 30.0),  # energy_conversion_factors.height
@@ -506,17 +542,21 @@ param_limits = [
     (0.001, 5.0),  # energy_conversion_factors.brain_consumption
     (5.0, 15.0),  # physical_model.g
     (0, config.MAX_SPEED*10),  # speed
-    (physical_model.gamma * 0.1, physical_model.gamma * 10),  # physical_model.gamma
-    (physical_model.c_drag * 0.1, physical_model.c_drag * 10),  # physical_model.c_drag
+    (0, physical_model.gamma * 10),  # physical_model.gamma
+    (0, physical_model.c_drag * 10),  # physical_model.c_drag
     (0, agent.max_age),  # t
-    (1, 500),  # average_eating_rate
-    (0, 1),  # override decision
+    (1, 2000),  # average_eating_rate
+    (0, 2),  # override decision with 3 classes
+    (0, 1),  # decision
+    (0, 0.5),  # decision_rand_mag
     (1000, 10000),  # GRASS_ENERGY
     ]
 slider_marks = [
     [config.INIT_MAX_MASS],  # mass (x)
     [config.INIT_MAX_HEIGHT],  # height
     [config.INIT_MAX_STRENGTH],  # strength
+    [physical_model.mu_static],  # mu_static
+    [physical_model.mu_kinetic],  # mu_kinetic
     [],  # brain.size
     [physical_model.energy_conversion_factors['digest']],  # energy_conversion_factors.digest
     [physical_model.energy_conversion_factors['height_energy']],  # energy_conversion_factors.height
@@ -529,22 +569,21 @@ slider_marks = [
     [0, agent.max_age],  # t
     [1, 500],  # average_eating_rate
     [0, 1],  # override decision
+    [],  # decision
+    [],  # decision_rand_mag
     [1000, 10000],  # GRASS_ENERGY
     ]
-# TODO: add physical_model parameters support and write a functin that get the nested one out (chiech if we need it
-# TODO: make sure that it works with two function, and make strength a slider.
+
 
 f_list = []
 x_attr_list = []
 init_struct_list = []
-# param_limits = []
 x_labels = []
 y_labels = []
-# slider_marks = []
-# slider_names = []
 func_colors = []
 func_legends = []
 sample_num = []
+layout = (3,2)
 
 # energy plot
 
@@ -553,31 +592,9 @@ f_list[-1].append(calc_inner_energy)
 f_list[-1].append(calc_propulsion_energy)
 x_attr_list.append('height')
 sample_num.append(101)
-# x_list.append(np.linspace(0, config.MAX_SPEED, 101))
 init_struct_list.append((agent, physical_model))
-# slider_names.append(['mass',
-#                      'height',
-#                      'strength',
-#                      'brain.size',
-#                      'energy_conversion_factors.digest',
-#                      'energy_conversion_factors.height_energy',
-#                      'energy_conversion_factors.rest',
-#                      'energy_conversion_factors.brain_consumption',
-#                      'g'])
-# param_limits.append([
-#     (0.1, 80),  # mass (x)
-#     (1.4, 2.0),  # height
-#     (0.5, 3.0),  # strength
-#     (1, 30),  # brain.size
-#     (0.5, 3.0),  # energy_conversion_factors.digest
-#     (1.0, 3.0),  # energy_conversion_factors.height
-#     (0.5, 1.5),  # energy_conversion_factors.rest
-#     (2.0, 5.0),  # energy_conversion_factors.brain_consumption
-#     (5.0, 15.0)  # physical_model.g
-#     ])
 x_labels.append('height [m]')
 y_labels.append('Inner Energy [units]')
-# slider_marks.append([(), (), (), (), (), (), (), (), ()])
 func_colors.append(['blueviolet', 'violet'])
 func_legends.append(['Inner Energy', 'Propulsion Energy'])
 
@@ -590,19 +607,9 @@ f_list[-1].append(quadratic_force)
 f_list[-1].append(total_drag_force)
 x_attr_list.append('speed')
 sample_num.append(101)
-# x_list.append(np.linspace(0, config.MAX_SPEED, 101))
 init_struct_list.append((agent, physical_model))
-# slider_names.append(['speed',
-#                      'height',
-#                      'gamma',
-#                      'c_drag'])
-# param_limits.append([(0, config.MAX_SPEED),
-#                      (config.INIT_MAX_HEIGHT * 0.01, config.INIT_MAX_HEIGHT),
-#                      (physical_model.gamma * 0.1, physical_model.gamma * 10),
-#                      (physical_model.c_drag * 0.1, physical_model.c_drag * 10)])
 x_labels.append('velocity [m/s]')
 y_labels.append('Drag Force [N]')
-# slider_marks.append([(), (config.INIT_MAX_HEIGHT * 0.1, config.INIT_MAX_HEIGHT * 0.5), (), ()])
 func_colors.append(['blueviolet', 'violet', 'black'])
 func_legends.append(['Linear Drag', 'Quadratic Drag', 'Linear + Quadratic Drag'])
 
@@ -611,82 +618,65 @@ func_legends.append(['Linear Drag', 'Quadratic Drag', 'Linear + Quadratic Drag']
 f_list.append(energy_over_time)
 x_attr_list.append('t')
 sample_num.append(int(agent.max_age//config.DT))
-# x_list.append(np.linspace(0, config.MAX_SPEED, 101))
 init_struct_list.append((agent, physical_model))
-# slider_names.append(['t',
-#                      'mass',
-#                      'height',
-#                      'strength',
-#                      'brain.size',
-#                      'energy_conversion_factors.digest',
-#                      'energy_conversion_factors.height_energy',
-#                      'energy_conversion_factors.rest',
-#                      'energy_conversion_factors.brain_consumption',
-#                      'g',
-#                      'average_eating_rate',
-#                      'override_decision',
-#                      'GRASS_ENERGY'])
-# param_limits.append([
-#     (0, agent.max_age),
-#     (0.1, 80),  # mass (x)
-#     (1.4, 2.0),  # height
-#     (0.5, 3.0),  # strength
-#     (1, 30),  # brain.size
-#     (0.5, 3.0),  # energy_conversion_factors.digest
-#     (1.0, 3.0),  # energy_conversion_factors.height
-#     (0.5, 1.5),  # energy_conversion_factors.rest
-#     (2.0, 5.0),  # energy_conversion_factors.brain_consumption
-#     (5.0, 15.0),  # physical_model.g
-#     (1, 500),  # average_eating_rate
-#     (0, 1),  # override decision
-#     (1000, 10000),  # GRASS_ENERGY
-#     ])
 x_labels.append('time [s]')
 y_labels.append('Energy [J]')
-# slider_marks.append([(), (), (), (), (), (), (), (), (), (), (), (), ()])
 func_colors.append(['black'])
 func_legends.append(['Energy'])
 
-# Simulated position plot
+# # Simulated position plot
+#
+# f_list.append(position_over_time)
+# x_attr_list.append('t')
+# sample_num.append(int(agent.max_age//config.DT))
+# init_struct_list.append((agent, physical_model))
+# x_labels.append('time [s]')
+# y_labels.append('Position [m]')
+# func_colors.append(['black'])
+# func_legends.append(['|r|'])
 
-f_list.append(position_over_time)
+# Simulated force plot
+
+f_list.append([])
+f_list[-1].append(sim_linear_force)
+f_list[-1].append(sim_total_drag_force)
+f_list[-1].append(sim_propulsion_force)
 x_attr_list.append('t')
 sample_num.append(int(agent.max_age//config.DT))
-# x_list.append(np.linspace(0, config.MAX_SPEED, 101))
 init_struct_list.append((agent, physical_model))
-# slider_names.append(['t',
-#                      'mass',
-#                      'height',
-#                      'strength',
-#                      'brain.size',
-#                      'energy_conversion_factors.digest',
-#                      'energy_conversion_factors.height_energy',
-#                      'energy_conversion_factors.rest',
-#                      'energy_conversion_factors.brain_consumption',
-#                      'g',
-#                      'average_eating_rate',
-#                      'override_decision',
-#                      'GRASS_ENERGY'])
-# param_limits.append([
-#     (0, agent.max_age),
-#     (0.1, 80),  # mass (x)
-#     (1.4, 2.0),  # height
-#     (0.5, 3.0),  # strength
-#     (1, 30),  # brain.size
-#     (0.5, 3.0),  # energy_conversion_factors.digest
-#     (1.0, 3.0),  # energy_conversion_factors.height
-#     (0.5, 1.5),  # energy_conversion_factors.rest
-#     (2.0, 5.0),  # energy_conversion_factors.brain_consumption
-#     (5.0, 15.0),  # physical_model.g
-#     (1, 500),  # average_eating_rate
-#     (0, 1),  # override decision
-#     (1000, 10000),  # GRASS_ENERGY
-#     ])
 x_labels.append('time [s]')
-y_labels.append('Position [m]')
-# slider_marks.append([(), (), (), (), (), (), (), (), (), (), (), (), ()])
+y_labels.append('Force [N]')
+func_colors.append(['blueviolet', 'violet', 'black'])
+func_legends.append(['Linear Drag', 'Linear + Quadratic Drag', 'Propulsion Force'])
+
+# Simulated energy plot
+
+f_list.append([])
+f_list[-1].append(sim_energy_inner)
+f_list[-1].append(sim_energy_propulsion)
+x_attr_list.append('t')
+sample_num.append(int(agent.max_age//config.DT))
+init_struct_list.append((agent, physical_model))
+x_labels.append('time [s]')
+y_labels.append('Power [Watt]')
+func_colors.append(['blueviolet', 'violet'])
+func_legends.append(['Inner Energy', 'Propulsion Energy'])
+
+# Simulated speed plot
+
+f_list.append(speed_over_time)
+x_attr_list.append('t')
+sample_num.append(int(agent.max_age//config.DT))
+init_struct_list.append((agent, physical_model))
+x_labels.append('time [s]')
+y_labels.append('speed [m/s]')
 func_colors.append(['black'])
-func_legends.append(['|r|'])
+func_legends.append(['speed'])
+
+print('own_0_const_1_rand_2 is about how you treat decision and food:\n'
+      'own_0_const_1_rand_2 < 0.5 means own decision, and gets food using random chance with mean of average_eating_rate\n'
+      'own_0_const_1_rand_2 > 0.5 & <1.5 means const decision, and gets food every average_eating_rate meters\n'
+      'own_0_const_1_rand_2 > 1.5 means random decision in range decision+[0,decision_rand_mag], and gets food every average_eating_rate meters')
 
 ParametricDashboard(
     f_list=f_list,
@@ -699,5 +689,6 @@ ParametricDashboard(
     slider_marks=slider_marks,
     func_colors=func_colors,
     func_legends=func_legends,
-    sample_num=sample_num
+    sample_num=sample_num,
+    layout = layout
 )

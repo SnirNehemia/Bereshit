@@ -49,7 +49,7 @@ class Creature(StaticTraits):
         self.init_state()
         # self.log.record['speed'] = [self.speed]  # fixes an issue with the first generation
 
-    def init_state(self, rebalance=config.REBALANCE):
+    def init_state(self, balance = False):
         """
         :return:
         """
@@ -60,9 +60,10 @@ class Creature(StaticTraits):
 
         # dynamic traits
         self.age = 0
-        self.mass = 0.1 * self.max_mass
-        self.height = 0.1 * self.max_height
-        self.strength = 0.1 * self.max_strength
+        if not balance:
+            self.mass = 0.1 * self.max_mass
+            self.height = 0.1 * self.max_height
+            self.strength = 0.1 * self.max_strength
         # self.mass = np.random.uniform(low=0.01, high=0.1) * self.max_mass
         # self.height = np.random.uniform(low=0.01, high=0.1) * self.max_height
         # self.strength = np.random.uniform(low=0.01, high=0.1) * self.max_strength
@@ -179,7 +180,7 @@ class Creature(StaticTraits):
 
         # constrain propulsion force based on strength
         propulsion_force_mag, relative_propulsion_force_angle = decision
-        propulsion_force_mag = np.clip(propulsion_force_mag, 0, self.strength)
+        propulsion_force_mag = np.clip(propulsion_force_mag, 0, 1) * self.strength
 
         # transform relative propulsion_force to global cartesian coordinates (x,y)
         current_direction = self.get_heading()
@@ -197,9 +198,9 @@ class Creature(StaticTraits):
 
         # reaction friction force
         if propulsion_force_mag > physical_model.mu_static * np.linalg.norm(normal_force):
-            reaction_friction_force = - physical_model.mu_kinetic * np.linalg.norm(normal_force) * global_propulsion_force_direction
+            reaction_friction_force =  physical_model.mu_kinetic * np.linalg.norm(normal_force) * global_propulsion_force_direction
         else:
-            reaction_friction_force = - global_propulsion_force
+            reaction_friction_force =  global_propulsion_force
 
         # drag force (air resistence)
         linear_drag_force = - physical_model.gamma * self.height ** 2 * self.velocity
@@ -234,6 +235,8 @@ class Creature(StaticTraits):
         self.velocity = new_velocity
         self.calc_speed()
         self.position = new_position
+
+        self.log.add_record('speed', self.speed)
 
         # update energy
         if debug_energy: print(f'\t\t{global_propulsion_force=}')

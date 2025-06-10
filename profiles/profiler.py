@@ -2,13 +2,16 @@ import cProfile
 import functools
 import os
 from datetime import datetime
+from pathlib import Path
 
 from input.codes.repos_utils import fetch_directory
 
 OUTPUT_DIR = fetch_directory().joinpath('profiles')
+now = datetime.now()
+DEFAULT_TIMESTAMP = now.strftime('%Y-%m-%d_T_%H-%M-%S')
 
 
-def profileit(output_dir=OUTPUT_DIR):
+def profileit(output_dir: Path = OUTPUT_DIR, timestamp: str = DEFAULT_TIMESTAMP):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -16,8 +19,7 @@ def profileit(output_dir=OUTPUT_DIR):
             os.makedirs(output_dir, exist_ok=True)
 
             # get filename with timestamp
-            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            filename = f"{output_dir}/{func.__name__}_{timestamp}.prof"
+            filename = f"{output_dir}/{timestamp}_{func.__name__}_profiler.prof"
 
             profiler = cProfile.Profile()
             profiler.enable()
@@ -32,20 +34,3 @@ def profileit(output_dir=OUTPUT_DIR):
         return wrapper
 
     return decorator
-
-
-# ---------- Instructions ---------
-
-# 1. pip install snakeviz
-# 2. add decorator @profileit() to your function
-# 3. after running write in Terminal: snakeviz {path_to_your_profiler_.prof_file}
-
-# --------- Example case --------
-if __name__ == '__main__':
-    @profileit()
-    def my_function():
-        for i in range(1000):
-            sum([j for j in range(100)])
-
-
-    my_function()

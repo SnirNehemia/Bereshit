@@ -31,6 +31,11 @@ class Config:
         for key, value in yaml_data.items():
             setattr(self, key, value)
 
+        # Define time formats
+        now = datetime.now()
+        self.datestamp = now.strftime('%Y-%m-%d')  # a directory of this name will be created
+        self.timestamp = now.strftime('%Y-%m-%d_T_%H-%M-%S')   # id for all run's outputs
+
         # make needed adjustments
         self.update_config()
 
@@ -77,20 +82,17 @@ class Config:
         self.STD_MUTATION_FACTORS['eyes_params'] = np.radians(self.STD_MUTATION_FACTORS['eyes_params'])
 
         # Filepaths
-        now = datetime.now()
-        date_str = now.strftime('%Y-%m-%d')
-        hour_str = now.strftime('%H-%M-%S')  # change this to a different string to create a new output file
-        time_str = f"{date_str}_T_{hour_str}"
-
         setattr(self, 'OUTPUT_FOLDER',
-                self.project_folder.joinpath(f'outputs_v{self.VERSION}').joinpath(date_str))
+                self.project_folder.joinpath(f'outputs').joinpath(self.datestamp))
         self.OUTPUT_FOLDER.mkdir(exist_ok=True, parents=True)
 
         setattr(self, 'ANIMATION_FILEPATH',
-                self.OUTPUT_FOLDER.joinpath(f"{time_str}_simulation_v{self.VERSION}.mp4"))
+                self.OUTPUT_FOLDER.joinpath(f"{self.timestamp}_simulation.mp4"))
         setattr(self, 'SPECIFIC_FIG_FILEPATH',
-                self.OUTPUT_FOLDER.joinpath(f"{time_str}_specific_fig_v{self.VERSION}.png"))
+                self.OUTPUT_FOLDER.joinpath(f"{self.timestamp}_specific_fig.png"))
         setattr(self, 'STATISTICS_FIG_FILEPATH',
-                self.OUTPUT_FOLDER.joinpath(f"{time_str}_statistics_fig_v{self.VERSION}.png"))
+                self.OUTPUT_FOLDER.joinpath(f"{self.timestamp}_statistics_fig.png"))
         setattr(self, 'ENV_FIG_FILE_PATH',
-                self.OUTPUT_FOLDER.joinpath(f"{time_str}_env_fig_v{self.VERSION}.png"))
+                self.OUTPUT_FOLDER.joinpath(f"{self.timestamp}_env_fig.png"))
+        setattr(self, 'STATISTICS_LOGS_JSON_FILEPATH',
+                self.OUTPUT_FOLDER.joinpath(f"{self.timestamp}_statistics_logs.json"))

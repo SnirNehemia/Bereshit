@@ -587,5 +587,3 @@ class Simulation:
             plt.close(fig)
             print(f'Simulation animation saved as {config.ANIMATION_FILEPATH.stem}.')
 
-            # Plot and save creature statistics and env statistics summary graphs
-            self.statistics_logs.plot_and_save_statistics_graphs(to_save=True)

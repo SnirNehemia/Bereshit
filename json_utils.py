@@ -1,36 +1,36 @@
 import json
+import numpy as np
+
+class NumpyEncoder(json.JSONEncoder):
+    """Custom JSON encoder for NumPy and complex objects."""
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
 
 
 class Serializable:
     def to_dict(self):
-        return self.__dict__.copy()
+        return self.__dict__
 
     @classmethod
     def from_dict(cls, data):
-        obj = cls.__new__(cls)  # create instance without calling __init__
-        obj.__dict__.update(data)
+        obj = cls.__new__(cls)
+        for key, value in data.items():
+            obj.__setattr__(key, value)
         return obj
 
+    def to_json(self, filepath):
+        with open(filepath, "w") as f:
+            json.dump(self.to_dict(), f, cls=NumpyEncoder)
 
-def save_to_json(filepath, obj):
-    # Save to JSON file
-    with open(filepath, "w") as f:
-        json.dump(obj.to_dict(), f, indent=2)
+    @classmethod
+    def from_json(cls, filepath):
+        with open(filepath, "r") as f:
+            data = json.load(f)
+        return cls.from_dict(data)
 
-
-def load_json(filepath):
-    # Read from JSON file
-    with open(filepath, "r") as f:
-        data = json.load(f)
-
-    return data
-
-
-if __name__ == '__main__':
-    pass
-    # Example of saving the object and then loading and reconstructing it:
-    # import json_utils
-    # json_utils.save_to_json(filepath='a.json', obj=self.statistics_logs)
-    # data = json_utils.load_json(filepath='a.json')
-    # loaded_obj = StatisticsLogs.from_dict(data)
-    # print(loaded_obj.__dict__)

@@ -414,10 +414,10 @@ def run_simulation(agent, physical_model,
     if debug_energy: print(f'\t\t{brain_input=}')
     decision = agent.think(brain_input)
     if 0.5 < agent.own_0_const_1_rand_2 < 1.5:
-        decision[0], decision[1] = agent.decision, 0
+        decision[0], decision[1] = agent.decision, np.pi
     if 1.5 < agent.own_0_const_1_rand_2 < 2.5:
         decision[0], decision[1] = (
-            agent.randn_t[floor(agent.t / config.DT)] * agent.decision_rand_mag + agent.decision, 0)
+            agent.randn_t[floor(agent.t / config.DT)] * agent.decision_rand_mag + agent.decision, np.pi)
     if debug_energy: print(f'\t{agent.t:.1f} after thinking -> \t{agent.energy:.1f}')
     if debug_energy: print(f'\t\t{decision=}')
     agent.move(decision=decision, dt=config.DT,
@@ -515,10 +515,13 @@ slider_names = ['mass',
                 'mu_static',
                 'mu_kinetic',
                 'brain.size',
+                'energy_conversion_factors.activity_efficiency',
+                'energy_conversion_factors.heat_loss',
                 'energy_conversion_factors.digest',
                 'energy_conversion_factors.height_energy',
                 'energy_conversion_factors.rest',
                 'energy_conversion_factors.brain_consumption',
+                'energy_conversion_factors.mass_energy',
                 'g',
                 'speed',
                 'gamma',
@@ -536,10 +539,13 @@ param_limits = [
     (0, 2),  # mu_static
     (0, 2),  # mu_kinetic
     (1, 30),  # brain.size
+    (0.1, 1.0),  # energy_conversion_factors.activity_efficiency
+    (0, 0.1),  # energy_conversion_factors.heat_loss
     (0.05, 1.0),  # energy_conversion_factors.digest
     (1.0, 30.0),  # energy_conversion_factors.height
     (0.0001, 0.001),  # energy_conversion_factors.rest
     (0.001, 5.0),  # energy_conversion_factors.brain_consumption
+    (0.001, 5.0),  # energy_conversion_factors.mass_energy
     (5.0, 15.0),  # physical_model.g
     (0, config.MAX_SPEED*10),  # speed
     (0, physical_model.gamma * 10),  # physical_model.gamma
@@ -558,10 +564,13 @@ slider_marks = [
     [physical_model.mu_static],  # mu_static
     [physical_model.mu_kinetic],  # mu_kinetic
     [],  # brain.size
+    [physical_model.energy_conversion_factors['activity_efficiency']],  # energy_conversion_factors.activity
+    [physical_model.energy_conversion_factors['heat_loss']],  # energy_conversion_factors.heat
     [physical_model.energy_conversion_factors['digest']],  # energy_conversion_factors.digest
     [physical_model.energy_conversion_factors['height_energy']],  # energy_conversion_factors.height
     [physical_model.energy_conversion_factors['rest']],  # energy_conversion_factors.rest
     [physical_model.energy_conversion_factors['brain_consumption']],  # energy_conversion_factors.brain_consumption
+    [],  # energy_conversion_factors.mass
     [physical_model.g],  # physical_model.g
     [config.MAX_SPEED],  # speed
     [physical_model.gamma],  # physical_model.gamma

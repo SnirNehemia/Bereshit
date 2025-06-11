@@ -1,4 +1,6 @@
 
+## it has functions used by simulation to plot the dashboard
+
 import numpy as np
 
 from input.codes.config import load_config

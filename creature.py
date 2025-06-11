@@ -198,9 +198,9 @@ class Creature(StaticTraits):
 
         # reaction friction force
         if propulsion_force_mag > physical_model.mu_static * np.linalg.norm(normal_force):
-            reaction_friction_force =  physical_model.mu_kinetic * np.linalg.norm(normal_force) * global_propulsion_force_direction
+            reaction_friction_force = -physical_model.mu_kinetic * np.linalg.norm(normal_force) * global_propulsion_force_direction
         else:
-            reaction_friction_force =  global_propulsion_force
+            reaction_friction_force = -global_propulsion_force
 
         # drag force (air resistence)
         linear_drag_force = - physical_model.gamma * self.height ** 2 * self.velocity
@@ -236,7 +236,7 @@ class Creature(StaticTraits):
         self.calc_speed()
         self.position = new_position
 
-        self.log.add_record('speed', self.speed)
+        self.log.add_record('speed', self.speed)  # it is recorded in simulation -> do_step function
 
         # update energy
         if debug_energy: print(f'\t\t{global_propulsion_force=}')
@@ -288,13 +288,13 @@ class Creature(StaticTraits):
 
         if self.age < self.adolescence:
             self.height, height_energy = self.convert_gained_energy_to_trait(
-                trait_type='height_change',
+                trait_type='height_energy',
                 old_trait=self.height,
                 gained_energy=gained_energy,
                 age=self.age,
             )
             self.mass, mass_energy = self.convert_gained_energy_to_trait(
-                trait_type='mass_change',
+                trait_type='mass_energy',
                 old_trait=self.mass,
                 gained_energy=gained_energy,
                 age=self.age,

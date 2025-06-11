@@ -188,7 +188,7 @@ class Simulation:
         # ------------------------------- Update creatures log -------------------------------
         for creature in self.creatures.values():
             creature.log.add_record('energy', creature.energy)
-            creature.log.add_record('speed', creature.speed)
+            # creature.log.add_record('speed', creature.speed)  # it is recorded in creature -> move function
 
         # ------------------------ Update KDtree (in some frames) ----------------------------
 

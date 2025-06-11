@@ -83,7 +83,7 @@ class Config:
 
         # Filepaths
         setattr(self, 'OUTPUT_FOLDER',
-                self.project_folder.joinpath(f'outputs').joinpath(self.datestamp))
+                self.project_folder.joinpath(f'outputs').joinpath(self.datestamp).joinpath(self.timestamp))
         self.OUTPUT_FOLDER.mkdir(exist_ok=True, parents=True)
 
         setattr(self, 'ANIMATION_FILEPATH',

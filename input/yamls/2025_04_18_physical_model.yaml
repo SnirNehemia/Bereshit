@@ -2,8 +2,8 @@
 g: 10  # [m/sec^2]
 
 # drag force (air resistence)
-gamma: 0.05  # [F]/[v] = [kg/sec] linear drag air resistence (dominant in low speeds)
-c_drag: 0.003  # [F]/[v^2] quadratic drag air resistence (dominant in high speeds)
+gamma: 0.002  # [F]/[v] = [kg/sec] linear drag air resistence (dominant in low speeds)
+c_drag: 0.001  # [F]/[v^2] quadratic drag air resistence (dominant in high speeds)
 
 # friction force
 mu_static: 1.5  # [no units]  # higher mu_static means faster movement

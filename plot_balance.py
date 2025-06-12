@@ -506,6 +506,7 @@ agent.own_0_const_1_rand_2 = 1
 agent.decision = 1
 agent.decision_rand_mag = 0.5
 agent.move(decision=[agent.decision, 0], dt=config.DT)
+agent.max_age = agent.max_age // 10
 
 physical_model.GRASS_ENERGY = config.GRASS_ENERGY
 
@@ -548,10 +549,10 @@ param_limits = [
     (0.001, 5.0),  # energy_conversion_factors.mass_energy
     (5.0, 15.0),  # physical_model.g
     (0, config.MAX_SPEED*10),  # speed
-    (0, physical_model.gamma * 10),  # physical_model.gamma
-    (0, physical_model.c_drag * 10),  # physical_model.c_drag
+    (0, physical_model.gamma * 2),  # physical_model.gamma
+    (0, physical_model.c_drag * 2),  # physical_model.c_drag
     (0, agent.max_age),  # t
-    (1, 2000),  # average_eating_rate
+    (1000, 10000),  # average_eating_rate
     (0, 2),  # override decision with 3 classes
     (0, 1),  # decision
     (0, 0.5),  # decision_rand_mag
@@ -681,7 +682,7 @@ x_labels.append('time [s]')
 y_labels.append('speed [m/s]')
 func_colors.append(['black'])
 func_legends.append(['speed'])
-
+print('\nmax age is devided by 10 to make it run smoother.\n\n')
 print('own_0_const_1_rand_2 is about how you treat decision and food:\n'
       'own_0_const_1_rand_2 < 0.5 means own decision, and gets food using random chance with mean of average_eating_rate\n'
       'own_0_const_1_rand_2 > 0.5 & <1.5 means const decision, and gets food every average_eating_rate meters\n'

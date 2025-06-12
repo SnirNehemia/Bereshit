@@ -145,6 +145,9 @@ class Creature(StaticTraits):
         self.init_state()
         self.age = config.DT  # fix a delay in the logs
         self.velocity = -self.velocity  # go opposite to father
+        self.calc_speed()
+        # TODO: make the solution better than this patch...
+        self.log.add_record('speed', self.speed)
 
     def mutate(self):
         """
@@ -204,7 +207,7 @@ class Creature(StaticTraits):
 
         # drag force (air resistence)
         linear_drag_force = - physical_model.gamma * self.height ** 2 * self.velocity
-        quadratic_drag_force = - physical_model.c_drag * self.height ** 2 * self.speed ** 2 * current_direction
+        quadratic_drag_force = - physical_model.c_drag * self.height ** 2 * self.velocity ** 2 * current_direction
         drag_force = linear_drag_force + quadratic_drag_force
         if debug_force:
             print(f'\t\t{linear_drag_force=}\n'
@@ -235,9 +238,7 @@ class Creature(StaticTraits):
         self.velocity = new_velocity
         self.calc_speed()
         self.position = new_position
-
         self.log.add_record('speed', self.speed)  # it is recorded in simulation -> do_step function
-
         # update energy
         if debug_energy: print(f'\t\t{global_propulsion_force=}')
         propulsion_energy = self.calc_propulsion_energy(global_propulsion_force)
@@ -250,6 +251,19 @@ class Creature(StaticTraits):
             raise ValueError('Energy consumption cannot be negative')
         if debug_energy: print(f'\t\t{propulsion_energy=:.1f} | {inner_energy=:.1f}')
         self.energy -= propulsion_energy + inner_energy
+
+    # def linear_force(self, physical_model=physical_model):
+    #     linear_drag_force = - physical_model.gamma * self.height ** 2 * self.speed
+    #     return linear_drag_force
+    #
+    # def quadratic_force(self, physical_model=physical_model):
+    #     quadratic_drag_force = - physical_model.c_drag * self.height ** 2 * self.speed ** 2
+    #     return quadratic_drag_force
+    #
+    # def total_drag_force(self, physical_model=physical_model):
+    #     drag_force = self.linear_force(physical_model) + self.quadratic_force(physical_model)
+    #     return drag_force
+
 
     @staticmethod
     def calc_propulsion_energy(propulsion_force):

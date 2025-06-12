@@ -36,7 +36,7 @@ class StaticTraits:
         self.max_height = max_height
         self.max_strength = max_strength
 
-        self.max_speed = max_speed
+        self.max_speed = max_speed  # currently used only at initialization
         self.max_energy = max_energy
 
         # eating food parameters

@@ -72,14 +72,14 @@ def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x
             max_force = max(agent.log.record['reaction_friction_force_mag'])
             ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['reaction_friction_force_mag']),
                           int(agent.age / config.DT)),
-                    agent.log.record['reaction_friction_force_mag'], color='maroon', alpha=0.5, label='Friction mag')
+                    agent.log.record['reaction_friction_force_mag'], color='maroon', alpha=0.2, label='Friction mag')
             ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['linear_drag_force']),
                           int(agent.age / config.DT)),
-                    agent.log.record['linear_drag_force'], color='red', alpha=0.5, label='Lin. drag',
+                    agent.log.record['linear_drag_force'], color='red', alpha=0.2, label='Lin. drag',
                     linestyle='dashed')
             ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['quadratic_drag_force']),
                           int(agent.age / config.DT)),
-                    agent.log.record['quadratic_drag_force'], color='olive', alpha=0.5, label='Quad. drag',
+                    agent.log.record['quadratic_drag_force'], color='olive', alpha=0.2, label='Quad. drag',
                     linestyle='dashed')
             ax.tick_params(axis='y', colors='maroon')
             ax.spines['left'].set_color('maroon')

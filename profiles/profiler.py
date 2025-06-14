@@ -20,7 +20,6 @@ def profileit(output_dir: Path = OUTPUT_DIR, timestamp: str = DEFAULT_TIMESTAMP)
 
             # get filename with timestamp
             filename = f"{output_dir}/{timestamp}_{func.__name__}_profiler.prof"
-
             profiler = cProfile.Profile()
             profiler.enable()
             try:

@@ -3,9 +3,10 @@ from matplotlib import pyplot as plt
 from input.codes.config import config
 from creature import Creature
 from environment import Environment
+from json_utils import Serializable
 
 
-class StatisticsLogs:
+class StatisticsLogs(Serializable):
     def __init__(self):
         self.num_creatures_per_step = []
         self.num_new_creatures_per_step = []
@@ -16,11 +17,19 @@ class StatisticsLogs:
         self.log_num_eats = []
 
         # statistics log parameters
-        self.stat_dict = {'min': np.min, 'max': np.max, 'mean': np.mean, 'std': np.std}
         self.traits_stat_names = ['energy', 'speed']
         for stat_name in self.stat_dict.keys():
             for trait_stat_name in self.traits_stat_names:
                 setattr(self, f'{stat_name}_creature_{trait_stat_name}_per_step', [])
+
+    @property
+    def stat_dict(self):
+        return {
+            'min': np.min,
+            'max': np.max,
+            'mean': np.mean,
+            'std': np.std
+        }
 
     def update_statistics_logs(self, creatures: dict[int, Creature], env: Environment,
                                child_ids, dead_ids):

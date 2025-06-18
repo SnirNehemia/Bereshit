@@ -46,7 +46,7 @@ class Creature(StaticTraits):
         self.init_state()
         # self.log.record['speed'] = [self.speed]  # fixes an issue with the first generation
 
-    def init_state(self, balance = False):
+    def init_state(self, balance=False):
         """
         :return:
         """
@@ -66,7 +66,7 @@ class Creature(StaticTraits):
         # self.strength = np.random.uniform(low=0.01, high=0.1) * self.max_strength
 
         self.energy = 0.8 * (
-                    config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY)  # TODO: patch for runability | was self.max_energy
+                config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY)  # TODO: patch for runability | was self.max_energy
         self.velocity = (np.random.rand(2) - 0.5) * self.max_speed
         self.max_speed_exp = np.linalg.norm(self.velocity)
         self.calc_speed()
@@ -75,8 +75,8 @@ class Creature(StaticTraits):
         self.thirst = 100
 
         # TODO: logs are in step units for now
-        self.log = CreaturesLogs(self.creature_id)  # pay attention! the id is None for children and it is defines only later, in the simulation
-
+        self.log = CreaturesLogs(
+            self.creature_id)  # pay attention! the id is None for children and it is defines only later, in the simulation
 
     def make_agent(self):
         self.is_agent = True
@@ -110,11 +110,12 @@ class Creature(StaticTraits):
             if len(self.log.record['reproduce']) > 0:
                 if (step_num - self.log.record['reproduce'][-1]) * config.DT > self.reproduction_cooldown:
                     return 1
-                else: return 0
-            else: return 1  # if it's his first time reproducing
+                else:
+                    return 0
+            else:
+                return 1  # if it's his first time reproducing
         else:
             return 0
-
 
     def reproduce(self):
         """
@@ -176,7 +177,7 @@ class Creature(StaticTraits):
         self.color = np.clip(self.color, 0, 1)
 
     def move(self, decision: np.array([float]), dt: float = config.DT,
-              debug_position = False, debug_energy = False, debug_force = False):
+             debug_position=False, debug_energy=False, debug_force=False):
 
         # constrain propulsion force based on strength
         propulsion_force_mag, relative_propulsion_force_angle = decision
@@ -198,7 +199,8 @@ class Creature(StaticTraits):
 
         # reaction friction force
         if propulsion_force_mag > physical_model.mu_static * np.linalg.norm(normal_force):
-            reaction_friction_force = -physical_model.mu_kinetic * np.linalg.norm(normal_force) * global_propulsion_force_direction
+            reaction_friction_force = -physical_model.mu_kinetic * np.linalg.norm(
+                normal_force) * global_propulsion_force_direction
         else:
             reaction_friction_force = -global_propulsion_force
 
@@ -262,7 +264,6 @@ class Creature(StaticTraits):
     #     drag_force = self.linear_force(physical_model) + self.quadratic_force(physical_model)
     #     return drag_force
 
-
     @staticmethod
     def calc_propulsion_energy(propulsion_force):
         eta = physical_model.energy_conversion_factors['activity_efficiency']
@@ -274,7 +275,8 @@ class Creature(StaticTraits):
         c_d = physical_model.energy_conversion_factors['digest']
         c_h = physical_model.energy_conversion_factors['height_energy']
         rest_energy = physical_model.energy_conversion_factors['rest'] * self.mass ** 0.75  # adds mass (BMR) energy
-        inner_energy = rest_energy + c_d * np.sum(list(self.digest_dict.values())) + c_h * self.height  # adds height energy
+        inner_energy = rest_energy + c_d * np.sum(
+            list(self.digest_dict.values())) + c_h * self.height  # adds height energy
         inner_energy = inner_energy + self.brain.size * physical_model.energy_conversion_factors['brain_consumption']
         return inner_energy
 
@@ -316,10 +318,10 @@ class Creature(StaticTraits):
 
         excess_energy = gained_energy - height_energy - mass_energy
         if rebalance:
-            self.log.add_record('energy_excess',excess_energy)
-            self.log.add_record('energy_gain',gained_energy)
-            self.log.add_record('energy_height',height_energy)
-            self.log.add_record('energy_mass',mass_energy)
+            self.log.add_record('energy_excess', excess_energy)
+            self.log.add_record('energy_gain', gained_energy)
+            self.log.add_record('energy_height', height_energy)
+            self.log.add_record('energy_mass', mass_energy)
         else:
             self.log.add_record('energy_excess', excess_energy)
         self.energy += excess_energy

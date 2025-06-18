@@ -1,13 +1,13 @@
 # Simulation parameters
 VERSION: 2.0
 DT: 2.5  # time passing between consecutive steps (relevant for age and movement)
-NUM_FRAMES: 500  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+NUM_FRAMES: 20  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
 
 # key is frame number and value is num steps per frame from this frame onward
-NUM_STEPS_FROM_FRAME_DICT: { 0: 1000,
-                             5: 500,
-                             20: 200,
-                             500: 100 }
+NUM_STEPS_FROM_FRAME_DICT: { 0: 50,
+                             5: 40,
+                             20: 20,
+                             500: 10 }
 
 FRAME_INTERVAL: 75  # interval between frames in animation [in ms]
 STATUS_EVERY_STEP: True  # choose if to update every step or every frame

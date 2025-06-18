@@ -2,6 +2,7 @@ from math import floor
 
 import numpy as np
 import matplotlib
+
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
@@ -17,13 +18,14 @@ config = load_config(yaml_relative_path=config_yaml_relative_path)
 physical_model_yaml_relative_path = r"input\yamls\2025_04_18_physical_model.yaml"
 physical_model = load_physical_model(yaml_relative_path=physical_model_yaml_relative_path)
 
+
 class ParametricDashboard:
     def __init__(self, f_list, x_attr_list, init_struct_list, param_limits, x_labels, y_labels, layout=None,
                  slider_marks=None, slider_names=None, func_colors=None, func_legends=None,
                  shared_slider_labels=None, sample_num=None):
         self.f_list = f_list
         self.init_struct_list = init_struct_list  # list of tuples or lists (agent_dict, extra_args_dict) or just args
-        if len(param_limits) != len(x_attr_list):          # list of lists of (min, max) tuples
+        if len(param_limits) != len(x_attr_list):  # list of lists of (min, max) tuples
             self.param_limits = [param_limits] * len(x_attr_list)
         else:
             self.param_limits = param_limits
@@ -165,12 +167,13 @@ class ParametricDashboard:
             lines = []
 
             args = self.init_struct_list[i]
-            if isinstance(args, (tuple, list)): # and isinstance(args[0], dict)
+            if isinstance(args, (tuple, list)):  # and isinstance(args[0], dict)
                 agent, extra = args
                 for j, (name, lim) in enumerate(zip(self.slider_names[i], self.param_limits[i])):
                     if name == self.x_attr_list[i]:
                         k = self.slider_names[i].index(name)
-                        self.x_vector[name] = np.linspace(self.param_limits[i][k][0], self.param_limits[i][k][1], self.sample_num[i])
+                        self.x_vector[name] = np.linspace(self.param_limits[i][k][0], self.param_limits[i][k][1],
+                                                          self.sample_num[i])
                         continue
                 try:
                     x_vals = self._x_from_struct(agent, self.x_attr_list[i])
@@ -179,10 +182,10 @@ class ParametricDashboard:
                         x_vector = self.x_vector[self.x_attr_list[i]]
                         if isinstance(x_vector, (np.ndarray, list)):
                             y = np.array(self.f_vector(f, self.x_attr_list[i], x_vector, agent, extra))
-                            line, = ax.plot(x_vector, y, label=label, color=color, alpha = 0.5)
+                            line, = ax.plot(x_vector, y, label=label, color=color, alpha=0.5)
                         else:
                             y = f(agent, extra)
-                            line, = ax.plot(x_vals, y, label=label, color=color, alpha = 0.5)
+                            line, = ax.plot(x_vals, y, label=label, color=color, alpha=0.5)
                         lines.append(line)
                         continue
                 except AttributeError:
@@ -196,7 +199,9 @@ class ParametricDashboard:
                     x_index = 0
                 x_vals = np.asarray(args[x_index])
                 for f, color, label in zip(funcs, colors, labels):
-                    y = np.array([f(agent, **extra) for agent in args[0]]) if isinstance(args[0], (list, np.ndarray)) else f(*args)
+                    y = np.array([f(agent, **extra) for agent in args[0]]) if isinstance(args[0],
+                                                                                         (list, np.ndarray)) else f(
+                        *args)
                     line = ax.plot(x_vals, y, label=label, color=color)
                     lines.append(line)
 
@@ -226,7 +231,8 @@ class ParametricDashboard:
                 # keys = list(agent_flat.keys()) + list(extra_flat.keys())
                 values = {**agent_flat, **extra_flat}
             else:
-                keys = [self.slider_names[i][j] if self.slider_names and i < len(self.slider_names) and j < len(self.slider_names[i]) and self.slider_names[i][j] else f'param{j}' for j in range(len(args))]
+                keys = [self.slider_names[i][j] if self.slider_names and i < len(self.slider_names) and j < len(
+                    self.slider_names[i]) and self.slider_names[i][j] else f'param{j}' for j in range(len(args))]
                 values = {k: v for k, v in zip(keys, args)}
 
             for j, (key, lim) in enumerate(zip(self.slider_names[i], self.param_limits[i])):
@@ -309,7 +315,8 @@ class ParametricDashboard:
                     line.set_ydata(y)
 
             else:
-                keys = [self.slider_names[i][j] if self.slider_names and i < len(self.slider_names) and j < len(self.slider_names[i]) and self.slider_names[i][j] else f'param{j}' for j in range(len(args))]
+                keys = [self.slider_names[i][j] if self.slider_names and i < len(self.slider_names) and j < len(
+                    self.slider_names[i]) and self.slider_names[i][j] else f'param{j}' for j in range(len(args))]
                 new_args = [self.slider_refs[k].val if k in self.slider_refs else v for k, v in zip(keys, args)]
                 x_vals = np.asarray(new_args[x_attr])
                 for line, f in zip(lines, funcs):
@@ -327,8 +334,10 @@ class ParametricDashboard:
             return np.array([val])
         return np.asarray(val)
 
+
 import numpy as np
 from types import SimpleNamespace
+
 
 # -------------- Energy functions --------------
 
@@ -340,6 +349,7 @@ def calc_inner_energy(agent, physical_model):
     inner_energy += agent.brain.size * physical_model.energy_conversion_factors['brain_consumption']
     return inner_energy
 
+
 def calc_propulsion_energy(agent, physical_model):
     propulsion_force = agent.strength
     eta = physical_model.energy_conversion_factors['activity_efficiency']
@@ -347,15 +357,18 @@ def calc_propulsion_energy(agent, physical_model):
     propulsion_energy = (1 / eta + c_heat) * propulsion_force
     return propulsion_energy
 
+
 # -------------- Force functions --------------
 
 def linear_force(agent, physical_model):
     linear_drag_force = - physical_model.gamma * agent.height ** 2 * agent.speed
     return linear_drag_force
 
+
 def quadratic_force(agent, physical_model):
     quadratic_drag_force = - physical_model.c_drag * agent.height ** 2 * agent.speed ** 2
     return quadratic_drag_force
+
 
 def total_drag_force(agent, physical_model):
     linear_drag_force = - physical_model.gamma * agent.height ** 2 * agent.speed
@@ -363,22 +376,26 @@ def total_drag_force(agent, physical_model):
     drag_force = linear_drag_force + quadratic_drag_force
     return drag_force
 
+
 def sim_linear_force(agent, physical_model):
-    index = min([floor(agent.t / config.DT), len(agent.log.record['reaction_friction_force_mag'])-1])
+    index = min([floor(agent.t / config.DT), len(agent.log.record['reaction_friction_force_mag']) - 1])
     return agent.log.record['linear_drag_force'][index]
 
+
 def sim_total_drag_force(agent, physical_model):
-    index = min([floor(agent.t / config.DT), len(agent.log.record['reaction_friction_force_mag'])-1])
+    index = min([floor(agent.t / config.DT), len(agent.log.record['reaction_friction_force_mag']) - 1])
     return agent.log.record['linear_drag_force'][index] + agent.log.record['quadratic_drag_force'][index]
 
+
 def sim_propulsion_force(agent, physical_model):
-    index = min([floor(agent.t / config.DT), len(agent.log.record['reaction_friction_force_mag'])-1])
+    index = min([floor(agent.t / config.DT), len(agent.log.record['reaction_friction_force_mag']) - 1])
     return agent.log.record['reaction_friction_force_mag'][index]
+
 
 # ---------------- General functions ----------------
 
 def run_simulation(agent, physical_model,
-                   debug_energy = False, debug_position = False, debug_force = False):
+                   debug_energy=False, debug_position=False, debug_force=False):
     average_eating_rate = agent.average_eating_rate
     distance = 5
     angle = np.radians(5)
@@ -421,7 +438,7 @@ def run_simulation(agent, physical_model,
     if debug_energy: print(f'\t{agent.t:.1f} after thinking -> \t{agent.energy:.1f}')
     if debug_energy: print(f'\t\t{decision=}')
     agent.move(decision=decision, dt=config.DT,
-                  debug_energy=debug_energy, debug_position=debug_position, debug_force=debug_force)
+               debug_energy=debug_energy, debug_position=debug_position, debug_force=debug_force)
     if debug_position: print(f'\t{agent.t:.1f} after moving -> \t{np.linalg.norm(agent.position)=:.1f}')
     if debug_energy: print(f'\t{agent.t:.1f} after moving -> \t{agent.energy:.1f}')
     if agent.own_0_const_1_rand_2 > 0.5:
@@ -438,21 +455,26 @@ def run_simulation(agent, physical_model,
         agent.energy -= agent.reproduction_energy
         agent.children_count += 1
 
-def energy_over_time(agent, physical_model, debug_energy = False):
+
+def energy_over_time(agent, physical_model, debug_energy=False):
     run_simulation(agent, physical_model, debug_energy=debug_energy)
     return agent.energy
 
-def position_over_time(agent, physical_model, debug_position = False):
+
+def position_over_time(agent, physical_model, debug_position=False):
     run_simulation(agent, physical_model, debug_position=debug_position, debug_force=debug_position)
     return np.linalg.norm(agent.position)
+
 
 def speed_over_time(agent, physical_model):
     index = min([floor(agent.t / config.DT), len(agent.log.record['speed']) - 1])
     return agent.log.record['speed'][index]
 
+
 def sim_energy_inner(agent, physical_model):
     index = min([floor(agent.t / config.DT), len(agent.log.record['energy_inner']) - 1])
     return agent.log.record['energy_inner'][index]
+
 
 def sim_energy_propulsion(agent, physical_model):
     index = min([floor(agent.t / config.DT), len(agent.log.record['energy_propulsion']) - 1])
@@ -486,22 +508,22 @@ from environment import Environment
 import simulation_utils
 
 env = Environment(map_filename=config.ENV_PATH,
-                               grass_generation_rate=config.GRASS_GENERATION_RATE,
-                               leaves_generation_rate=config.LEAVES_GENERATION_RATE)
+                  grass_generation_rate=config.GRASS_GENERATION_RATE,
+                  leaves_generation_rate=config.LEAVES_GENERATION_RATE)
 
 # Initialize creatures (ensuring they are not in forbidden areas).
 agents = simulation_utils.initialize_creatures(num_creatures=1,
-                                                       simulation_space=env.size,
-                                                       input_size=config.INPUT_SIZE,
-                                                       output_size=config.OUTPUT_SIZE,
-                                                       eyes_params=config.EYES_PARAMS,
-                                                       env=env)
+                                               simulation_space=env.size,
+                                               input_size=config.INPUT_SIZE,
+                                               output_size=config.OUTPUT_SIZE,
+                                               eyes_params=config.EYES_PARAMS,
+                                               env=env)
 
 agent = agents[0]
 agent.t = np.arange(0, agent.max_age) * config.DT  # time vector
 agent.average_eating_rate = 500
-agent.rand_t = np.random.rand(int(agent.max_age//config.DT)+1)
-agent.randn_t = np.random.randn(int(agent.max_age//config.DT)+1)
+agent.rand_t = np.random.rand(int(agent.max_age // config.DT) + 1)
+agent.randn_t = np.random.randn(int(agent.max_age // config.DT) + 1)
 agent.own_0_const_1_rand_2 = 1
 agent.decision = 1
 agent.decision_rand_mag = 0.5
@@ -548,7 +570,7 @@ param_limits = [
     (0.001, 5.0),  # energy_conversion_factors.brain_consumption
     (0.001, 5.0),  # energy_conversion_factors.mass_energy
     (5.0, 15.0),  # physical_model.g
-    (0, config.MAX_SPEED*10),  # speed
+    (0, config.MAX_SPEED * 10),  # speed
     (0, physical_model.gamma * 2),  # physical_model.gamma
     (0, physical_model.c_drag * 2),  # physical_model.c_drag
     (0, agent.max_age),  # t
@@ -557,7 +579,7 @@ param_limits = [
     (0, 1),  # decision
     (0, 0.5),  # decision_rand_mag
     (1000, 10000),  # GRASS_ENERGY
-    ]
+]
 slider_marks = [
     [config.INIT_MAX_MASS],  # mass (x)
     [config.INIT_MAX_HEIGHT],  # height
@@ -582,8 +604,7 @@ slider_marks = [
     [],  # decision
     [],  # decision_rand_mag
     [1000, 10000],  # GRASS_ENERGY
-    ]
-
+]
 
 f_list = []
 x_attr_list = []
@@ -593,7 +614,7 @@ y_labels = []
 func_colors = []
 func_legends = []
 sample_num = []
-layout = (3,2)
+layout = (3, 2)
 
 # energy plot
 
@@ -607,7 +628,6 @@ x_labels.append('height [m]')
 y_labels.append('Inner Energy [units]')
 func_colors.append(['blueviolet', 'violet'])
 func_legends.append(['Inner Energy', 'Propulsion Energy'])
-
 
 # force plot
 
@@ -627,7 +647,7 @@ func_legends.append(['Linear Drag', 'Quadratic Drag', 'Linear + Quadratic Drag']
 
 f_list.append(energy_over_time)
 x_attr_list.append('t')
-sample_num.append(int(agent.max_age//config.DT))
+sample_num.append(int(agent.max_age // config.DT))
 init_struct_list.append((agent, physical_model))
 x_labels.append('time [s]')
 y_labels.append('Energy [J]')
@@ -652,7 +672,7 @@ f_list[-1].append(sim_linear_force)
 f_list[-1].append(sim_total_drag_force)
 f_list[-1].append(sim_propulsion_force)
 x_attr_list.append('t')
-sample_num.append(int(agent.max_age//config.DT))
+sample_num.append(int(agent.max_age // config.DT))
 init_struct_list.append((agent, physical_model))
 x_labels.append('time [s]')
 y_labels.append('Force [N]')
@@ -665,7 +685,7 @@ f_list.append([])
 f_list[-1].append(sim_energy_inner)
 f_list[-1].append(sim_energy_propulsion)
 x_attr_list.append('t')
-sample_num.append(int(agent.max_age//config.DT))
+sample_num.append(int(agent.max_age // config.DT))
 init_struct_list.append((agent, physical_model))
 x_labels.append('time [s]')
 y_labels.append('Power [Watt]')
@@ -676,7 +696,7 @@ func_legends.append(['Inner Energy', 'Propulsion Energy'])
 
 f_list.append(speed_over_time)
 x_attr_list.append('t')
-sample_num.append(int(agent.max_age//config.DT))
+sample_num.append(int(agent.max_age // config.DT))
 init_struct_list.append((agent, physical_model))
 x_labels.append('time [s]')
 y_labels.append('speed [m/s]')
@@ -700,5 +720,5 @@ ParametricDashboard(
     func_colors=func_colors,
     func_legends=func_legends,
     sample_num=sample_num,
-    layout = layout
+    layout=layout
 )

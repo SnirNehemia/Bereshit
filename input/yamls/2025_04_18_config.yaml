@@ -1,7 +1,7 @@
 # Simulation parameters
 VERSION: 2.0
 DT: 2.5  # time passing between consecutive steps (relevant for age and movement)
-NUM_FRAMES: 100  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+NUM_FRAMES: 500  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
 
 # key is frame number and value is num steps per frame from this frame onward
 NUM_STEPS_FROM_FRAME_DICT: { 0: 1000,
@@ -47,9 +47,9 @@ INIT_DIGEST_DICT: { 'grass': 1,
                     'creature': 0 }
 
 # Creatures parameters
-NUM_CREATURES: 300  # init size of population
+NUM_CREATURES: 500  # init size of population
 MAX_NUM_CREATURES: 1500
-INIT_MAX_AGE: 5000  # [sec]
+INIT_MAX_AGE: 60000  # [sec]
 ADOLESCENCE_AGE_FRACTION: 0.05  # [0-1] fraction of INIT_MAX_AGE for adulthood
 REPRODUCTION_COOLDOWN: 300  # [sec] minimal time between reproduction events
 INIT_MAX_MASS: 10  # [kg]
@@ -80,7 +80,7 @@ STD_MUTATION_FACTORS: { 'color': 0.1,  # +-in each RGB color
                         'max_age': 2,
                         'max_mass': 1,
                         'max_height': 1,
-                        'max_strength': 10,
+                        'max_strength': 1,
                         'max_speed': 0.1,
                         'max_energy': 0,
 

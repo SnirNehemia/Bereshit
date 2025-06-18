@@ -9,9 +9,6 @@ from input.codes.physical_model import physical_model
 
 import importlib
 
-brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
-Brain = getattr(brain_module, 'Brain')
-
 
 class Creature(StaticTraits):
     """
@@ -23,7 +20,7 @@ class Creature(StaticTraits):
                  max_age: int, max_mass: float, max_height: float, max_strength: float,
                  max_speed: float, max_energy: float,
                  digest_dict: dict, reproduction_energy: float,
-                 eyes_params: list[tuple], vision_limit: float, brain: Brain,
+                 eyes_params: list[tuple], vision_limit: float, brain,
                  position: np.ndarray):
         super().__init__(creature_id=creature_id,
                          gen=gen, parent_id=parent_id, birth_step=birth_step, color=color,
@@ -248,6 +245,7 @@ class Creature(StaticTraits):
         self.log.add_record('energy_inner', inner_energy)
         self.log.add_record('energy_consumption', inner_energy + propulsion_energy)
         if self.log.record['energy_consumption'][-1] < 0:
+            breakpoint('energy consumption < 0')
             raise ValueError('Energy consumption cannot be negative')
         if debug_energy: print(f'\t\t{propulsion_energy=:.1f} | {inner_energy=:.1f}')
         self.energy -= propulsion_energy + inner_energy
@@ -328,6 +326,10 @@ class Creature(StaticTraits):
 
 
 if __name__ == '__main__':
+
+    brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
+    Brain = getattr(brain_module, 'Brain')
+
     creature = Creature(creature_id=0, gen=0, parent_id="0", birth_step=0,
                         max_age=100, max_mass=20, max_height=2, max_strength=config.INIT_MAX_STRENGTH,
                         max_speed=config.MAX_SPEED, max_energy=config.INIT_MAX_ENERGY, color=np.random.rand(3),

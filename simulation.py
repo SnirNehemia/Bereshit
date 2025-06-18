@@ -566,6 +566,7 @@ class Simulation:
                     plot.plot_acc_status(axes[5][0], agent, plot_type=1, curr_step=self.step_counter)
 
             except Exception as e:
+                # breakpoint('Error in simulation (update_func): cannot plot')
                 print(f'Error in simulation (update_func): cannot plot because {e}.')
                 # breakpoint()
 

@@ -61,9 +61,6 @@ class Creature(StaticTraits):
             self.mass = 0.1 * self.max_mass
             self.height = 0.1 * self.max_height
             self.strength = 0.1 * self.max_strength
-        # self.mass = np.random.uniform(low=0.01, high=0.1) * self.max_mass
-        # self.height = np.random.uniform(low=0.01, high=0.1) * self.max_height
-        # self.strength = np.random.uniform(low=0.01, high=0.1) * self.max_strength
 
         self.energy = 0.8 * (
                 config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY)  # TODO: patch for runability | was self.max_energy

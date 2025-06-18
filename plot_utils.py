@@ -2,17 +2,8 @@
 
 import numpy as np
 
-from input.codes.config import load_config
-from input.codes.physical_model import load_physical_model
-
-# Load config
-config_yaml_relative_path = r"input\yamls\2025_04_18_config.yaml"
-config = load_config(yaml_relative_path=config_yaml_relative_path)
-
-# Load physical model
-physical_model_yaml_relative_path = r"input\yamls\2025_04_18_physical_model.yaml"
-physical_model = load_physical_model(yaml_relative_path=physical_model_yaml_relative_path)
-
+from input.codes,config import config
+from input.codes.physical_model import physical_model
 
 def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x_label=False, ax_secondary=None):
     # TODO: rename | assiggn better colors | remove title and x label for most | show angle friction in RHS

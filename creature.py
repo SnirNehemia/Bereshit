@@ -223,9 +223,6 @@ class Creature(StaticTraits):
         new_velocity = self.velocity + acceleration * dt
         new_position = self.position + new_velocity * dt
 
-        # print(f'{acceleration=}\n'
-        #       f'{self.velocity=} --> {new_velocity=}\n'
-        #       f'{self.position} --> {new_position}')
         if debug_position:
             print(f'\t\t{acceleration=}\n'
                   f'\t\t{self.velocity=} --> {new_velocity=}\n'
@@ -249,18 +246,7 @@ class Creature(StaticTraits):
         if debug_energy: print(f'\t\t{propulsion_energy=:.1f} | {inner_energy=:.1f}')
         self.energy -= propulsion_energy + inner_energy
 
-    # def linear_force(self, physical_model=physical_model):
-    #     linear_drag_force = - physical_model.gamma * self.height ** 2 * self.speed
-    #     return linear_drag_force
-    #
-    # def quadratic_force(self, physical_model=physical_model):
-    #     quadratic_drag_force = - physical_model.c_drag * self.height ** 2 * self.speed ** 2
-    #     return quadratic_drag_force
-    #
-    # def total_drag_force(self, physical_model=physical_model):
-    #     drag_force = self.linear_force(physical_model) + self.quadratic_force(physical_model)
-    #     return drag_force
-
+    
     @staticmethod
     def calc_propulsion_energy(propulsion_force):
         eta = physical_model.energy_conversion_factors['activity_efficiency']

@@ -50,7 +50,6 @@ def initialize_creatures(num_creatures, simulation_space, input_size, output_siz
 
         digest_dict = config.INIT_DIGEST_DICT
         reproduction_energy = config.REPRODUCTION_ENERGY
-        reproduction_energy = config.REPRODUCTION_ENERGY
 
         vision_limit = config.VISION_LIMIT
         brain = Brain([input_size, output_size])

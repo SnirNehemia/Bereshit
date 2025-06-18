@@ -9,9 +9,6 @@ from input.codes.physical_model import physical_model
 
 import importlib
 
-brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
-Brain = getattr(brain_module, 'Brain')
-
 
 class Creature(StaticTraits):
     """
@@ -23,7 +20,7 @@ class Creature(StaticTraits):
                  max_age: int, max_mass: float, max_height: float, max_strength: float,
                  max_speed: float, max_energy: float,
                  digest_dict: dict, reproduction_energy: float,
-                 eyes_params: list[tuple], vision_limit: float, brain: Brain,
+                 eyes_params: list[tuple], vision_limit: float, brain,
                  position: np.ndarray):
         super().__init__(creature_id=creature_id,
                          gen=gen, parent_id=parent_id, birth_step=birth_step, color=color,
@@ -49,7 +46,7 @@ class Creature(StaticTraits):
         self.init_state()
         # self.log.record['speed'] = [self.speed]  # fixes an issue with the first generation
 
-    def init_state(self, rebalance=config.REBALANCE):
+    def init_state(self, balance=False):
         """
         :return:
         """
@@ -60,12 +57,13 @@ class Creature(StaticTraits):
 
         # dynamic traits
         self.age = 0
-        self.mass = np.random.uniform(low=0.01, high=0.1) * self.max_mass
-        self.height = np.random.uniform(low=0.01, high=0.1) * self.max_height
-        self.strength = np.random.uniform(low=0.01, high=0.1) * self.max_strength
+        if not balance:
+            self.mass = 0.1 * self.max_mass
+            self.height = 0.1 * self.max_height
+            self.strength = 0.1 * self.max_strength
 
         self.energy = 0.8 * (
-                    config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY)  # TODO: patch for runability | was self.max_energy
+                config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY)  # TODO: patch for runability | was self.max_energy
         self.velocity = (np.random.rand(2) - 0.5) * self.max_speed
         self.max_speed_exp = np.linalg.norm(self.velocity)
         self.calc_speed()
@@ -74,8 +72,8 @@ class Creature(StaticTraits):
         self.thirst = 100
 
         # TODO: logs are in step units for now
-        self.log = CreaturesLogs(self.creature_id)  # pay attention! the id is None for children and it is defines only later, in the simulation
-
+        self.log = CreaturesLogs(
+            self.creature_id)  # pay attention! the id is None for children and it is defines only later, in the simulation
 
     def make_agent(self):
         self.is_agent = True
@@ -109,11 +107,12 @@ class Creature(StaticTraits):
             if len(self.log.record['reproduce']) > 0:
                 if (step_num - self.log.record['reproduce'][-1]) * config.DT > self.reproduction_cooldown:
                     return 1
-                else: return 0
-            else: return 1  # if it's his first time reproducing
+                else:
+                    return 0
+            else:
+                return 1  # if it's his first time reproducing
         else:
             return 0
-
 
     def reproduce(self):
         """
@@ -141,6 +140,9 @@ class Creature(StaticTraits):
         self.init_state()
         self.age = config.DT  # fix a delay in the logs
         self.velocity = -self.velocity  # go opposite to father
+        self.calc_speed()
+        # TODO: make the solution better than this patch...
+        self.log.add_record('speed', self.speed)
 
     def mutate(self):
         """
@@ -171,11 +173,12 @@ class Creature(StaticTraits):
         # clip relevant traits
         self.color = np.clip(self.color, 0, 1)
 
-    def move(self, decision: np.array([float]), dt: float = config.DT):
+    def move(self, decision: np.array([float]), dt: float = config.DT,
+             debug_position=False, debug_energy=False, debug_force=False):
 
         # constrain propulsion force based on strength
         propulsion_force_mag, relative_propulsion_force_angle = decision
-        propulsion_force_mag = np.clip(propulsion_force_mag, 0, self.strength)
+        propulsion_force_mag = np.clip(propulsion_force_mag, 0, 1) * self.strength
 
         # transform relative propulsion_force to global cartesian coordinates (x,y)
         current_direction = self.get_heading()
@@ -193,15 +196,20 @@ class Creature(StaticTraits):
 
         # reaction friction force
         if propulsion_force_mag > physical_model.mu_static * np.linalg.norm(normal_force):
-            reaction_friction_force = - physical_model.mu_kinetic * np.linalg.norm(normal_force) * global_propulsion_force_direction
+            reaction_friction_force = -physical_model.mu_kinetic * np.linalg.norm(
+                normal_force) * global_propulsion_force_direction
         else:
-            reaction_friction_force = - global_propulsion_force
+            reaction_friction_force = -global_propulsion_force
 
         # drag force (air resistence)
-        linear_drag_force = - physical_model.gamma * self.height * self.velocity
-        quadratic_drag_force = - physical_model.c_drag * self.height * self.speed ** 2 * current_direction
+        linear_drag_force = - physical_model.gamma * self.height ** 2 * self.velocity
+        quadratic_drag_force = - physical_model.c_drag * self.height ** 2 * self.velocity ** 2 * current_direction
         drag_force = linear_drag_force + quadratic_drag_force
-
+        if debug_force:
+            print(f'\t\t{linear_drag_force=}\n'
+                  f'\t\t{quadratic_drag_force=}\n'
+                  f'\t\t{reaction_friction_force=}\n'
+                  f'\t\t{drag_force=}')
         # if self.is_agent:
         self.log.add_record('linear_drag_force', np.linalg.norm(linear_drag_force))
         self.log.add_record('quadratic_drag_force', np.linalg.norm(quadratic_drag_force))
@@ -215,16 +223,17 @@ class Creature(StaticTraits):
         new_velocity = self.velocity + acceleration * dt
         new_position = self.position + new_velocity * dt
 
-        # print(f'{acceleration=}\n'
-        #       f'{self.velocity=} --> {new_velocity=}\n'
-        #       f'{self.position} --> {new_position}')
-
+        if debug_position:
+            print(f'\t\t{acceleration=}\n'
+                  f'\t\t{self.velocity=} --> {new_velocity=}\n'
+                  f'\t\t{self.position} --> {new_position}')
         # update position, velocity and speed
         self.velocity = new_velocity
         self.calc_speed()
         self.position = new_position
-
+        self.log.add_record('speed', self.speed)  # it is recorded in simulation -> do_step function
         # update energy
+        if debug_energy: print(f'\t\t{global_propulsion_force=}')
         propulsion_energy = self.calc_propulsion_energy(global_propulsion_force)
         inner_energy = self.calc_inner_energy()
         # if self.is_agent:
@@ -232,9 +241,12 @@ class Creature(StaticTraits):
         self.log.add_record('energy_inner', inner_energy)
         self.log.add_record('energy_consumption', inner_energy + propulsion_energy)
         if self.log.record['energy_consumption'][-1] < 0:
+            breakpoint('energy consumption < 0')
             raise ValueError('Energy consumption cannot be negative')
+        if debug_energy: print(f'\t\t{propulsion_energy=:.1f} | {inner_energy=:.1f}')
         self.energy -= propulsion_energy + inner_energy
 
+    
     @staticmethod
     def calc_propulsion_energy(propulsion_force):
         eta = physical_model.energy_conversion_factors['activity_efficiency']
@@ -244,9 +256,10 @@ class Creature(StaticTraits):
 
     def calc_inner_energy(self):
         c_d = physical_model.energy_conversion_factors['digest']
-        c_h = physical_model.energy_conversion_factors['height']
+        c_h = physical_model.energy_conversion_factors['height_energy']
         rest_energy = physical_model.energy_conversion_factors['rest'] * self.mass ** 0.75  # adds mass (BMR) energy
-        inner_energy = rest_energy + c_d * np.sum(list(self.digest_dict.values())) + c_h * self.height  # adds height energy
+        inner_energy = rest_energy + c_d * np.sum(
+            list(self.digest_dict.values())) + c_h * self.height  # adds height energy
         inner_energy = inner_energy + self.brain.size * physical_model.energy_conversion_factors['brain_consumption']
         return inner_energy
 
@@ -272,13 +285,13 @@ class Creature(StaticTraits):
 
         if self.age < self.adolescence:
             self.height, height_energy = self.convert_gained_energy_to_trait(
-                trait_type='height',
+                trait_type='height_energy',
                 old_trait=self.height,
                 gained_energy=gained_energy,
                 age=self.age,
             )
             self.mass, mass_energy = self.convert_gained_energy_to_trait(
-                trait_type='mass',
+                trait_type='mass_energy',
                 old_trait=self.mass,
                 gained_energy=gained_energy,
                 age=self.age,
@@ -288,16 +301,20 @@ class Creature(StaticTraits):
 
         excess_energy = gained_energy - height_energy - mass_energy
         if rebalance:
-            self.log.add_record('energy_excess',excess_energy)
-            self.log.add_record('energy_gain',gained_energy)
-            self.log.add_record('energy_height',height_energy)
-            self.log.add_record('energy_mass',mass_energy)
+            self.log.add_record('energy_excess', excess_energy)
+            self.log.add_record('energy_gain', gained_energy)
+            self.log.add_record('energy_height', height_energy)
+            self.log.add_record('energy_mass', mass_energy)
         else:
             self.log.add_record('energy_excess', excess_energy)
         self.energy += excess_energy
 
 
 if __name__ == '__main__':
+
+    brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
+    Brain = getattr(brain_module, 'Brain')
+
     creature = Creature(creature_id=0, gen=0, parent_id="0", birth_step=0,
                         max_age=100, max_mass=20, max_height=2, max_strength=config.INIT_MAX_STRENGTH,
                         max_speed=config.MAX_SPEED, max_energy=config.INIT_MAX_ENERGY, color=np.random.rand(3),

@@ -188,7 +188,7 @@ class Simulation:
         # ------------------------------- Update creatures log -------------------------------
         for creature in self.creatures.values():
             creature.log.add_record('energy', creature.energy)
-            creature.log.add_record('speed', creature.speed)
+            # creature.log.add_record('speed', creature.speed)  # it is recorded in creature -> move function
 
         # ------------------------ Update KDtree (in some frames) ----------------------------
 
@@ -566,6 +566,7 @@ class Simulation:
                     plot.plot_acc_status(axes[5][0], agent, plot_type=1, curr_step=self.step_counter)
 
             except Exception as e:
+                # breakpoint('Error in simulation (update_func): cannot plot')
                 print(f'Error in simulation (update_func): cannot plot because {e}.')
                 # breakpoint()
 
@@ -586,4 +587,3 @@ class Simulation:
             ani.save(config.ANIMATION_FILEPATH, writer="ffmpeg", dpi=100)
             plt.close(fig)
             print(f'Simulation animation saved as {config.ANIMATION_FILEPATH.stem}.')
-

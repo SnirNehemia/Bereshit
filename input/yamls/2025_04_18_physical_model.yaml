@@ -2,8 +2,8 @@
 g: 10  # [m/sec^2]
 
 # drag force (air resistence)
-gamma: 0.0001  # [F]/[v] = [kg/sec] linear drag air resistence (dominant in low speeds)
-c_drag: 0.00001  # [F]/[v^2] quadratic drag air resistence (dominant in high speeds)
+gamma: 0.002  # [F]/[v] = [kg/sec] linear drag air resistence (dominant in low speeds)
+c_drag: 0.001  # [F]/[v^2] quadratic drag air resistence (dominant in high speeds)
 
 # friction force
 mu_static: 1.5  # [no units]  # higher mu_static means faster movement
@@ -13,14 +13,14 @@ alpha_mu: 1  # [no units]
 # convert physical parameters to energy
 energy_conversion_factors: { 'activity_efficiency': 0.75,  #0.25,  # propulsion force to energy factor (higher -> efficient)
                              'heat_loss': 0.01,  # propulsion force to wasted energy (higher -> more loss)
-                             'rest': 0.0005,  # constant for Basal Metabolic Rate (BMR) energy
+                             'rest': 0.001,  # constant for Basal Metabolic Rate (BMR) energy
                              'digest': 0.05,  # [E]/[no units] convert digest factor to digest energy
                              'brain_consumption': 0.005,  # [E]/[no units] convert brain size to brain consumption energy
-                             'height': 25,  # [E]/[h]  # convert height to height energy
-                             'mass': 25  # [E]/[m] = [v^2] = [m^2/sec^4]  convert mass to mass energy
+                             'height_energy': 1,  # [E]/[h]  # convert height to height energy
+                             'mass_energy': 25  # [E]/[m] = [v^2] = [m^2/sec^4]  convert mass to mass energy -> do we use it?
 }
 
 # trait change formulas based on given energy
-trait_energy_params_dict: { 'height': { 'factor': 0.01, 'rate': 0.0005 },  # [factor] = [1], [rate] = [1/sec]
-                            'mass': { 'factor': 0.01, 'rate': 0.0002 }  # [factor] = [1], [rate] = [1/sec]
+trait_energy_params_dict: { 'height_energy': { 'factor': 0.01, 'rate': 0.0005 },  # [factor] = [1], [rate] = [1/sec]
+                            'mass_energy': { 'factor': 0.01, 'rate': 0.0002 }  # [factor] = [1], [rate] = [1/sec]
 }

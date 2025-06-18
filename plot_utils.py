@@ -1,6 +1,9 @@
-import numpy as np
-from input.codes.config import config
+## it has functions used by simulation to plot the dashboard
 
+import numpy as np
+
+from input.codes,config import config
+from input.codes.physical_model import physical_model
 
 def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x_label=False, ax_secondary=None):
     # TODO: rename | assiggn better colors | remove title and x label for most | show angle friction in RHS
@@ -15,7 +18,8 @@ def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x
                     agent.log.record[
                         'energy_consumption']) > 3:  # TODO: make sure energy consumption exclude eating events
                 title = (f"P out = {np.mean(agent.log.record['energy_consumption']) / config.DT:.1f} J/sec | "
-                         f"Meals dt = {np.mean(np.diff([agent.birth_step] + agent.log.record['eat'])) * config.DT:.0f} sec | "
+                         f"Meals dt = {np.mean(np.diff([agent.birth_step] + agent.log.record['eat'])) *
+                                       config.DT:.0f} sec | "
                          f"Meal E = {np.mean(agent.log.record['energy_excess']):.0f} J | "
                          f"[m, h] = {np.mean(agent.mass):.1f} Kg, {np.mean(agent.height):.0f} m")
             else:
@@ -64,14 +68,14 @@ def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x
             max_force = max(agent.log.record['reaction_friction_force_mag'])
             ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['reaction_friction_force_mag']),
                           int(agent.age / config.DT)),
-                    agent.log.record['reaction_friction_force_mag'], color='maroon', alpha=0.5, label='Friction mag')
+                    agent.log.record['reaction_friction_force_mag'], color='maroon', alpha=0.2, label='Friction mag')
             ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['linear_drag_force']),
                           int(agent.age / config.DT)),
-                    agent.log.record['linear_drag_force'], color='red', alpha=0.5, label='Lin. drag',
+                    agent.log.record['linear_drag_force'], color='red', alpha=0.2, label='Lin. drag',
                     linestyle='dashed')
             ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['quadratic_drag_force']),
                           int(agent.age / config.DT)),
-                    agent.log.record['quadratic_drag_force'], color='olive', alpha=0.5, label='Quad. drag',
+                    agent.log.record['quadratic_drag_force'], color='olive', alpha=0.2, label='Quad. drag',
                     linestyle='dashed')
             ax.tick_params(axis='y', colors='maroon')
             ax.spines['left'].set_color('maroon')

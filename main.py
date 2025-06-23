@@ -6,7 +6,7 @@ from input.codes import config, physical_model
 from profiles.profiler import profileit
 
 # Load config
-config_yaml_relative_path = r"input\yamls\2025_04_18_config.yaml"
+config_yaml_relative_path = r"input\yamls\2025_06_20_config.yaml"
 config = config.load_config(yaml_relative_path=config_yaml_relative_path)
 
 # Load physical model

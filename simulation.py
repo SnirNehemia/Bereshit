@@ -38,12 +38,7 @@ class Simulation:
                                leaves_generation_rate=config.LEAVES_GENERATION_RATE)
 
         # Initialize creatures (ensuring they are not in forbidden areas).
-        self.creatures = simulation_utils.initialize_creatures(num_creatures=config.NUM_CREATURES,
-                                                               simulation_space=self.env.size,
-                                                               input_size=config.INPUT_SIZE,
-                                                               output_size=config.OUTPUT_SIZE,
-                                                               eyes_params=config.EYES_PARAMS,
-                                                               env=self.env)
+        self.creatures = simulation_utils.initialize_creatures(env=self.env)
         self.dead_creatures = dict()
         self.positions = []
 
@@ -53,14 +48,14 @@ class Simulation:
 
         # simulation control parameters
         self.abort_simulation = False
-        self.kdtree_update_interval = config.UPDATE_KDTREE_INTERVAL
         self.num_steps_per_frame = 0
         self.step_counter = 0  # Initialize step counter
         self.id_count = config.NUM_CREATURES - 1
         self.focus_id = 0
         self.make_agent(focus_id=0)
+        config.OUTPUT_FOLDER.mkdir(exist_ok=True, parents=True)
 
-        self.purge = True  # flag for purge events
+        self.do_purge = True  # flag for purge events
 
         # statistics logs
         self.statistics_logs = StatisticsLogs()
@@ -68,16 +63,16 @@ class Simulation:
         if config.DEBUG_MODE:
             np.seterr(all='raise')  # Convert NumPy warnings into exceptions
 
-        print(f'Num frames = {config.NUM_FRAMES}, '
-              f'Num steps = {simulation_utils.calc_total_num_steps(config.NUM_FRAMES)}')
+        self.statistics_logs.num_frames = config.NUM_FRAMES
+        self.statistics_logs.total_num_steps = \
+            simulation_utils.calc_total_num_steps(config.NUM_FRAMES)
+        print(f'{config.OUTPUT_FOLDER.stem}: '
+              f'num frames = {self.statistics_logs.num_frames}, '
+              f'Num steps = {self.statistics_logs.total_num_steps}')
 
     def make_agent(self, focus_id: int = 0):
         self.focus_id = focus_id
         self.creatures[self.focus_id].make_agent()
-
-    def kill(self, creature_id):
-        self.dead_creatures[creature_id] = self.creatures[creature_id]
-        del self.creatures[creature_id]
 
     def do_step(self, dt: float, noise_std: float = 0.0):
         """
@@ -90,119 +85,106 @@ class Simulation:
         Then, moves creatures and updates the vegetation.
         """
 
-        # ------------------ seek creatures' targets and use brain ------------------------------
-        seek_results = {}
-        for creature_id, creature in self.creatures.items():
-            seek_results[creature_id] = simulation_utils.seek(creatures=self.creatures,
-                                                              creatures_kd_tree=self.creatures_kd_tree,
-                                                              env=self.env,
-                                                              creature=creature, noise_std=noise_std)
-            # -------------------- Use brain and update creature velocities --------------------------
+        # ------------------------------------ Creatures actions ------------------------------------
+
+        creatures_ids_to_reproduce = []
+        creatures_ids_to_kill = []
+        to_update_kd_tree = {food_type: False
+                             for food_type in config.INIT_HERBIVORE_DIGEST_DICT.keys()}
 
         for creature_id, creature in self.creatures.items():
-            simulation_utils.use_brain(creature=creature,
-                                       env=self.env,
-                                       seek_results=seek_results[creature_id],
-                                       dt=dt)
-
-        # ----------------- die / eat / reproduce (+create list of creatures to die or reproduce) -----------------
-
-        list_creatures_reproduce = []
-        list_creature_die = []
-        is_eat_grass = False
-
-        for creature_id, creature in self.creatures.items():
-            # death from age or fatigue
+            # death from age/fatigue/eaten by another creature
             if creature.age >= creature.max_age or creature.energy <= 0:
-                list_creature_die.append(creature_id)
+                creatures_ids_to_kill.append(creature_id)
+
+            if creature_id in creatures_ids_to_kill:
                 continue
             else:
+                # Creature get older
                 creature.age += config.DT
 
-                # check for food (first grass, if not found search for leaf if tall enough)
-                is_eat = simulation_utils.eat_food(creature=creature, env=self.env,
-                                                   seek_result=seek_results[creature_id],
-                                                   food_type='grass', step_counter=self.step_counter)
-                if not is_eat and creature.height >= config.LEAF_HEIGHT:
-                    _ = simulation_utils.eat_food(creature=creature, env=self.env,
-                                                  seek_result=seek_results[creature_id],
-                                                  food_type='leaf', step_counter=self.step_counter)
+                # Seek in environment
+                seek_result = simulation_utils.seek(creatures=self.creatures,
+                                                    creatures_kd_tree=self.creatures_kd_tree,
+                                                    env=self.env,
+                                                    creature=creature, noise_std=noise_std,
+                                                    creatures_ids_to_kill=creatures_ids_to_kill)
 
-                if is_eat:  # record if something was eaten
-                    is_eat_grass = True
+                # Use brain to move
+                simulation_utils.use_brain(creature=creature,
+                                           env=self.env,
+                                           seek_result=seek_result,
+                                           dt=dt)
+
+                # Check for nearby food
+                eaten_food_type = simulation_utils.eat_food(
+                    creature=creature,
+                    env=self.env,
+                    seek_result=seek_result,
+                    creatures=self.creatures,
+                    creatures_ids_to_kill=creatures_ids_to_kill,
+                    step_counter=self.step_counter)
+
+                # record eaten_food_type to update kd tree afterward
+                if eaten_food_type is not None:
+                    to_update_kd_tree[eaten_food_type] = True
 
                 # reproduce if able
-                if (creature.energy > creature.reproduction_energy + config.MIN_LIFE_ENERGY and
+                energy_needed_to_reproduce = creature.reproduction_energy + config.MIN_LIFE_ENERGY
+                if (creature.energy > energy_needed_to_reproduce and
                         creature.can_reproduce(self.step_counter)):
-                    list_creatures_reproduce.append(creature_id)
-                    creature.reproduced_at = self.step_counter
-        if is_eat_grass:
-            self.env.remove_grass_points()
-            self.env.update_grass_kd_tree()
-        # ------------------------ add the purge to the killing list ----------------------------
+                    creatures_ids_to_reproduce.append(creature_id)
 
-        if config.DO_PURGE:
-            if self.purge or len(self.creatures) > config.MAX_NUM_CREATURES * config.PURGE_POP_PERCENTAGE:
-                purge_count = 0
-                self.purge = False
-                for creature_id, creature in self.creatures.items():
-                    if (np.random.rand(1) < 0.1  # (len(self.creatures) > config.MAX_NUM_CREATURES * 0.95 and
-                            and creature_id not in list_creature_die and creature_id not in list_creatures_reproduce):
-                        purge_count += 1
-                        list_creature_die.append(creature_id)
-                    if (creature.max_speed_exp <= config.PURGE_SPEED_THRESHOLD and creature_id not in list_creature_die
-                            and creature_id not in list_creatures_reproduce):
-                        purge_count += 1
-                        list_creature_die.append(creature_id)
-                print(f'\nStep {self.step_counter}: Purging {purge_count} creatures.')
-
-        # ------------------------ use the list to kill ----------------------------
+        # ---------------------------- After all creatures actions ----------------------------------
+        # Purge
+        self.do_purge = simulation_utils.do_purge(do_purge=self.do_purge,
+                                                  creatures=self.creatures,
+                                                  creatures_ids_to_kill=creatures_ids_to_kill,
+                                                  creatures_ids_to_reproduce=creatures_ids_to_reproduce,
+                                                  step_counter=self.step_counter)
 
         # kill creatures
-        dead_ids = []
-        for creature_id in list_creature_die:
-            self.kill(creature_id)
-            dead_ids.append(creature_id)
-
-        # ------------------------ use the list to reproduce ----------------------------
+        new_dead_ids = simulation_utils.kill_creatures(creatures_ids_to_kill=creatures_ids_to_kill,
+                                                       creatures=self.creatures,
+                                                       dead_creatures=self.dead_creatures)
 
         # Reproduction
-        child_ids = []
-        for creature_id in list_creatures_reproduce:
-            # update creature
-            creature = self.creatures[creature_id]
-            child = creature.reproduce()
-            creature.log.add_record('reproduce', self.step_counter)
+        new_child_ids, self.children_num, self.id_count = \
+            simulation_utils.reporduce_creatures(creatures_ids_to_reproduce=creatures_ids_to_reproduce,
+                                                 creatures=self.creatures,
+                                                 id_count=self.id_count,
+                                                 children_num=self.children_num,
+                                                 step_counter=self.step_counter)
 
-            # update child
-            self.id_count += 1
-            child.creature_id = self.id_count
-            child.birth_step = self.step_counter
-            child.log.creature_id = child.creature_id
+        # Update creatures logs (after movement, eating and reproduction)
+        simulation_utils.update_creatures_logs(creatures=self.creatures)
 
-            # add to simulation
-            self.creatures[self.id_count] = child
-            child_ids.append(self.id_count)
-            self.children_num += 1
+        # Update environment and KD trees
+        is_time_to_update_kd_trees = self.step_counter % config.UPDATE_KDTREE_INTERVAL == 0
+        if to_update_kd_tree['grass']:
+            self.env.remove_grass_points()
+            if not is_time_to_update_kd_trees:
+                self.env.update_grass_kd_tree()
 
-        # ------------------------------- Update creatures log -------------------------------
-        for creature in self.creatures.values():
-            creature.log.add_record('energy', creature.energy)
-            # creature.log.add_record('speed', creature.speed)  # it is recorded in creature -> move function
+        if to_update_kd_tree['leaf']:
+            pass
 
-        # ------------------------ Update KDtree (in some frames) ----------------------------
+        if to_update_kd_tree['creature']:
+            if not is_time_to_update_kd_trees:
+                self.creatures_kd_tree = \
+                    simulation_utils.update_creatures_kd_tree(creatures=self.creatures)
 
-        # Update environment vegetation (generate new points if conditions are met)
-        self.env.update()
+        # generate new food points in the environment and update KD tree if condition are met
+        self.creatures_kd_tree = simulation_utils.update_environment_and_kd_trees(
+            env=self.env,
+            creatures=self.creatures,
+            creatures_kd_tree=self.creatures_kd_tree,
+            is_time_to_update_kd_trees=is_time_to_update_kd_trees)
 
-        # Update KDTree every "kdtree_update_interval" steps
-        if self.step_counter % self.kdtree_update_interval == 0:
-            self.creatures_kd_tree = simulation_utils.update_creatures_kd_tree(creatures=self.creatures)
-            self.env.update_grass_kd_tree()
-
+        # Update step counter
         self.step_counter += 1
 
-        return child_ids, dead_ids
+        return new_child_ids, new_dead_ids
 
     def check_abort_simulation(self):
         if len(self.creatures) > config.MAX_NUM_CREATURES:
@@ -415,7 +397,8 @@ class Simulation:
 
                 # Update statistics logs
                 self.statistics_logs.update_statistics_logs(creatures=self.creatures, env=self.env,
-                                                            child_ids=child_ids, dead_ids=dead_ids)
+                                                            child_ids=child_ids, dead_ids=dead_ids,
+                                                            step_counter=self.step_counter)
 
                 # Update the progress bar every step
                 if config.STATUS_EVERY_STEP:
@@ -439,9 +422,11 @@ class Simulation:
 
             # Do purge if PURGE_FRAME_FREQUENCY frames passed (to clear static agents)
             if config.DO_PURGE:
-                if frame % config.PURGE_FRAME_FREQUENCY == 0:
-                    if len(self.creatures) > config.MAX_NUM_CREATURES * config.PURGE_PERCENTAGE:
-                        self.purge = True
+                is_time_to_purge = frame % config.PURGE_FRAME_FREQUENCY == 0
+                is_too_many_creatures = \
+                    len(self.creatures) > config.MAX_NUM_CREATURES * config.PURGE_POP_PERCENTAGE
+                if is_time_to_purge and is_too_many_creatures:
+                    self.do_purge = True
 
             if config.DEBUG_MODE:
                 from matplotlib import use

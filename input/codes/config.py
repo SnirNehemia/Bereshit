@@ -59,14 +59,12 @@ class Config:
         setattr(self, 'FOOD_SIZE', self.FOOD_DISTANCE_THRESHOLD / 2)  # for display
 
         # Eyes parameters
+        # Convert degrees to radians
         for i in range(len(self.EYES_PARAMS)):
             self.EYES_PARAMS[i][0] = np.radians(self.EYES_PARAMS[i][0])
             self.EYES_PARAMS[i][1] = np.radians(self.EYES_PARAMS[i][1])
 
-        # Brain parameters
-        # 2 for hunger and thirst, 1 for speed, 3 (flag, distance, angle) for each eye * X channels
-        setattr(self, 'INPUT_SIZE', 2 + 1 + 3 * len(self.EYES_PARAMS) * len(self.EYE_CHANNEL))
-
+        # Brain parameters  # TODO - need to change norm_input to depend on creature if have different eyes
         norm_input = self.NORM_INPUT
         for _ in range(len(self.EYES_PARAMS) * len(self.EYE_CHANNEL)):
             norm_input = np.append(norm_input, [1, self.VISION_LIMIT, 1])
@@ -84,7 +82,6 @@ class Config:
         # Filepaths
         setattr(self, 'OUTPUT_FOLDER',
                 self.project_folder.joinpath(f'outputs').joinpath(self.datestamp).joinpath(self.timestamp))
-        self.OUTPUT_FOLDER.mkdir(exist_ok=True, parents=True)
 
         setattr(self, 'ANIMATION_FILEPATH',
                 self.OUTPUT_FOLDER.joinpath(f"{self.timestamp}_simulation.mp4"))

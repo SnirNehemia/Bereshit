@@ -2,11 +2,12 @@
 
 import numpy as np
 
-from input.codes,config import config
+from input.codes.config import config
 from input.codes.physical_model import physical_model
 
+
 def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x_label=False, ax_secondary=None):
-    # TODO: rename | assiggn better colors | remove title and x label for most | show angle friction in RHS
+    # TODO: rename | assign better colors | remove title and x label for most | show angle friction in RHS
     if debug:
         import matplotlib.pyplot as plt
         plt.ion()
@@ -18,8 +19,7 @@ def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x
                     agent.log.record[
                         'energy_consumption']) > 3:  # TODO: make sure energy consumption exclude eating events
                 title = (f"P out = {np.mean(agent.log.record['energy_consumption']) / config.DT:.1f} J/sec | "
-                         f"Meals dt = {np.mean(np.diff([agent.birth_step] + agent.log.record['eat'])) *
-                                       config.DT:.0f} sec | "
+                         f"Meals dt = {np.mean(np.diff([agent.birth_step] + agent.log.record['eat'])) * config.DT:.0f} sec | "
                          f"Meal E = {np.mean(agent.log.record['energy_excess']):.0f} J | "
                          f"[m, h] = {np.mean(agent.mass):.1f} Kg, {np.mean(agent.height):.0f} m")
             else:
@@ -97,14 +97,15 @@ def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x
             #         [angle * max_force / (np.pi * 2) for angle in agent.log.record['reaction_friction_force_angle']],
             #         color='blueviolet', alpha=0.5, label='Friction angle')
     elif mode == 'friction angle':
-        ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['reaction_friction_force_angle']),
-                      int(agent.age / config.DT)),
-                [angle / (np.pi) for angle in agent.log.record['reaction_friction_force_angle']],
-                color='blueviolet', alpha=0.5, label='Friction angle')
-        ax.tick_params(axis='y', colors='blueviolet')
-        ax.spines['left'].set_color('blueviolet')
-        # ax.spines['right'].set_color('violet')
-        ax.set_ylabel('angle [rad/pi]')
+        if 'reaction_friction_force_angle' in agent.log.record:
+            ax.plot(range(int(agent.age / config.DT) - len(agent.log.record['reaction_friction_force_angle']),
+                          int(agent.age / config.DT)),
+                    [angle / (np.pi) for angle in agent.log.record['reaction_friction_force_angle']],
+                    color='blueviolet', alpha=0.5, label='Friction angle')
+            ax.tick_params(axis='y', colors='blueviolet')
+            ax.spines['left'].set_color('blueviolet')
+            # ax.spines['right'].set_color('violet')
+            ax.set_ylabel('angle [rad/pi]')
     elif mode == 'power':
         if 'energy_consumption' in agent.log.record and len(
                 agent.log.record['energy_consumption']) > 0:

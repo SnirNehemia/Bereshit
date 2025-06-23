@@ -3,8 +3,6 @@ from input.codes.config import config, load_config
 
 import importlib
 
-brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
-Brain = getattr(brain_module, 'Brain')
 
 class StaticTraits:
     """
@@ -16,7 +14,8 @@ class StaticTraits:
                  max_age: int, max_mass: float, max_height: float, max_strength: float,
                  max_speed: float, max_energy: float,
                  digest_dict: dict, reproduction_energy: float,
-                 eyes_params: list[tuple], vision_limit: float, brain: Brain):
+                 eyes_channels: list[str], eyes_params: list[tuple], vision_limit: float,
+                 brain):
         """
         eyes_params is a list of tuples: (angle_offset, aperture)
         where angle_offset (in radians) is relative to the creature's heading.
@@ -45,6 +44,7 @@ class StaticTraits:
         # reproduction energy
         self.reproduction_energy = reproduction_energy
 
+        self.eyes_channels = eyes_channels
         self.eyes_params = eyes_params
         self.vision_limit = vision_limit
         self.brain = brain

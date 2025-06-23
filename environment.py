@@ -99,8 +99,14 @@ class Environment:
 
     def update_grass_kd_tree(self):
         """
-        :return: add the new grass points to the grass list and update the KDTree
+        :return: remove points, add points and update the KDTree
         """
+        # Remove points
+        self.remove_grass_points()
+
+        # add points
         self.grass_points.extend(self.new_grass_points)
         self.new_grass_points = []
+
+        # rebuild kdtree
         self.grass_kd_tree = self.build_grass_kd_tree()

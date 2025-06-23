@@ -8,13 +8,17 @@ from json_utils import Serializable
 
 class StatisticsLogs(Serializable):
     def __init__(self):
+        self.num_frames = 0
+        self.total_num_steps = 0
         self.num_creatures_per_step = []
         self.num_new_creatures_per_step = []
         self.num_dead_creatures_per_step = []
+        self.num_herbivores_per_step = []
+        self.num_carnivores_per_step = []
         self.creatures_id_history = []
         self.num_grass_history = []
         self.num_leaves_history = []
-        self.log_num_eats = []
+        self.log_eats_dict = {food_type: list() for food_type in config.INIT_HERBIVORE_DIGEST_DICT.keys()}
 
         # statistics log parameters
         self.traits_stat_names = ['energy', 'speed']
@@ -32,7 +36,7 @@ class StatisticsLogs(Serializable):
         }
 
     def update_statistics_logs(self, creatures: dict[int, Creature], env: Environment,
-                               child_ids, dead_ids):
+                               child_ids: list, dead_ids: list, step_counter: int):
 
         if len(creatures) > 0:
             # update environment log
@@ -46,12 +50,28 @@ class StatisticsLogs(Serializable):
             self.creatures_id_history.append(
                 [getattr(creature, 'creature_id') for creature in creatures.values()])
 
+            self.num_herbivores_per_step.append(np.sum([1 for creature in creatures.values()
+                                                        if creature.digest_dict['grass'] > 0
+                                                        or creature.digest_dict['leaf'] > 0]))
+            self.num_carnivores_per_step.append(np.sum([1 for creature in creatures.values()
+                                                        if creature.digest_dict['creature'] > 0]))
+
             # update energy and speed statistics
             self.update_trait_statistics_logs(creatures=creatures, trait='energy')
             self.update_trait_statistics_logs(creatures=creatures, trait='speed')
 
             # Update eating logs
-            self.log_num_eats.append(np.sum([len(creature.log.record['eat']) for creature in creatures.values()]))
+            for food_type in config.INIT_HERBIVORE_DIGEST_DICT.keys():
+                food_type_key = f'eat_{food_type}'
+                creature_ids_that_ate = [creature_id
+                                         for creature_id, creature in creatures.items()
+                                         if food_type_key in creature.log.record.keys() and
+                                         creature.log.record[food_type_key][-1] == step_counter - 1]
+                self.log_eats_dict[food_type].append(creature_ids_that_ate)
+
+                # Print who ate
+                # if len(creature_ids_that_ate) > 0:
+                #     print(f'Creatures {creature_ids_that_ate} ate {food_type}')
 
     def update_trait_statistics_logs(self, creatures: dict[int, Creature], trait: str):
         creatures_trait = [getattr(creature, trait) for creature in creatures.values()]
@@ -117,6 +137,14 @@ class StatisticsLogs(Serializable):
                 print(f'statistics fig saved as {statistics_fig_filepath.stem}.')
 
         # Plot and save env statistics summary graphs
+        self.plot_env_graph(to_save=to_save)
+
+    def plot_env_graph(self, to_save: bool = False):
+        """
+        Plot and save env statistics summary graphs
+        :param to_save:
+        :return:
+        """
         env_fig, ax = plt.subplots(1, 1)
         ax.plot(self.num_grass_history, 'g.-', label='num grass')
         ax.plot(self.num_leaves_history, 'k.-', label='num leaves')
@@ -125,3 +153,177 @@ class StatisticsLogs(Serializable):
 
         if to_save:
             env_fig.savefig(fname=config.ENV_FIG_FILE_PATH)
+
+    def get_creatures_lifespan_vs_step_matrix(self):
+        num_steps = len(self.creatures_id_history)
+        max_id = np.max([np.max(creatures_id_in_step_i) + 1
+                         for creatures_id_in_step_i in self.creatures_id_history])
+
+        creatures_lifespan_vs_step = np.zeros((num_steps, max_id))
+        for i_step, creatures_id_in_step_i in enumerate(self.creatures_id_history):
+            for creature_id in creatures_id_in_step_i:
+                creatures_lifespan_vs_step[i_step][creature_id] = 1
+
+        return creatures_lifespan_vs_step
+
+    def plot_creatures_lifespan_vs_step_matrix(self, to_show: bool = False):
+        """
+        Plot an image of [num_steps, ids] showing creatures lifespan vs step number.
+        :return:
+        """
+        # get_creatures_lifespan_vs_step_matrix
+        creatures_lifespan_vs_step_matrix = self.get_creatures_lifespan_vs_step_matrix()
+
+        # plot_creatures_lifespan_vs_step_matrix
+        plt.figure()
+        plt.imshow(creatures_lifespan_vs_step_matrix.T, cmap='gray_r',
+                   aspect='auto', origin='lower', interpolation='none')
+        plt.title(f'alive creature ids vs. step number')
+        plt.xlabel('step number')
+        plt.ylabel('creature ids')
+        plt.grid(which='both')
+
+        if to_show:
+            plt.show()
+
+    def get_creatures_nutrition_vs_step_matrix(self):
+        """
+
+        :return: creatures_nutrition_vs_step_matrix: where 1 is grass, 2 is leaf and 3 is creature
+        """
+        num_steps = len(self.creatures_id_history)
+        max_id = np.max([np.max(creatures_id_in_step_i) + 1
+                         for creatures_id_in_step_i in self.creatures_id_history])
+        creatures_nutrition_vs_step_matrix = np.zeros((num_steps, max_id))
+        for food_idx, food_type in enumerate(self.log_eats_dict.keys()):
+            for i_step, creatures_id_in_step_i in enumerate(self.log_eats_dict[food_type]):
+                for creature_id in creatures_id_in_step_i:
+                    creatures_nutrition_vs_step_matrix[i_step][creature_id] = food_idx + 1
+
+        return creatures_nutrition_vs_step_matrix
+
+    def plot_creatures_nutrition_vs_step_matrix(self, to_show: bool = False):
+        """
+        Plot an image of [num_steps, ids] showing which creatures ate in each step.
+        :return:
+        """
+
+        # get_creatures_nutrition_vs_step_matrix
+        creatures_nutrition_vs_step_matrix = self.get_creatures_nutrition_vs_step_matrix()
+
+        # plot_creatures_nutrition_vs_step_matrix
+        # plt.figure()
+        food_type_colors = {'grass': 'green', 'leaf': 'darkgreen', 'creature': 'red'}
+        food_type_markers = {'grass': 'o', 'leaf': 's', 'creature': 'D'}
+        for food_idx, food_type in enumerate(self.log_eats_dict.keys()):
+            rows, cols = np.where(creatures_nutrition_vs_step_matrix == food_idx + 1)
+            plt.scatter(rows, cols, label=food_type,
+                        s=10, marker=food_type_markers[food_type],
+                        c=food_type_colors[food_type], edgecolors='white', linewidths=0.5)
+        plt.title(f'Eating of creature ids vs. step number')
+        plt.xlabel('step number')
+        plt.ylabel('creature ids')
+        plt.grid(which='both')
+        plt.legend()
+        if to_show:
+            plt.show()
+
+    def plot_creatures_lifespan_graphs(self, to_show: bool = False):
+        # get_creatures_lifespan_vs_step_matrix
+        creatures_lifespan_vs_step_matrix = self.get_creatures_lifespan_vs_step_matrix()
+        creatures_lifespan_per_creature = np.sum(creatures_lifespan_vs_step_matrix >= 1, axis=0)  # sum steps
+        creatures_lifespan_per_step = np.sum(creatures_lifespan_vs_step_matrix >= 1, axis=1)  # sum creatures
+
+        # lifespan statistics graphs
+        fig, ax = plt.subplots(2, 1)
+        # ax[0].plot(creatures_lifespan_per_creature)
+        # ax[0].set_title('How many steps each creature live')
+        ax[0].hist(creatures_lifespan_per_creature)
+        ax[0].set_title('How many steps each creature live - histogram')
+        ax[0].set_xlabel('creature id')
+        ax[1].plot(creatures_lifespan_per_step)
+        ax[1].set_title('How many creatures live in each step')
+        ax[1].set_xlabel('step number')
+        ax[1].minorticks_on()
+        ax[1].grid(which='major', color='gray', linestyle='-', linewidth=0.8)
+        ax[1].grid(which='minor', color='lightgray', linestyle=':', linewidth=0.8)
+        if to_show:
+            plt.show()
+
+    def plot_creatures_nutrition_graphs(self, to_show: bool = False):
+        # get_creatures_nutrition_vs_step_matrix
+        creatures_nutrition_vs_step_matrix = self.get_creatures_nutrition_vs_step_matrix()
+        food_types = list(self.log_eats_dict.keys())
+
+        num_eats_per_food_type = [np.sum(creatures_nutrition_vs_step_matrix == food_idx + 1)
+                                  for food_idx in range(len(food_types))]
+
+        creatures_diet = []
+        num_creatures_that_eat_food_type = np.zeros(4)
+        max_id = creatures_nutrition_vs_step_matrix.shape[1]
+        for creature_id in range(max_id):
+            creature_nutrition_vs_step = creatures_nutrition_vs_step_matrix[:, creature_id]
+
+            has_eat = False
+            for food_idx, food_type in enumerate(food_types):
+                if food_idx + 1 in creature_nutrition_vs_step:
+                    num_creatures_that_eat_food_type[food_idx] += 1
+                    is_carnivore = int(food_idx + 1 == 3)
+                    creatures_diet.append(is_carnivore)  # Herbivore: 0, carnivore: 1
+                    has_eat = True
+
+            if not has_eat:
+                num_creatures_that_eat_food_type[3] += 1
+                creatures_diet.append(-1)
+
+        creatures_diet = np.array(creatures_diet)
+        # num eats/creatures per food type (bar plots)
+        fig, ax = plt.subplots(2, 1)
+        ax[0].bar(x=food_types, height=num_eats_per_food_type)
+        ax[0].set_title('num_eats_per_food_type')
+        ax[1].bar(x=food_types + ['didnt eat'], height=num_creatures_that_eat_food_type)
+        ax[1].set_title('num_creatures_that_eat_food_type')
+
+        # Eat statistics graphs
+        num_eats_per_creature = np.sum(creatures_nutrition_vs_step_matrix >= 1, axis=0)  # sum steps
+        num_eats_per_step = np.sum(creatures_nutrition_vs_step_matrix >= 1, axis=1)  # sum creatures
+
+        fig, ax = plt.subplots(2, 1)
+        creatures_ids = np.arange(0, max_id)
+        is_didnt_eat = creatures_diet == -1
+        is_herbivore = creatures_diet == 0
+        is_carnivore = creatures_diet == 1
+        ax[0].plot(creatures_ids[is_didnt_eat], num_eats_per_creature[is_didnt_eat],
+                   'ko', label='didnt eat')  # , markersize=5)
+        ax[0].plot(creatures_ids[is_herbivore], num_eats_per_creature[is_herbivore],
+                   'go', label='herbivore')  # , markersize=5)
+        ax[0].plot(creatures_ids[is_carnivore], num_eats_per_creature[is_carnivore],
+                   'ro', label='carnivore')  # , markersize=5)
+        ax[0].set_title('How many each creature ate in its life')
+        ax[0].set_xlabel('creature id')
+        ax[0].minorticks_on()
+        ax[0].grid(which='major', color='gray', linestyle='-', linewidth=0.8)
+        ax[0].grid(which='minor', color='lightgray', linestyle=':', linewidth=0.8)
+        ax[0].legend()
+
+        ax[1].plot(num_eats_per_step, 'o')  # , markersize=5)
+        ax[1].set_title('How many creatures ate in each step')
+        ax[1].set_xlabel('step number')
+        ax[1].minorticks_on()
+        ax[1].grid(which='major', color='gray', linestyle='-', linewidth=0.8)
+        ax[1].grid(which='minor', color='lightgray', linestyle=':', linewidth=0.8)
+        if to_show:
+            plt.show()
+
+    def plot_num_herbivores_vs_num_carnivores_per_step(self, to_show: bool = False):
+        plt.figure()
+        plt.plot(self.num_herbivores_per_step, label='num herbivores')
+        plt.plot(self.num_carnivores_per_step, label='num carnivores')
+        # plt.plot(statistics_logs.num_creatures_per_step, label='num creatures')
+        # plt.plot(statistics_logs.num_new_creatures_per_step, label='num new childs')
+        # plt.plot(statistics_logs.num_grass_history, label='num grass points')
+        plt.xlabel('step number')
+        plt.grid(which='both')
+        plt.legend()
+        if to_show:
+            plt.show()

@@ -465,14 +465,21 @@ def update_creatures_logs(creatures: dict[int, Creature]):
 def update_environment_and_kd_trees(env: Environment,
                                     creatures: dict[int, Creature],
                                     creatures_kd_tree: KDTree,
-                                    is_time_to_update_kd_trees: bool):
-    # Update environment vegetation (generate new points if conditions are met)
+                                    to_update_kd_tree: dict[bool],
+                                    step_counter: int):
+    # Add new grass points to waiting list (will be updated if is
     env.update()
 
-    # Update KDTree every "kdtree_update_interval" steps
-    if is_time_to_update_kd_trees:
-        creatures_kd_tree = update_creatures_kd_tree(creatures=creatures)
+    # Update KDTree if needed or every "kdtree_update_interval" steps
+    is_time_to_update_kd_trees = step_counter % config.UPDATE_KDTREE_INTERVAL == 0
+    if to_update_kd_tree['grass'] or is_time_to_update_kd_trees:
         env.update_grass_kd_tree()
+
+    if to_update_kd_tree['leaf'] or is_time_to_update_kd_trees:
+        pass
+
+    if to_update_kd_tree['creature'] or is_time_to_update_kd_trees:
+        creatures_kd_tree = update_creatures_kd_tree(creatures=creatures)
 
     return creatures_kd_tree
 

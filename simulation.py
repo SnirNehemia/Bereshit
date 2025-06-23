@@ -158,27 +158,13 @@ class Simulation:
         # Update creatures logs (after movement, eating and reproduction)
         simulation_utils.update_creatures_logs(creatures=self.creatures)
 
-        # Update environment and KD trees
-        is_time_to_update_kd_trees = self.step_counter % config.UPDATE_KDTREE_INTERVAL == 0
-        if to_update_kd_tree['grass']:
-            self.env.remove_grass_points()
-            if not is_time_to_update_kd_trees:
-                self.env.update_grass_kd_tree()
-
-        if to_update_kd_tree['leaf']:
-            pass
-
-        if to_update_kd_tree['creature']:
-            if not is_time_to_update_kd_trees:
-                self.creatures_kd_tree = \
-                    simulation_utils.update_creatures_kd_tree(creatures=self.creatures)
-
-        # generate new food points in the environment and update KD tree if condition are met
+        # Update environment (generate new food points) and update KD trees if conditions are met
         self.creatures_kd_tree = simulation_utils.update_environment_and_kd_trees(
             env=self.env,
             creatures=self.creatures,
             creatures_kd_tree=self.creatures_kd_tree,
-            is_time_to_update_kd_trees=is_time_to_update_kd_trees)
+            to_update_kd_tree=to_update_kd_tree,
+            step_counter=self.step_counter)
 
         # Update step counter
         self.step_counter += 1

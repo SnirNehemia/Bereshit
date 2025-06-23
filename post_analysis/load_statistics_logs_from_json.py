@@ -25,22 +25,6 @@ def get_yamls_and_json(timestamp: str):  # TODO
 
 if __name__ == '__main__':
     # ----------------------- Eating creatures didn't work -------------------------------
-    # Name: 2025-06-21_T_13-54-52
-    # Num iterations: first run (100 frames, 2450 steps)
-    json_path = r"C:\Users\saar.nehemia\PycharmProjects\Bereshit\outputs\2025-06-21\2025-06-21_T_13-54-52\2025-06-21_T_13-54-52_statistics_logs.json"
-
-    # Name: 2025-06-21_T_15-06-52
-    # Num iterations: longer run (200 frames, 4450 steps)
-    json_path = r"C:\Users\saar.nehemia\PycharmProjects\Bereshit\outputs\2025-06-21\2025-06-21_T_15-06-52\2025-06-21_T_15-06-52_statistics_logs.json"
-
-    # Name: 2025-06-21_T_16-11-43
-    # Num iterations: same as above (200 frames, 4450 steps):
-    json_path = r"C:\Users\saar.nehemia\PycharmProjects\Bereshit\outputs\2025-06-21\2025-06-21_T_16-11-43\2025-06-21_T_16-11-43_statistics_logs.json"
-
-    # Name: 2025-06-21_T_16-35-47
-    # Num iterations: longer run (200 frames, 7900 steps):
-    json_path = r"C:\Users\saar.nehemia\PycharmProjects\Bereshit\outputs\2025-06-21\2025-06-21_T_16-35-47\2025-06-21_T_16-35-47_statistics_logs.json"
-
     # Name: 2025-06-21_T_18-55-17
     # Num iterations: longer run (200 frames, 20500 steps)
     # Code changes:

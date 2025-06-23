@@ -337,14 +337,16 @@ class Creature(StaticTraits):
 if __name__ == '__main__':
 
     brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
-    Brain = getattr(brain_module, 'Brain')
+    brain_obj = getattr(brain_module, 'Brain')
+    brain = brain_obj([config.INPUT_SIZE, config.OUTPUT_SIZE])
 
     creature = Creature(creature_id=0, gen=0, parent_id="0", birth_step=0,
                         max_age=100, max_mass=20, max_height=2, max_strength=config.INIT_MAX_STRENGTH,
                         max_speed=config.MAX_SPEED, max_energy=config.INIT_MAX_ENERGY, color=np.random.rand(3),
                         digest_dict=config.INIT_HERBIVORE_DIGEST_DICT, reproduction_energy=config.REPRODUCTION_ENERGY,
-                        eyes_params=config.EYES_PARAMS, vision_limit=config.VISION_LIMIT,
-                        brain=Brain([config.INPUT_SIZE, config.OUTPUT_SIZE]),
+                        eyes_channels=config.EYE_CHANNEL, eyes_params=config.EYES_PARAMS,
+                        vision_limit=config.VISION_LIMIT,
+                        brain=brain,
                         position=np.array([10, 10]))
 
     energies, velocities, positions = [], [], []

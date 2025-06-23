@@ -11,14 +11,11 @@ import matplotlib.animation as animation
 from matplotlib.patches import Circle
 import matplotlib.gridspec as gridspec
 
-import importlib
-
 from statistics_logs import StatisticsLogs
 from traits_evolution.trait_stacked_colored_histogram import trait_stacked_colored_histogram
 from traits_evolution.traits_scatter import plot_traits_scatter
 
-brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
-Brain = getattr(brain_module, 'Brain')
+import importlib
 
 global lineage_graph, traits_scat, quiv, scat, grass_scat, leaves_scat, agent_scat
 global fig, axes, progress_bar
@@ -37,8 +34,10 @@ class Simulation:
                                grass_generation_rate=config.GRASS_GENERATION_RATE,
                                leaves_generation_rate=config.LEAVES_GENERATION_RATE)
 
-        # Initialize creatures (ensuring they are not in forbidden areas).
-        self.creatures = simulation_utils.initialize_creatures(env=self.env)
+        # Initialize creatures (ensuring they are not in forbidden areas)
+        brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
+        brain_obj = getattr(brain_module, 'Brain')
+        self.creatures = simulation_utils.initialize_creatures(env=self.env, brain_obj=brain_obj)
         self.dead_creatures = dict()
         self.positions = []
 

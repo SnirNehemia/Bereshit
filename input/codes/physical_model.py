@@ -1,4 +1,5 @@
 import dataclasses
+from pathlib import Path
 
 import numpy as np
 
@@ -8,7 +9,7 @@ from input.codes.yaml_reading import read_yaml
 physical_model = None
 
 
-def load_physical_model(yaml_relative_path: str = ""):
+def load_physical_model(yaml_relative_path: str | Path = ""):
     global physical_model
     if physical_model is None:
         physical_model = PhysicalModel(yaml_relative_path=yaml_relative_path)

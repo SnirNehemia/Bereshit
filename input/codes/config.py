@@ -14,7 +14,7 @@ from input.codes.yaml_reading import read_yaml
 config = None
 
 
-def load_config(yaml_relative_path: str = ""):
+def load_config(yaml_relative_path: str | Path = ""):
     global config
     if config is None:
         config = Config(yaml_relative_path=yaml_relative_path)

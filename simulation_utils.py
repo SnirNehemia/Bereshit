@@ -1,5 +1,3 @@
-import importlib
-
 import numpy as np
 from scipy.spatial import KDTree
 
@@ -8,11 +6,8 @@ from input.codes.config import config
 from creature import Creature
 from environment import Environment
 
-brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
-Brain = getattr(brain_module, 'Brain')
 
-
-def initialize_creatures(env: Environment) -> dict[int, Creature]:
+def initialize_creatures(env: Environment, brain_obj) -> dict[int, Creature]:
     """
     Initializes creatures ensuring they are not placed in a forbidden (black) area.
     """
@@ -55,7 +50,7 @@ def initialize_creatures(env: Environment) -> dict[int, Creature]:
         eyes_dofs = 3 * len(eyes_params) * len(eyes_channels)  # 3 (flag, distance, angle) for each eye * X channels
         other_dofs = 3  # hunger, thirst, speed
         input_size = other_dofs + eyes_dofs
-        brain = Brain([input_size, output_size])
+        brain = brain_obj([input_size, output_size])
 
         # init creature
         creature = Creature(

@@ -155,9 +155,6 @@ class Simulation:
                                                  children_num=self.children_num,
                                                  step_counter=self.step_counter)
 
-        # Update creatures logs (after movement, eating and reproduction)
-        simulation_utils.update_creatures_logs(creatures=self.creatures)
-
         # Update environment (generate new food points) and update KD trees if conditions are met
         self.creatures_kd_tree = simulation_utils.update_environment_and_kd_trees(
             env=self.env,
@@ -376,14 +373,17 @@ class Simulation:
                 # Do simulation step
                 child_ids, dead_ids = self.do_step(dt=config.DT, noise_std=config.NOISE_STD)
 
-                # abort simulation if there are too many creatures or no creatures left
-                self.abort_simulation = simulation_utils.check_abort_simulation(creatures=self.creatures,
-                                                                                step_counter=self.step_counter)
+                # Update creatures logs (after movement, eating and reproduction)
+                simulation_utils.update_creatures_logs(creatures=self.creatures)
 
                 # Update statistics logs
                 self.statistics_logs.update_statistics_logs(creatures=self.creatures, env=self.env,
                                                             child_ids=child_ids, dead_ids=dead_ids,
                                                             step_counter=self.step_counter)
+
+                # abort simulation if there are too many creatures or no creatures left
+                self.abort_simulation = simulation_utils.check_abort_simulation(creatures=self.creatures,
+                                                                                step_counter=self.step_counter)
 
                 # Update the progress bar every step
                 if config.STATUS_EVERY_STEP:

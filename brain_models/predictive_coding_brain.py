@@ -10,11 +10,11 @@ from matplotlib import animation, pyplot as plt
 
 
 class PredictiveCodingBrain:
-    def __init__(self, input_dim, hidden_dims, output_dim=2, energy_reward=False):
+    def __init__(self, input_dim, hidden_dims, output_dim=2,
+                 energy_reward=False, trace_length=5, gamma=0.9):
         self.input_dim = input_dim
         self.hidden_dims = hidden_dims[:]
         self.output_dim = output_dim
-        self.energy_reward = energy_reward
 
         # Weight matrices
         self.W_encode = [torch.randn(h, i) * 0.1 for i, h in zip([input_dim] + hidden_dims[:-1], hidden_dims)]
@@ -25,7 +25,11 @@ class PredictiveCodingBrain:
         self.h = [torch.zeros(h) for h in hidden_dims]
 
         # Energy memory (for delta-energy reward modulation)
+        self.energy_reward = energy_reward
         self.last_energy = None
+        self.gamma = gamma
+        self.trace_length = trace_length
+        self.recent_hidden_states = []  # Store recent hidden states for eligibility traces
 
         # for plot
         self.layer_positions = []
@@ -54,7 +58,7 @@ class PredictiveCodingBrain:
                 h[i] += lr * delta_h
 
                 # Apply nonlinearity
-                h[i] = F.tanh(h[i])  # or F.relu(h[i]), or torch.sigmoid(h[i])
+                # h[i] = F.tanh(h[i])  # or F.relu(h[i]), or torch.sigmoid(h[i])
 
                 prediction = h[i]
                 step_errors.append(error)
@@ -73,6 +77,12 @@ class PredictiveCodingBrain:
 
         self.h = h
         force = torch.tanh(self.W_action @ h[-1])
+
+        # Save most recent hidden state for reward trace
+        self.recent_hidden_states.append(h[-1].clone().detach())
+        if len(self.recent_hidden_states) > self.trace_length:
+            self.recent_hidden_states.pop(0)
+
         return force, errors_per_step, hidden_states_per_step
 
     def local_update(self, x, errors, alpha=0.1, energy=None):
@@ -97,7 +107,11 @@ class PredictiveCodingBrain:
         if self.energy_reward and energy is not None and self.last_energy is not None:
             delta_energy = energy - self.last_energy
             reward_signal = torch.tanh(torch.tensor(delta_energy, dtype=torch.float32))
-            self.W_action += alpha * reward_signal * torch.outer(torch.ones(self.output_dim), self.h[-1])
+
+            # Use eligibility trace to assign reward over past hidden states
+            for t, h_trace in enumerate(reversed(self.recent_hidden_states)):
+                decay = self.gamma ** t
+                self.W_action += alpha * reward_signal * decay * torch.outer(torch.ones(self.output_dim), h_trace)
 
         self.last_energy = energy
         # self.clip_weights()
@@ -567,7 +581,7 @@ def example_animation():
 
     is_inference = False
     to_plot_inference_animation = False
-    to_plot_input_animation = False
+    to_plot_input_animation = True
     to_plot_summary_graph = True
 
     num_inputs = 1000
@@ -582,8 +596,8 @@ def example_animation():
 
     # generate inputs
     for input_idx in range(num_inputs):
-        # x_input = torch.rand(brain.input_dim)
-        x_input = torch.Tensor(input_idx / num_inputs * np.ones(brain.input_dim))
+        x_input = torch.rand(brain.input_dim)
+        # x_input = torch.Tensor(input_idx / num_inputs * np.ones(brain.input_dim))
         x_inputs.append(x_input)
 
     # Run brain
@@ -632,10 +646,10 @@ def example_animation():
             # brain.plot_total_errors_per_input(total_errors_per_input)
             brain.plot_total_errors_per_input(weights_change,
                                               xlabel="Encoder/decoder",
-                                              ylabel="Forbinius Norm",
-                                              title="Forbinius Norm for each weights matrix")
+                                              ylabel="Frobenius Norm",
+                                              title="Frobenius Norm for each weights matrix")
 
 
 if __name__ == '__main__':
-    example_brain()
-    # example_animation()
+    # example_brain()
+    example_animation()

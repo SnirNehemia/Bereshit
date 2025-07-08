@@ -20,14 +20,16 @@ class Creature(StaticTraits):
                  max_age: int, max_mass: float, max_height: float, max_strength: float,
                  max_speed: float, max_energy: float,
                  digest_dict: dict, reproduction_energy: float,
-                 eyes_params: list[tuple], vision_limit: float, brain,
+                 eyes_channels: list[str], eyes_params: list[tuple], vision_limit: float,
+                 brain,
                  position: np.ndarray):
         super().__init__(creature_id=creature_id,
                          gen=gen, parent_id=parent_id, birth_step=birth_step, color=color,
                          max_age=max_age, max_mass=max_mass, max_height=max_height, max_strength=max_strength,
                          max_speed=max_speed, max_energy=max_energy,
                          digest_dict=digest_dict, reproduction_energy=reproduction_energy,
-                         eyes_params=eyes_params, vision_limit=vision_limit, brain=brain)
+                         eyes_channels=eyes_channels, eyes_params=eyes_params, vision_limit=vision_limit,
+                         brain=brain)
 
         self.age = None
         self.mass = None
@@ -163,8 +165,9 @@ class Creature(StaticTraits):
                     std_mutation_factor = np.array(list(std_mutation_factors[trait_key].values()))
                     mutation_factor = np.random.normal(scale=std_mutation_factor)
                     for i, food_type in enumerate(self.digest_dict.keys()):
-                        self.digest_dict[food_type] += mutation_factor[i]
-                        self.digest_dict[food_type] = np.clip(self.digest_dict[food_type], 0, 1)
+                        if self.digest_dict[food_type] > 0:  # verify creature can eat this food type
+                            self.digest_dict[food_type] += mutation_factor[i]
+                            self.digest_dict[food_type] = np.clip(self.digest_dict[food_type], 0, 1)
                 else:
                     std_mutation_factor = std_mutation_factors[trait_key]
                     mutation_factor = np.random.normal(scale=std_mutation_factor)
@@ -173,10 +176,8 @@ class Creature(StaticTraits):
         # clip relevant traits
         self.color = np.clip(self.color, 0, 1)
 
-    def move(self, decision: np.array([float]), dt: float = config.DT,
-             debug_position=False, debug_energy=False, debug_force=False):
-
-        # constrain propulsion force based on strength
+    def transform_propulsion_force(self, decision):
+        # Clip propulsion force based on strength
         propulsion_force_mag, relative_propulsion_force_angle = decision
         propulsion_force_mag = np.clip(propulsion_force_mag, 0, 1) * self.strength
 
@@ -190,52 +191,44 @@ class Creature(StaticTraits):
         ])
         global_propulsion_force = global_propulsion_force_direction * propulsion_force_mag
 
-        # gravity and normal force (right now used only for friction and not in equation of motion because 2D movement)
-        gravity_force = self.mass * physical_model.g
-        normal_force = - gravity_force
+        return global_propulsion_force
 
-        # reaction friction force
-        if propulsion_force_mag > physical_model.mu_static * np.linalg.norm(normal_force):
-            reaction_friction_force = -physical_model.mu_kinetic * np.linalg.norm(
-                normal_force) * global_propulsion_force_direction
-        else:
-            reaction_friction_force = -global_propulsion_force
-
-        # drag force (air resistence)
-        linear_drag_force = - physical_model.gamma * self.height ** 2 * self.velocity
-        quadratic_drag_force = - physical_model.c_drag * self.height ** 2 * self.velocity ** 2 * current_direction
-        drag_force = linear_drag_force + quadratic_drag_force
-        if debug_force:
-            print(f'\t\t{linear_drag_force=}\n'
-                  f'\t\t{quadratic_drag_force=}\n'
-                  f'\t\t{reaction_friction_force=}\n'
-                  f'\t\t{drag_force=}')
-        # if self.is_agent:
-        self.log.add_record('linear_drag_force', np.linalg.norm(linear_drag_force))
-        self.log.add_record('quadratic_drag_force', np.linalg.norm(quadratic_drag_force))
-        self.log.add_record('reaction_friction_force_mag',
-                            np.linalg.norm(reaction_friction_force))
-        self.log.add_record('reaction_friction_force_angle',
-                            relative_propulsion_force_angle)
-
-        # calc new velocity and position
-        acceleration = (reaction_friction_force + drag_force) / self.mass
-        new_velocity = self.velocity + acceleration * dt
-        new_position = self.position + new_velocity * dt
-
-        if debug_position:
-            print(f'\t\t{acceleration=}\n'
-                  f'\t\t{self.velocity=} --> {new_velocity=}\n'
-                  f'\t\t{self.position} --> {new_position}')
-        # update position, velocity and speed
-        self.velocity = new_velocity
-        self.calc_speed()
-        self.position = new_position
-        self.log.add_record('speed', self.speed)  # it is recorded in simulation -> do_step function
-        # update energy
-        if debug_energy: print(f'\t\t{global_propulsion_force=}')
+    def calc_total_force_and_propulsion_energy(self, decision,
+                                               debug_force: bool = False):
+        # Propulsion force
+        global_propulsion_force = self.transform_propulsion_force(decision=decision)
         propulsion_energy = self.calc_propulsion_energy(global_propulsion_force)
+
+        # Gravity and normal force
+        gravity_force, normal_force = physical_model.calc_gravity_and_normal_forces(mass=self.mass)
+
+        # Reaction friction force
+        reaction_friction_force = physical_model.calc_reaction_friction_force(
+            normal_force=normal_force, propulsion_force=global_propulsion_force)
+
+        # Drag force (air resistence)
+        drag_force = physical_model.calc_drag_force(height=self.height,
+                                                    velocity=self.velocity,
+                                                    speed=self.speed)
+
+        total_force = reaction_friction_force + drag_force
+
+        if debug_force:
+            print(f'\t\t{reaction_friction_force=}\n'
+                  f'\t\t{drag_force=}')
+
+        # if self.is_agent:
+        self.log.add_record('gravity_force', gravity_force)
+        self.log.add_record('normal_force', normal_force)
+        self.log.add_record('reaction_friction_force', reaction_friction_force)
+        self.log.add_record('drag_force', drag_force)
+
+        return total_force, propulsion_energy
+
+    def update_energy(self, propulsion_energy, debug_energy: bool = False):
         inner_energy = self.calc_inner_energy()
+        self.energy -= propulsion_energy + inner_energy
+
         # if self.is_agent:
         self.log.add_record('energy_propulsion', propulsion_energy)
         self.log.add_record('energy_inner', inner_energy)
@@ -244,9 +237,40 @@ class Creature(StaticTraits):
             breakpoint('energy consumption < 0')
             raise ValueError('Energy consumption cannot be negative')
         if debug_energy: print(f'\t\t{propulsion_energy=:.1f} | {inner_energy=:.1f}')
-        self.energy -= propulsion_energy + inner_energy
 
-    
+    def update_position_and_velocity(self, total_force, dt, debug_position):
+        acceleration = total_force / self.mass
+        new_velocity = self.velocity + acceleration * dt
+        new_position = self.position + new_velocity * dt
+
+        if debug_position:
+            print(f'\t\t{acceleration=}\n'
+                  f'\t\t{self.velocity=} --> {new_velocity=}\n'
+                  f'\t\t{self.position} --> {new_position}')
+
+        # update position, velocity and speed
+        self.position = new_position
+        self.velocity = new_velocity
+        self.calc_speed()
+
+    def move(self, decision: np.array([float]), dt: float = config.DT,
+             debug_position=False, debug_energy=False, debug_force=False):
+        """
+        decision = [propulsion_force_mag, relative_propulsion_force_angle].
+        angle is relative to heading (== velocity direction)
+        """
+        # Calc total force and propulsion energy
+        total_force, propulsion_energy = \
+            self.calc_total_force_and_propulsion_energy(decision=decision, debug_force=debug_force)
+
+        # Update position and velocity
+        self.update_position_and_velocity(total_force=total_force,
+                                          dt=dt,
+                                          debug_position=debug_position)
+
+        # update energy
+        self.update_energy(propulsion_energy=propulsion_energy, debug_energy=debug_energy)
+
     @staticmethod
     def calc_propulsion_energy(propulsion_force):
         eta = physical_model.energy_conversion_factors['activity_efficiency']
@@ -313,14 +337,16 @@ class Creature(StaticTraits):
 if __name__ == '__main__':
 
     brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
-    Brain = getattr(brain_module, 'Brain')
+    brain_obj = getattr(brain_module, 'Brain')
+    brain = brain_obj([config.INPUT_SIZE, config.OUTPUT_SIZE])
 
     creature = Creature(creature_id=0, gen=0, parent_id="0", birth_step=0,
                         max_age=100, max_mass=20, max_height=2, max_strength=config.INIT_MAX_STRENGTH,
                         max_speed=config.MAX_SPEED, max_energy=config.INIT_MAX_ENERGY, color=np.random.rand(3),
-                        digest_dict=config.INIT_DIGEST_DICT, reproduction_energy=config.REPRODUCTION_ENERGY,
-                        eyes_params=config.EYES_PARAMS, vision_limit=config.VISION_LIMIT,
-                        brain=Brain([config.INPUT_SIZE, config.OUTPUT_SIZE]),
+                        digest_dict=config.INIT_HERBIVORE_DIGEST_DICT, reproduction_energy=config.REPRODUCTION_ENERGY,
+                        eyes_channels=config.EYE_CHANNEL, eyes_params=config.EYES_PARAMS,
+                        vision_limit=config.VISION_LIMIT,
+                        brain=brain,
                         position=np.array([10, 10]))
 
     energies, velocities, positions = [], [], []

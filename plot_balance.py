@@ -1,3 +1,4 @@
+import importlib
 from math import floor
 
 import numpy as np
@@ -174,6 +175,8 @@ class ParametricDashboard:
                         x_vector = self.x_vector[self.x_attr_list[i]]
                         if isinstance(x_vector, (np.ndarray, list)):
                             y = np.array(self.f_vector(f, self.x_attr_list[i], x_vector, agent, extra))
+                            if len(y.shape) > 1:
+                                y = y[:, 0]
                             line, = ax.plot(x_vector, y, label=label, color=color, alpha=0.5)
                         else:
                             y = f(agent, extra)
@@ -370,18 +373,18 @@ def total_drag_force(agent, physical_model):
 
 
 def sim_linear_force(agent, physical_model):
-    index = min([floor(agent.t / config.DT), len(agent.log.record['reaction_friction_force_mag']) - 1])
-    return agent.log.record['linear_drag_force'][index]
+    index = min([floor(agent.t / config.DT), len(agent.log.record['reaction_friction_force']) - 1])
+    return np.linalg.norm(agent.log.record['linear_drag_force'][index])
 
 
 def sim_total_drag_force(agent, physical_model):
-    index = min([floor(agent.t / config.DT), len(agent.log.record['reaction_friction_force_mag']) - 1])
-    return agent.log.record['linear_drag_force'][index] + agent.log.record['quadratic_drag_force'][index]
+    index = min([floor(agent.t / config.DT), len(agent.log.record['reaction_friction_force']) - 1])
+    return np.linalg.norm(agent.log.record['drag_force'][index])
 
 
 def sim_propulsion_force(agent, physical_model):
-    index = min([floor(agent.t / config.DT), len(agent.log.record['reaction_friction_force_mag']) - 1])
-    return agent.log.record['reaction_friction_force_mag'][index]
+    index = min([floor(agent.t / config.DT), len(agent.log.record['reaction_friction_force']) - 1])
+    return np.linalg.norm(agent.log.record['reaction_friction_force'][index])
 
 
 # ---------------- General functions ----------------
@@ -391,7 +394,8 @@ def run_simulation(agent, physical_model,
     average_eating_rate = agent.average_eating_rate
     distance = 5
     angle = np.radians(5)
-    eyes_inputs = np.array([1, distance, angle])  # change to a specific policy
+    eyes_inputs = [np.array([1, distance, angle])
+                   for _ in range(len(agent.eyes_channels) * len(agent.eyes_params))]  # change to a specific policy
     if debug_energy: print(f'{agent.t:.1f} starting -> {agent.energy:.1f}')
     if debug_position: print(f'{agent.t:.1f} starting -> {np.linalg.norm(agent.position)=:.1f}')
     if agent.t >= agent.max_age:
@@ -417,9 +421,7 @@ def run_simulation(agent, physical_model,
         agent.dead_count += 1
         return 0
     agent.live_count += 1
-    brain_input = [np.array([agent.hunger, agent.thirst]), agent.speed, eyes_inputs]
-    # brain_input.append(np.concatenate(eyes_inputs))
-    brain_input = np.hstack(brain_input)
+    brain_input = np.hstack([np.array([agent.hunger, agent.thirst]), agent.speed, np.concatenate(eyes_inputs)])
     if debug_energy: print(f'\t\t{brain_input=}')
     decision = agent.think(brain_input)
     if 0.5 < agent.own_0_const_1_rand_2 < 1.5:
@@ -460,7 +462,10 @@ def position_over_time(agent, physical_model, debug_position=False):
 
 def speed_over_time(agent, physical_model):
     index = min([floor(agent.t / config.DT), len(agent.log.record['speed']) - 1])
-    return agent.log.record['speed'][index]
+    if index == -1:
+        return 0
+    else:
+        return agent.log.record['speed'][index]
 
 
 def sim_energy_inner(agent, physical_model):
@@ -497,7 +502,7 @@ def sim_energy_propulsion(agent, physical_model):
 
 if __name__ == '__main__':
     # Load config
-    config_yaml_relative_path = r"input\yamls\2025_06_21_config_rebalance.yaml"
+    config_yaml_relative_path = r"input\yamls\2025_06_20_config.yaml"
     config = load_config(yaml_relative_path=config_yaml_relative_path)
 
     # Load physical model
@@ -513,7 +518,9 @@ if __name__ == '__main__':
                       leaves_generation_rate=config.LEAVES_GENERATION_RATE)
 
     # Initialize creatures (ensuring they are not in forbidden areas).
-    agents = simulation_utils.initialize_creatures(env=env)
+    brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
+    brain_obj = getattr(brain_module, 'Brain')
+    agents = simulation_utils.initialize_creatures(env=env, brain_obj=brain_obj)
 
     agent = agents[0]
     agent.t = np.arange(0, agent.max_age) * config.DT  # time vector
@@ -664,7 +671,7 @@ if __name__ == '__main__':
     # Simulated force plot
 
     f_list.append([])
-    f_list[-1].append(sim_linear_force)
+    # f_list[-1].append(sim_linear_force)
     f_list[-1].append(sim_total_drag_force)
     f_list[-1].append(sim_propulsion_force)
     x_attr_list.append('t')

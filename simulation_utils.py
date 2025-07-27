@@ -338,10 +338,11 @@ def eat_food(creature: Creature,
     """
     # check if creature is full
     if creature.energy >= creature.max_energy:
-        return None
+        return None, None
 
     # init relevant variables
     food_energy = 0
+    food_point = None
     eaten_food_type = None
     is_food_condition_met = False
     food_list, food_to_remove_list = [], []
@@ -370,10 +371,12 @@ def eat_food(creature: Creature,
                 food_list = [creature_id for creature_id in creatures.keys()]
                 food_to_remove_list = creatures_ids_to_kill
                 pray_id = food_list[food_idx]
-                pray_mass = creatures[pray_id].mass
-                pray_energy = creatures[pray_id].energy
-                food_energy = pray_energy + physical_model.energy_conversion_factors['mass_energy'] * pray_mass
-                is_food_condition_met = creature.mass >= pray_mass
+                pray = creatures[pray_id]
+                food_energy = pray.energy + physical_model.energy_conversion_factors['mass_energy'] * pray.mass
+
+                is_child = creature.creature_id == pray.parent_id
+                is_father = creature.parent_id == pray.creature_id
+                is_food_condition_met = creature.mass >= pray.mass and not is_child and not is_father
 
             # Check if conditions to eat food are met (if so, eat and add to food_remove_list)
             food_point = food_list[food_idx]
@@ -390,7 +393,7 @@ def eat_food(creature: Creature,
                 eaten_food_type = food_type
                 break
 
-    return eaten_food_type
+    return eaten_food_type, food_point
 
 
 def do_purge(do_purge: bool,
@@ -398,8 +401,9 @@ def do_purge(do_purge: bool,
              creatures_ids_to_kill: list[int],
              creatures_ids_to_reproduce: list[int],
              step_counter: int):
+    creatures_ids_to_purge = []
     if config.DO_PURGE:
-        if do_purge:
+        if do_purge:  # criterion met
             purge_count = 0
             for creature_id, creature in creatures.items():
                 is_creature_can_be_killed = creature_id not in creatures_ids_to_kill and \
@@ -409,16 +413,16 @@ def do_purge(do_purge: bool,
                     # kill randomly
                     if np.random.rand(1) < 0.1:
                         purge_count += 1
-                        creatures_ids_to_kill.append(creature_id)
+                        creatures_ids_to_purge.append(creature_id)
 
                     # kill if creature is always slow
                     if creature.max_speed_exp <= config.PURGE_SPEED_THRESHOLD:
                         purge_count += 1
-                        creatures_ids_to_kill.append(creature_id)
+                        creatures_ids_to_purge.append(creature_id)
             print(f'\nStep {step_counter}: Purging {purge_count} creatures.')
             do_purge = False
 
-    return do_purge
+    return do_purge, creatures_ids_to_purge
 
 
 def kill_creatures(creatures_ids_to_kill: list[int],

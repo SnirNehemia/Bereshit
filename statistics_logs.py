@@ -18,7 +18,9 @@ class StatisticsLogs(Serializable):
         self.creatures_id_history = []
         self.num_grass_history = []
         self.num_leaves_history = []
-        self.log_eats_dict = {food_type: list() for food_type in config.INIT_HERBIVORE_DIGEST_DICT.keys()}
+        self.log_eats_dict = {food_type: list()
+                              for food_type in config.INIT_HERBIVORE_DIGEST_DICT.keys()}
+        self.death_causes_dict = {'age': [], 'fatigue': [], 'eaten': [], 'purge': []}
 
         # statistics log parameters
         self.traits_stat_names = ['energy', 'speed']
@@ -213,7 +215,7 @@ class StatisticsLogs(Serializable):
 
         # plot_creatures_nutrition_vs_step_matrix
         # plt.figure()
-        food_type_colors = {'grass': 'green', 'leaf': 'darkgreen', 'creature': 'red'}
+        food_type_colors = {'grass': 'lightgreen', 'leaf': 'darkgreen', 'creature': 'red'}
         food_type_markers = {'grass': 'o', 'leaf': 's', 'creature': 'D'}
         for food_idx, food_type in enumerate(self.log_eats_dict.keys()):
             rows, cols = np.where(creatures_nutrition_vs_step_matrix == food_idx + 1)
@@ -238,9 +240,10 @@ class StatisticsLogs(Serializable):
         fig, ax = plt.subplots(2, 1)
         # ax[0].plot(creatures_lifespan_per_creature)
         # ax[0].set_title('How many steps each creature live')
+        # ax[0].set_xlabel('creature id')
         ax[0].hist(creatures_lifespan_per_creature)
         ax[0].set_title('How many steps each creature live - histogram')
-        ax[0].set_xlabel('creature id')
+        ax[0].set_xlabel('step number')
         ax[1].plot(creatures_lifespan_per_step)
         ax[1].set_title('How many creatures live in each step')
         ax[1].set_xlabel('step number')

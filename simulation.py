@@ -1,8 +1,12 @@
+import shutil
+
 import numpy as np
 
 from environment import Environment
 import simulation_utils
 from tqdm import tqdm
+
+from input.codes.physical_model import physical_model
 from input.codes.config import config
 import plot_utils as plot
 
@@ -93,7 +97,11 @@ class Simulation:
 
         for creature_id, creature in self.creatures.items():
             # death from age/fatigue/eaten by another creature
-            if creature.age >= creature.max_age or creature.energy <= 0:
+            if creature.age >= creature.max_age:
+                self.statistics_logs.death_causes_dict['age'].append(creature_id)
+                creatures_ids_to_kill.append(creature_id)
+            elif creature.energy <= 0:
+                self.statistics_logs.death_causes_dict['fatigue'].append(creature_id)
                 creatures_ids_to_kill.append(creature_id)
 
             if creature_id in creatures_ids_to_kill:
@@ -116,7 +124,7 @@ class Simulation:
                                            dt=dt)
 
                 # Check for nearby food
-                eaten_food_type = simulation_utils.eat_food(
+                eaten_food_type, food_point = simulation_utils.eat_food(
                     creature=creature,
                     env=self.env,
                     seek_result=seek_result,
@@ -127,6 +135,8 @@ class Simulation:
                 # record eaten_food_type to update kd tree afterward
                 if eaten_food_type is not None:
                     to_update_kd_tree[eaten_food_type] = True
+                    if eaten_food_type == 'creature':
+                        self.statistics_logs.death_causes_dict['eaten'].append(food_point)
 
                 # reproduce if able
                 energy_needed_to_reproduce = creature.reproduction_energy + config.MIN_LIFE_ENERGY
@@ -135,18 +145,6 @@ class Simulation:
                     creatures_ids_to_reproduce.append(creature_id)
 
         # ---------------------------- After all creatures actions ----------------------------------
-        # Purge
-        self.do_purge = simulation_utils.do_purge(do_purge=self.do_purge,
-                                                  creatures=self.creatures,
-                                                  creatures_ids_to_kill=creatures_ids_to_kill,
-                                                  creatures_ids_to_reproduce=creatures_ids_to_reproduce,
-                                                  step_counter=self.step_counter)
-
-        # kill creatures
-        new_dead_ids = simulation_utils.kill_creatures(creatures_ids_to_kill=creatures_ids_to_kill,
-                                                       creatures=self.creatures,
-                                                       dead_creatures=self.dead_creatures)
-
         # Reproduction
         new_child_ids, self.children_num, self.id_count = \
             simulation_utils.reporduce_creatures(creatures_ids_to_reproduce=creatures_ids_to_reproduce,
@@ -154,6 +152,21 @@ class Simulation:
                                                  id_count=self.id_count,
                                                  children_num=self.children_num,
                                                  step_counter=self.step_counter)
+
+        # Purge
+        self.do_purge, creatures_ids_to_purge = \
+            simulation_utils.do_purge(do_purge=self.do_purge,
+                                      creatures=self.creatures,
+                                      creatures_ids_to_kill=creatures_ids_to_kill,
+                                      creatures_ids_to_reproduce=creatures_ids_to_reproduce,
+                                      step_counter=self.step_counter)
+        self.statistics_logs.death_causes_dict['purge'].extend(creatures_ids_to_purge)
+        creatures_ids_to_kill.extend(creatures_ids_to_purge)
+
+        # kill creatures
+        new_dead_ids = simulation_utils.kill_creatures(creatures_ids_to_kill=creatures_ids_to_kill,
+                                                       creatures=self.creatures,
+                                                       dead_creatures=self.dead_creatures)
 
         # Update environment (generate new food points) and update KD trees if conditions are met
         self.creatures_kd_tree = simulation_utils.update_environment_and_kd_trees(
@@ -276,8 +289,10 @@ class Simulation:
             # Initial creature positions
             self.positions = np.array([creature.position for creature in self.creatures.values()])
             colors = [creature.color for creature in self.creatures.values()]
+            edge_colors = ['r' if creature.digest_dict['creature'] > 0 else 'g' for creature in self.creatures.values()]
             sizes = np.array([creature.mass for creature in self.creatures.values()]) * config.FOOD_SIZE / 100
-            scat = axes[1].scatter(self.positions[:, 0], self.positions[:, 1], c=colors, s=sizes,
+            scat = axes[1].scatter(self.positions[:, 0], self.positions[:, 1],
+                                   c=colors, s=sizes, edgecolor=edge_colors, linewidth=1.5,
                                    transform=axes[1].transData)
 
             # Create quiver arrows for creature headings
@@ -290,7 +305,7 @@ class Simulation:
                     U.append(0)
                     V.append(0)
             quiv = axes[1].quiver(self.positions[:, 0], self.positions[:, 1], U, V,
-                                  color=colors, scale=150, width=0.005)  # 'black'
+                                  color=colors, scale=500, width=0.005)  # 'black'
 
             # Scatter food points for vegetation
             grass_scat = axes[1].scatter([], [], c='lightgreen', edgecolors='black', s=10)
@@ -432,6 +447,7 @@ class Simulation:
                 self.positions = np.array([creature.position for creature in self.creatures.values()])
                 sizes = np.array([creature.mass for creature in self.creatures.values()]) * config.FOOD_SIZE  # / 10
                 colors = [creature.color for creature in self.creatures.values()]
+                edge_colors = ['r' if creature.digest_dict['creature'] > 0 else 'g' for creature in self.creatures.values()]
 
                 U, V = [], []
                 for creature in self.creatures.values():
@@ -464,9 +480,9 @@ class Simulation:
 
                         # Redraw scatter and quiver plots (positions & directions)
                         scat = axes[1].scatter(self.positions[:, 0], self.positions[:, 1],
-                                               c=colors, s=sizes)
+                                               c=colors, s=sizes, edgecolor=edge_colors, linewidth=1.5)
                         quiv = axes[1].quiver(self.positions[:, 0], self.positions[:, 1], U, V,
-                                              color=colors, scale=150, width=0.005)
+                                              color=colors, scale=500, width=0.005)
                 else:
                     # plot place holder
                     scat = axes[1].scatter([1], [1])
@@ -557,3 +573,13 @@ class Simulation:
             ani.save(config.ANIMATION_FILEPATH, writer="ffmpeg", dpi=100)
             plt.close(fig)
             print(f'Simulation animation saved as {config.ANIMATION_FILEPATH.stem}.')
+
+            # Plot and save creature statistics and env statistics summary graphs
+            self.statistics_logs.to_json(filepath=config.STATISTICS_LOGS_JSON_FILEPATH)
+            self.statistics_logs.plot_and_save_statistics_graphs(to_save=True)
+
+            # copy config and physical model to output folder
+            shutil.copyfile(src=config.yaml_path,
+                            dst=config.OUTPUT_FOLDER.joinpath(f"{config.timestamp}_config.yaml"))
+            shutil.copyfile(src=physical_model.yaml_path,
+                            dst=config.OUTPUT_FOLDER.joinpath(f"{config.timestamp}_physical_model.yaml"))

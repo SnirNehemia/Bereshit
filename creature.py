@@ -154,13 +154,11 @@ class Creature(StaticTraits):
         for trait_key in std_mutation_factors:
             if np.random.rand(1) < config.MUTATION_CHANCE:
                 if trait_key == 'eyes_params':
-                    # Mutate eyes_params
                     for eye_idx in range(len(self.eyes_params)):
                         for j in range(2):  # 2 for: angle offset, aperture
                             std_mutation_factor = std_mutation_factors[trait_key]
                             mutation_factor = np.random.normal(scale=std_mutation_factor)
                             self.eyes_params[eye_idx][j] += mutation_factor
-                # mutate digest dict
                 elif trait_key == 'digest_dict':
                     std_mutation_factor = np.array(list(std_mutation_factors[trait_key].values()))
                     mutation_factor = np.random.normal(scale=std_mutation_factor)
@@ -171,10 +169,12 @@ class Creature(StaticTraits):
                 else:
                     std_mutation_factor = std_mutation_factors[trait_key]
                     mutation_factor = np.random.normal(scale=std_mutation_factor)
-                    setattr(self, trait_key, getattr(self, trait_key) + mutation_factor)
-
-        # clip relevant traits
-        self.color = np.clip(self.color, 0, 1)
+                    new_trait = getattr(self, trait_key) + mutation_factor
+                    if trait_key == 'color':
+                        new_trait = np.clip(new_trait, 0, 1)
+                    else:
+                        new_trait = max(0, new_trait)
+                    setattr(self, trait_key, new_trait)
 
     def transform_propulsion_force(self, decision):
         # Clip propulsion force based on strength

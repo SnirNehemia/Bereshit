@@ -370,13 +370,13 @@ def eat_food(creature: Creature,
             elif food_type == 'creature':
                 food_list = [creature_id for creature_id in creatures.keys()]
                 food_to_remove_list = creatures_ids_to_kill
-                pray_id = food_list[food_idx]
-                pray = creatures[pray_id]
-                food_energy = pray.energy + physical_model.energy_conversion_factors['mass_energy'] * pray.mass
+                prey_id = food_list[food_idx]
+                prey = creatures[prey_id]
+                food_energy = prey.energy + physical_model.energy_conversion_factors['mass_energy'] * prey.mass
 
-                is_child = creature.creature_id == pray.parent_id
-                is_father = creature.parent_id == pray.creature_id
-                is_food_condition_met = creature.mass >= pray.mass and not is_child and not is_father
+                is_child = creature.creature_id == prey.parent_id
+                is_father = creature.parent_id == prey.creature_id
+                is_food_condition_met = creature.mass >= prey.mass and not is_child and not is_father
 
             # Check if conditions to eat food are met (if so, eat and add to food_remove_list)
             food_point = food_list[food_idx]

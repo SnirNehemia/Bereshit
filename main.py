@@ -23,16 +23,6 @@ def main():
     sim = Simulation()
     sim.run_and_visualize()
 
-    # Plot and save creature statistics and env statistics summary graphs
-    sim.statistics_logs.to_json(filepath=config.STATISTICS_LOGS_JSON_FILEPATH)
-    sim.statistics_logs.plot_and_save_statistics_graphs(to_save=True)
-
-    # copy config and physical model to output folder
-    shutil.copyfile(src=config.yaml_path,
-                    dst=config.OUTPUT_FOLDER.joinpath(f"{config.timestamp}_config.yaml"))
-    shutil.copyfile(src=physical_model.yaml_path,
-                    dst=config.OUTPUT_FOLDER.joinpath(f"{config.timestamp}_physical_model.yaml"))
-
     total_time = time.time() - start_time
     print(f"Total simulation time: {total_time:.2f} seconds")
 

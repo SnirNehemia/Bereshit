@@ -1,11 +1,11 @@
 # Simulation parameters
 VERSION: 2.0
 DT: 2.5  # time passing between consecutive steps (relevant for age and movement)
-NUM_FRAMES: 75  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+NUM_FRAMES: 305  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
 
 # key is frame number and value is num steps per frame from this frame onward
-NUM_STEPS_FROM_FRAME_DICT: { 0: 1000,
-                             5: 500,
+NUM_STEPS_FROM_FRAME_DICT: { 0: 2000,
+                             5: 300,
 }
 
 FRAME_INTERVAL: 75  # interval between frames in animation [in ms]
@@ -42,7 +42,7 @@ MIN_LIFE_ENERGY: 5000  # energy to be left after reproduction
 GRASS_ENERGY: 2000
 LEAF_ENERGY: 2000
 
-CHANCE_TO_HERBIVORE: 0.3
+CHANCE_TO_HERBIVORE: 0.85
 
 INIT_HERBIVORE_DIGEST_DICT: { 'grass': 1,
                               'leaf': 0,
@@ -53,9 +53,9 @@ INIT_CARNIVORE_DIGEST_DICT: { 'grass': 0,
                               'creature': 1 }
 
 # Creatures parameters
-NUM_CREATURES: 500  # init size of population
-MAX_NUM_CREATURES: 1500
-INIT_MAX_AGE:  10000 # changed: 60000  # [sec] step_number * config.DT
+NUM_CREATURES: 200  # init size of population
+MAX_NUM_CREATURES: 500
+INIT_MAX_AGE:  40000 # changed: 60000  # [sec] step_number * config.DT
 ADOLESCENCE_AGE_FRACTION: 0.05  # [0-1] fraction of INIT_MAX_AGE for adulthood
 REPRODUCTION_COOLDOWN: 300  # [sec] minimal time between reproduction events
 INIT_MAX_MASS: 10  # [kg]

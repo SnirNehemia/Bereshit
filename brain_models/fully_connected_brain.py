@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-from input.codes.config import config
+from input.codes import config
 
 
 # TODO: pay attention to activation function and run as main to check the hidden layers
@@ -232,7 +232,12 @@ if __name__ == '__main__':
         matplotlib.use('MacOSX')
     else:
         matplotlib.use('TkAgg')
-    np.random.seed(0)
+
+    # Load config
+    config_yaml_relative_path = r"input\yamls\2025_06_20_config.yaml"
+    config = config.load_config(yaml_relative_path=config_yaml_relative_path)
+
+    # np.random.seed(0)
     # Example usage
     brain = Brain([3, 5])
     brain.layers[0][0, 0] = 1
@@ -264,7 +269,7 @@ if __name__ == '__main__':
     # print('Brain output')
     # print(brain.forward(np.ones(3)))
     # brain.set_activation(1, 'tanh')
-    output = brain.forward(np.random.rand(3))
+    output = brain.forward(np.random.rand(9))
     print('Output:', output)
     print('Effective size:', brain.size)
     fig, ax = plt.subplots()

@@ -5,7 +5,7 @@ from matplotlib.colors import Normalize
 from matplotlib.patches import FancyArrowPatch
 import platform, matplotlib
 import random, math
-from input.codes.config import config
+from input.codes import config
 
 # TODO: make closed loop activation tanh! or regulate it
 
@@ -523,6 +523,11 @@ class Brain:
 
 # Example usage:
 if __name__ == '__main__':
+
+    # Load config
+    config_yaml_relative_path = r"input\yamls\2025_06_20_config.yaml"
+    config = config.load_config(yaml_relative_path=config_yaml_relative_path)
+
     brain = Brain([2,5])
 
     # Add nodes.

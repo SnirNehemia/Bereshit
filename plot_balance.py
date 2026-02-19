@@ -1,7 +1,6 @@
 import importlib
 from math import floor
 
-import numpy as np
 import matplotlib
 
 matplotlib.use('TkAgg')
@@ -331,7 +330,6 @@ class ParametricDashboard:
 
 
 import numpy as np
-from types import SimpleNamespace
 
 
 # -------------- Energy functions --------------
@@ -520,7 +518,7 @@ if __name__ == '__main__':
     # Initialize creatures (ensuring they are not in forbidden areas).
     brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
     brain_obj = getattr(brain_module, 'Brain')
-    agents = simulation_utils.initialize_creatures(env=env, brain_obj=brain_obj)
+    agents = simulation_utils.init_creatures(env=env, brain_obj=brain_obj)
 
     agent = agents[0]
     agent.t = np.arange(0, agent.max_age) * config.DT  # time vector

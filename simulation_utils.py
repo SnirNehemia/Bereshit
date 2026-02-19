@@ -1,3 +1,5 @@
+import shutil
+
 import numpy as np
 from scipy.spatial import KDTree
 
@@ -7,7 +9,14 @@ from creature import Creature
 from environment import Environment
 
 
-def initialize_creatures(env: Environment, brain_obj) -> dict[int, Creature]:
+def init_environment():
+    # Create the environment. Ensure that 'map.png' exists and follows the color conventions.
+    return Environment(map_filename=config.ENV_PATH,
+                       grass_generation_rate=config.GRASS_GENERATION_RATE,
+                       leaves_generation_rate=config.LEAVES_GENERATION_RATE)
+
+
+def init_creatures(env: Environment, brain_obj) -> dict[int, Creature]:
     """
     Initializes creatures ensuring they are not placed in a forbidden (black) area.
     """
@@ -150,13 +159,13 @@ def seek(creatures: dict[int, Creature],
 
 
 def use_brain(creature: Creature, env: Environment, seek_result: dict, dt: float):
-    try:
-        brain_input = get_brain_input(creature=creature, seek_result=seek_result)
-        decision = creature.think(brain_input)
-        creature.move(decision=decision, dt=dt)
-    except Exception as e:
-        print(f'Error in Simulation (use_brain, movement) for creature:'
-              f' {creature.creature_id}:\n{e}')
+    # try:
+    brain_input = get_brain_input(creature=creature, seek_result=seek_result)
+    decision = creature.think(brain_input)
+    physical_model.move_creature(creature=creature, decision=decision, dt=dt)
+    # except Exception as e:
+    #     print(f'Error in Simulation (use_brain, movement) for creature:'
+    #           f' {creature.creature_id}:\n{e}')
         # breakpoint()
 
     # Collision detection
@@ -385,7 +394,8 @@ def eat_food(creature: Creature,
 
             if is_food_available and is_food_close_enough and is_food_condition_met:
                 # eat food and record it
-                creature.eat(food_type=food_type, food_energy=food_energy)
+                physical_model.digest_food(creature=creature, food_type=food_type, food_energy=food_energy,
+                                           rebalance=config.REBALANCE)
                 creature.log.add_record(f'eat_{food_type}', step_counter)
 
                 # remove food
@@ -536,6 +546,13 @@ def check_abort_simulation(creatures: dict[int, Creature], step_counter: int):
         abort_simulation = True
 
     return abort_simulation
+
+
+def copy_config_and_physical_model_to_output_folder():
+    shutil.copyfile(src=config.yaml_path,
+                    dst=config.OUTPUT_FOLDER.joinpath(f"{config.timestamp}_config.yaml"))
+    shutil.copyfile(src=physical_model.yaml_path,
+                    dst=config.OUTPUT_FOLDER.joinpath(f"{config.timestamp}_physical_model.yaml"))
 
 
 if __name__ == '__main__':

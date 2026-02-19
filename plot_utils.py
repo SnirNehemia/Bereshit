@@ -3,7 +3,6 @@
 import numpy as np
 
 from input.codes.config import config
-from input.codes.physical_model import physical_model
 
 
 def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x_label=False, ax_secondary=None):

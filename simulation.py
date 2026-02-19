@@ -1,12 +1,8 @@
-import shutil
-
 import numpy as np
 
-from environment import Environment
 import simulation_utils
 from tqdm import tqdm
 
-from input.codes.physical_model import physical_model
 from input.codes.config import config
 import plot_utils as plot
 
@@ -33,15 +29,13 @@ class Simulation:
     """
 
     def __init__(self):
-        # Create the environment. Ensure that 'map.png' exists and follows the color conventions.
-        self.env = Environment(map_filename=config.ENV_PATH,
-                               grass_generation_rate=config.GRASS_GENERATION_RATE,
-                               leaves_generation_rate=config.LEAVES_GENERATION_RATE)
+        # Initialize environment
+        self.env = simulation_utils.init_environment()
 
         # Initialize creatures (ensuring they are not in forbidden areas)
         brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
         brain_obj = getattr(brain_module, 'Brain')
-        self.creatures = simulation_utils.initialize_creatures(env=self.env, brain_obj=brain_obj)
+        self.creatures = simulation_utils.init_creatures(env=self.env, brain_obj=brain_obj)
         self.dead_creatures = dict()
         self.positions = []
 
@@ -447,7 +441,8 @@ class Simulation:
                 self.positions = np.array([creature.position for creature in self.creatures.values()])
                 sizes = np.array([creature.mass for creature in self.creatures.values()]) * config.FOOD_SIZE  # / 10
                 colors = [creature.color for creature in self.creatures.values()]
-                edge_colors = ['r' if creature.digest_dict['creature'] > 0 else 'g' for creature in self.creatures.values()]
+                edge_colors = ['r' if creature.digest_dict['creature'] > 0 else 'g' for creature in
+                               self.creatures.values()]
 
                 U, V = [], []
                 for creature in self.creatures.values():
@@ -574,12 +569,9 @@ class Simulation:
             plt.close(fig)
             print(f'Simulation animation saved as {config.ANIMATION_FILEPATH.stem}.')
 
-            # Plot and save creature statistics and env statistics summary graphs
+            # Save statistics logs to json file
             self.statistics_logs.to_json(filepath=config.STATISTICS_LOGS_JSON_FILEPATH)
-            self.statistics_logs.plot_and_save_statistics_graphs(to_save=True)
 
             # copy config and physical model to output folder
-            shutil.copyfile(src=config.yaml_path,
-                            dst=config.OUTPUT_FOLDER.joinpath(f"{config.timestamp}_config.yaml"))
-            shutil.copyfile(src=physical_model.yaml_path,
-                            dst=config.OUTPUT_FOLDER.joinpath(f"{config.timestamp}_physical_model.yaml"))
+            simulation_utils.copy_config_and_physical_model_to_output_folder()
+

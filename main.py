@@ -1,5 +1,3 @@
-# main.py
-import shutil
 import time
 
 from input.codes import config, physical_model

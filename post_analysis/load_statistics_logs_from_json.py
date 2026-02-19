@@ -1,6 +1,5 @@
 from pathlib import Path
 import matplotlib.pyplot as plt
-import numpy as np
 
 from input.codes import repos_utils
 from input.codes.config import load_config

@@ -81,10 +81,12 @@ class StatisticsLogs(Serializable):
         for stat_name, stat_func in self.stat_dict.items():
             getattr(self, f'{stat_name}_creature_{trait}_per_step').append(stat_func(creatures_trait))
 
-    def plot_creatures_statistics_graph(self, stat_trait: str):
+    def plot_creatures_statistics(self, timestamp: str, stat_trait: str):
         """
-        Plot a graph showing the number of current/new/dead creatures in every step and
-        a graph showing the min/mstatistics_ax/mean/std energy of all creatures alive in every step.
+        Plot a figure with 2 subplots:
+         1. Number of current/new/dead creatures in each step.
+         2. Min/max/mean/std trait (energy/speed) of all creatures alive in each step.
+
         :return:
         """
 
@@ -98,7 +100,7 @@ class StatisticsLogs(Serializable):
         statistics_ax[0].axhline(y=config.MAX_NUM_CREATURES,
                                  linestyle='--', color='b', label='max num creatures')
         statistics_ax[0].tick_params(axis='y', colors='b')
-        statistics_ax[0].set_title('num creatures per step')
+        statistics_ax[0].set_title(f'{timestamp}\nNum creatures per step')
         statistics_ax[0].legend()
 
         # plot number of alive creatures in second y-axis for clarity
@@ -126,10 +128,14 @@ class StatisticsLogs(Serializable):
 
         return statistics_fig
 
-    def plot_and_save_statistics_graphs(self, to_save: bool = False):
+    def plot_and_save_statistics_graphs(self, timestamp: str, to_save: bool = False):
+        """
+        Plot creature statistics and food sources per step
+        :return:
+        """
         # Plot and save creature traits statistics summary graphs
         for stat_trait in self.traits_stat_names:
-            statistics_fig = self.plot_creatures_statistics_graph(stat_trait=stat_trait)
+            statistics_fig = self.plot_creatures_statistics(timestamp=timestamp, stat_trait=stat_trait)
             statistics_fig.show()
 
             if to_save:
@@ -139,17 +145,17 @@ class StatisticsLogs(Serializable):
                 print(f'statistics fig saved as {statistics_fig_filepath.stem}.')
 
         # Plot and save env statistics summary graphs
-        self.plot_env_graph(to_save=to_save)
+        self.plot_num_food_sources(timestamp=timestamp, to_save=to_save)
 
-    def plot_env_graph(self, to_save: bool = False):
+    def plot_num_food_sources(self, timestamp: str, to_save: bool = False):
         """
-        Plot and save env statistics summary graphs
-        :param to_save:
+        Plot and optionally save the number of grass and leaves in each step
         :return:
         """
         env_fig, ax = plt.subplots(1, 1)
         ax.plot(self.num_grass_history, 'g.-', label='num grass')
         ax.plot(self.num_leaves_history, 'k.-', label='num leaves')
+        ax.set_title(f'{timestamp}\nNum of food sources per step')
         ax.legend()
         env_fig.show()
 
@@ -168,7 +174,7 @@ class StatisticsLogs(Serializable):
 
         return creatures_lifespan_vs_step
 
-    def plot_creatures_lifespan_vs_step_matrix(self, to_show: bool = False):
+    def plot_creatures_lifespan_vs_step_matrix(self, timestamp: str):
         """
         Plot an image of [num_steps, ids] showing creatures lifespan vs step number.
         :return:
@@ -180,13 +186,10 @@ class StatisticsLogs(Serializable):
         plt.figure()
         plt.imshow(creatures_lifespan_vs_step_matrix.T, cmap='gray_r',
                    aspect='auto', origin='lower', interpolation='none')
-        plt.title(f'alive creature ids vs. step number')
+        plt.title(f'{timestamp}\nalive creature ids vs. step number')
         plt.xlabel('step number')
         plt.ylabel('creature ids')
         plt.grid(which='both')
-
-        if to_show:
-            plt.show()
 
     def get_creatures_nutrition_vs_step_matrix(self):
         """
@@ -204,7 +207,7 @@ class StatisticsLogs(Serializable):
 
         return creatures_nutrition_vs_step_matrix
 
-    def plot_creatures_nutrition_vs_step_matrix(self, to_show: bool = False):
+    def plot_creatures_nutrition_vs_step_matrix(self, timestamp: str):
         """
         Plot an image of [num_steps, ids] showing which creatures ate in each step.
         :return:
@@ -222,15 +225,19 @@ class StatisticsLogs(Serializable):
             plt.scatter(rows, cols, label=food_type,
                         s=10, marker=food_type_markers[food_type],
                         c=food_type_colors[food_type], edgecolors='white', linewidths=0.5)
-        plt.title(f'Eating of creature ids vs. step number')
+        plt.title(f'{timestamp}\nEating of creature ids vs. step number')
         plt.xlabel('step number')
         plt.ylabel('creature ids')
         plt.grid(which='both')
         plt.legend()
-        if to_show:
-            plt.show()
 
-    def plot_creatures_lifespan_graphs(self, to_show: bool = False):
+    def plot_creatures_lifespan_graphs(self, timestamp: str):
+        """
+        Plot subplot with 2 graphs:
+        1. Histogram of how many steps each creature lived.
+        2. Graph of how many creatures live in each step.
+        :return:
+        """
         # get_creatures_lifespan_vs_step_matrix
         creatures_lifespan_vs_step_matrix = self.get_creatures_lifespan_vs_step_matrix()
         creatures_lifespan_per_creature = np.sum(creatures_lifespan_vs_step_matrix >= 1, axis=0)  # sum steps
@@ -239,10 +246,10 @@ class StatisticsLogs(Serializable):
         # lifespan statistics graphs
         fig, ax = plt.subplots(2, 1)
         # ax[0].plot(creatures_lifespan_per_creature)
-        # ax[0].set_title('How many steps each creature live')
+        # ax[0].set_title(f'{timestamp}\nHow many steps each creature live')
         # ax[0].set_xlabel('creature id')
         ax[0].hist(creatures_lifespan_per_creature)
-        ax[0].set_title('How many steps each creature live - histogram')
+        ax[0].set_title(f'{timestamp}\nHow many steps each creature live - histogram')
         ax[0].set_xlabel('step number')
         ax[1].plot(creatures_lifespan_per_step)
         ax[1].set_title('How many creatures live in each step')
@@ -250,10 +257,19 @@ class StatisticsLogs(Serializable):
         ax[1].minorticks_on()
         ax[1].grid(which='major', color='gray', linestyle='-', linewidth=0.8)
         ax[1].grid(which='minor', color='lightgray', linestyle=':', linewidth=0.8)
-        if to_show:
-            plt.show()
 
-    def plot_creatures_nutrition_graphs(self, to_show: bool = False):
+    def plot_creatures_nutrition_graphs(self, timestamp: str):
+        """
+        Plot 2 figures:
+            1. Subplot with 2 graphs:
+                a. Bar plot of number of eats per food type.
+                b. Bar plot of number of creatures that eat each food type.
+            2. Subplot with 2 graphs:
+                a. Graph of how much food each creature ate in its life.
+                b. Graph of how many creatures ate in each step.
+
+        :return:
+        """
         # get_creatures_nutrition_vs_step_matrix
         creatures_nutrition_vs_step_matrix = self.get_creatures_nutrition_vs_step_matrix()
         food_types = list(self.log_eats_dict.keys())
@@ -261,6 +277,7 @@ class StatisticsLogs(Serializable):
         num_eats_per_food_type = [np.sum(creatures_nutrition_vs_step_matrix == food_idx + 1)
                                   for food_idx in range(len(food_types))]
 
+        # get diet (0 = herbivore/1 = carnivore/-1 = didn't eat) for each creature
         creatures_diet = []
         num_creatures_that_eat_food_type = np.zeros(4)
         max_id = creatures_nutrition_vs_step_matrix.shape[1]
@@ -280,17 +297,19 @@ class StatisticsLogs(Serializable):
                 creatures_diet.append(-1)
 
         creatures_diet = np.array(creatures_diet)
+
         # num eats/creatures per food type (bar plots)
         fig, ax = plt.subplots(2, 1)
         ax[0].bar(x=food_types, height=num_eats_per_food_type)
-        ax[0].set_title('num_eats_per_food_type')
+        ax[0].set_title(f'{timestamp}\nNum eat events per food type')
         ax[1].bar(x=food_types + ['didnt eat'], height=num_creatures_that_eat_food_type)
-        ax[1].set_title('num_creatures_that_eat_food_type')
+        ax[1].set_title('Num creatures that eat food type')
 
         # Eat statistics graphs
         num_eats_per_creature = np.sum(creatures_nutrition_vs_step_matrix >= 1, axis=0)  # sum steps
         num_eats_per_step = np.sum(creatures_nutrition_vs_step_matrix >= 1, axis=1)  # sum creatures
 
+        # Plot how much food each creature ate in its life and how many creatures ate in each step
         fig, ax = plt.subplots(2, 1)
         creatures_ids = np.arange(0, max_id)
         is_didnt_eat = creatures_diet == -1
@@ -302,7 +321,7 @@ class StatisticsLogs(Serializable):
                    'go', label='herbivore')  # , markersize=5)
         ax[0].plot(creatures_ids[is_carnivore], num_eats_per_creature[is_carnivore],
                    'ro', label='carnivore')  # , markersize=5)
-        ax[0].set_title('How many each creature ate in its life')
+        ax[0].set_title(f'{timestamp}\nHow many each creature ate in its life')
         ax[0].set_xlabel('creature id')
         ax[0].minorticks_on()
         ax[0].grid(which='major', color='gray', linestyle='-', linewidth=0.8)
@@ -315,10 +334,12 @@ class StatisticsLogs(Serializable):
         ax[1].minorticks_on()
         ax[1].grid(which='major', color='gray', linestyle='-', linewidth=0.8)
         ax[1].grid(which='minor', color='lightgray', linestyle=':', linewidth=0.8)
-        if to_show:
-            plt.show()
 
-    def plot_num_herbivores_vs_num_carnivores_per_step(self, to_show: bool = False):
+    def plot_num_herbivores_vs_num_carnivores_per_step(self, timestamp: str):
+        """
+        Plot the number of herbivores and number of carnivores in each step.
+        :return:
+        """
         plt.figure()
         plt.plot(self.num_herbivores_per_step, label='num herbivores')
         plt.plot(self.num_carnivores_per_step, label='num carnivores')
@@ -326,7 +347,63 @@ class StatisticsLogs(Serializable):
         # plt.plot(statistics_logs.num_new_creatures_per_step, label='num new childs')
         # plt.plot(statistics_logs.num_grass_history, label='num grass points')
         plt.xlabel('step number')
+        plt.title(f'{timestamp}\nNum herbivores/carnivores per step')
         plt.grid(which='both')
         plt.legend()
-        if to_show:
-            plt.show()
+
+    def plot_death_causes_statistics(self, timestamp: str):
+        """
+        Plot bar graph of death causes statistics count (age, fatigue, eaten, purge)
+        :return:
+        """
+        death_cause_statistics_dict = {key: len(value) for key, value in self.death_causes_dict.items()}
+
+        plt.bar(x=list(death_cause_statistics_dict.keys()),
+                height=list(death_cause_statistics_dict.values()))
+        plt.xlabel('death cause')
+        plt.ylabel('num creatures')
+        plt.title(f'{timestamp}\nDeath causes statistics')
+        plt.grid(which='both')
+        plt.legend()
+
+    def plot_nutrition_rate_graph(self, timestamp: str):
+        """
+        Subplot with 2 graphs:
+        1. How many times each creature ate in its life
+        2. The mean/std/median of the eat rate for each creature (steps passed between eat events)
+        :return:
+        """
+        creatures_nutrition_vs_step_matrix = self.get_creatures_nutrition_vs_step_matrix()
+        nz_values = creatures_nutrition_vs_step_matrix.nonzero()
+        eaten_in_step = nz_values[0]
+        creature_ids = nz_values[1]
+
+        nutrition_dict = {creature_id: list() for creature_id in creature_ids}
+        for idx, creature_id in enumerate(creature_ids):
+            nutrition_dict[creature_id].append(eaten_in_step[idx])
+
+        creature_ids = np.unique(creature_ids)
+        nutrition_dict = dict(sorted(nutrition_dict.items()))
+
+        lens = [len(value) for value in nutrition_dict.values()]
+        diffs = [np.diff(value) for value in nutrition_dict.values()]
+        # diff_means = np.array([np.mean(diff)  if len(diff) > 0 else np.nan for diff in diffs])
+        # diff_stds = np.array([np.std(diff) if len(diff) > 0 else np.nan for diff in diffs])
+        diff_percentiles = np.array([np.nanpercentile(diff, [25, 50, 75]) if len(diff) > 0 else [np.nan, np.nan, np.nan] for diff in diffs])
+        p25, p50, p75 = zip(*diff_percentiles)
+        # diff_medians[~np.isnan(diff_medians)]
+
+        fig, ax = plt.subplots(2, 1, sharex=True)
+        ax[0].plot(creature_ids, lens, 'o', markersize=5)
+        ax[0].set_title(f'{timestamp}\nNum eat events per creature')
+        ax[0].grid(which='both')
+
+        # ax[1].errorbar(x=creature_ids, y=diff_means, yerr=diff_stds, fmt='o', capsize=5)
+        # ax[1].plot(, , 'o', markersize=10)
+        ax[1].plot(creature_ids, p50, '.-', label='Median', color='black', linewidth=2)
+        # Fill the area between the 25th and 75th percentiles
+        ax[1].fill_between(creature_ids, p25, p75,
+                           color='gray', alpha=0.3, label='25th to 75th Percentile Range')
+
+        ax[1].set_title('Eat events statistics per creature')
+        ax[1].grid(which='both')

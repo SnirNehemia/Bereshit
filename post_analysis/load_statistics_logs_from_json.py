@@ -1,8 +1,14 @@
 from pathlib import Path
+import matplotlib.pyplot as plt
+import numpy as np
 
 from input.codes import repos_utils
 from input.codes.config import load_config
 from input.codes.physical_model import load_physical_model
+
+from matplotlib import use
+
+use('TkAgg')
 
 
 def get_run_folder_relative_path(timestamp: str, outputs_folder_relative_path: Path):
@@ -178,16 +184,19 @@ if __name__ == '__main__':
     # ---------------------------------------------------------------------------------------
     # Reconstruct statistics logs
     outputs_folder_relative_path = Path(r"outputs")
-    timestamp = "2025-07-26_T_23-43-08"
+    timestamp = "2025-07-26_T_19-59-00"
     statistics_logs = load_statistics_logs_obj(timestamp=timestamp,
                                                outputs_folder_relative_path=outputs_folder_relative_path)
 
     # Plot things
-    # statistics_logs.plot_creatures_lifespan_vs_step_matrix()
-    # statistics_logs.plot_creatures_nutrition_vs_step_matrix()
-    # statistics_logs.plot_creatures_lifespan_graphs()
-    # statistics_logs.plot_creatures_nutrition_graphs()
-    statistics_logs.plot_num_herbivores_vs_num_carnivores_per_step(to_show=True)
-
-    print([f"{key}: {len(value)}" for key, value in statistics_logs.death_causes_dict.items()])
+    # statistics_logs.plot_creatures_statistics(timestamp=timestamp, stat_trait='energy')
+    # statistics_logs.plot_num_food_sources(timestamp=timestamp)
+    # statistics_logs.plot_creatures_lifespan_vs_step_matrix(timestamp=timestamp)
+    # statistics_logs.plot_creatures_nutrition_vs_step_matrix(timestamp=timestamp) # plot on top of previous graph now.
+    # statistics_logs.plot_creatures_lifespan_graphs(timestamp=timestamp)
+    # statistics_logs.plot_creatures_nutrition_graphs(timestamp=timestamp)
+    # statistics_logs.plot_num_herbivores_vs_num_carnivores_per_step(timestamp=timestamp)
+    # statistics_logs.plot_death_causes_statistics(timestamp=timestamp)
+    statistics_logs.plot_nutrition_rate_graph(timestamp=timestamp)
+    plt.show()
 

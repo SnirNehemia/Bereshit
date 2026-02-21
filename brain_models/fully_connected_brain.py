@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-from input.codes import config
+from input.codes import sim_config
 
 
 # TODO: pay attention to activation function and run as main to check the hidden layers

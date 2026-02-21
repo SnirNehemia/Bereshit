@@ -5,7 +5,7 @@ from matplotlib.colors import Normalize
 from matplotlib.patches import FancyArrowPatch
 import platform, matplotlib
 import random, math
-from input.codes.config import config
+from input.codes.sim_config import config
 
 # TODO: make closed loop activation tanh! or regulate it
 

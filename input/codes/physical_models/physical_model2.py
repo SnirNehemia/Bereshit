@@ -1,35 +1,66 @@
-import dataclasses
-from pathlib import Path
-
 import numpy as np
 
-from input.codes import repos_utils
-from input.codes.yaml_reading import read_yaml
-
-physical_model = None
+from input.codes.physical_models.physical_model_abc import PhysicalModel
 
 
-def load_physical_model(yaml_relative_path: str | Path = ""):
-    global physical_model
-    if physical_model is None:
-        physical_model = PhysicalModel(yaml_relative_path=yaml_relative_path)
-    return physical_model
-
-
-@dataclasses.dataclass
-class PhysicalModel:
-    def __init__(self, yaml_relative_path):
+class PhysicalModel2(PhysicalModel):
+    def __init__(self, **params):
         # init config based on data from yaml
-        self.project_folder = repos_utils.fetch_directory()
-        self.yaml_path = self.project_folder.joinpath(yaml_relative_path)
-        yaml_data = read_yaml(filepath=self.yaml_path)
-        for key, value in yaml_data.items():
+        super().__init__()
+
+        for key, value in params.items():
             setattr(self, key, value)
 
         # make needed adjustments
         self.trait_energy_func = lambda factor, rate, age: factor * np.exp(-rate * age)
 
-    def transform_propulsion_force(self, decision, creature):
+    def move_creature(self, creature, decision, dt,
+                      debug_position: bool = False, debug_energy: bool = False,
+                      debug_force: bool = False):
+        # Calc total force and propulsion energy
+        total_force, propulsion_energy = \
+            self._calc_total_force_and_propulsion_energy(creature=creature, decision=decision,
+                                                         debug_force=debug_force)
+
+        # Update position and velocity
+        self._update_position_and_velocity(creature=creature, total_force=total_force, dt=dt,
+                                           debug_position=debug_position)
+
+        # update energy
+        self._update_energy(creature=creature, propulsion_energy=propulsion_energy, debug_energy=debug_energy)
+
+    def digest_food(self, creature, food_type, food_energy,
+                    rebalance: bool = False):
+        gained_energy = creature.digest_dict[food_type] * food_energy
+
+        if creature.age < creature.adolescence:
+            creature.height, height_energy = self._convert_gained_energy_to_trait(
+                trait_type='height_energy',
+                old_trait=creature.height,
+                gained_energy=gained_energy,
+                age=creature.age,
+            )
+            creature.mass, mass_energy = self._convert_gained_energy_to_trait(
+                trait_type='mass_energy',
+                old_trait=creature.mass,
+                gained_energy=gained_energy,
+                age=creature.age,
+            )
+        else:
+            mass_energy, height_energy = 0, 0
+
+        excess_energy = gained_energy - height_energy - mass_energy
+        creature.energy += excess_energy
+
+        if rebalance:
+            creature.log.add_record('energy_excess', excess_energy)
+            creature.log.add_record('energy_gain', gained_energy)
+            creature.log.add_record('energy_height', height_energy)
+            creature.log.add_record('energy_mass', mass_energy)
+        else:
+            creature.log.add_record('energy_excess', excess_energy)
+
+    def _transform_propulsion_force(self, decision, creature):
         # Clip propulsion force based on strength
         propulsion_force_mag, relative_propulsion_force_angle = decision
         propulsion_force_mag = np.clip(propulsion_force_mag, 0, 1) * creature.strength
@@ -46,7 +77,7 @@ class PhysicalModel:
 
         return global_propulsion_force
 
-    def calc_gravity_and_normal_forces(self, creature):
+    def _calc_gravity_and_normal_forces(self, creature):
         """
         # Calculate gravity and normal force.
         Right now (2D movement) normal force is only used for friction
@@ -58,7 +89,7 @@ class PhysicalModel:
         normal_force = - gravity_force
         return gravity_force, normal_force
 
-    def calc_reaction_friction_force(self, normal_force, propulsion_force):
+    def _calc_reaction_friction_force(self, normal_force, propulsion_force):
         normal_force_mag = np.linalg.norm(normal_force)
         propulsion_force_mag = np.linalg.norm(propulsion_force)
         if propulsion_force_mag > self.mu_static * normal_force_mag:
@@ -69,7 +100,7 @@ class PhysicalModel:
             reaction_friction_force = - propulsion_force
         return reaction_friction_force
 
-    def calc_drag_force(self, creature):
+    def _calc_drag_force(self, creature):
         drag_force = [0, 0]
 
         if creature.speed > 1e-3:
@@ -80,13 +111,13 @@ class PhysicalModel:
 
         return drag_force
 
-    def calc_propulsion_energy(self, propulsion_force):
+    def _calc_propulsion_energy(self, propulsion_force):
         eta = self.energy_conversion_factors['activity_efficiency']
         c_heat = self.energy_conversion_factors['heat_loss']
         propulsion_energy = (1 / eta + c_heat) * np.linalg.norm(propulsion_force)
         return propulsion_energy
 
-    def calc_inner_energy(self, creature):
+    def _calc_inner_energy(self, creature):
         c_d = self.energy_conversion_factors['digest']
         c_h = self.energy_conversion_factors['height_energy']
         rest_energy = self.energy_conversion_factors['rest'] * creature.mass ** 0.75  # adds mass (BMR) energy
@@ -95,7 +126,7 @@ class PhysicalModel:
         inner_energy = inner_energy + creature.brain.size * self.energy_conversion_factors['brain_consumption']
         return inner_energy
 
-    def calc_trait_energy(self, trait_type, gained_energy, age):
+    def _calc_trait_energy(self, trait_type, gained_energy, age):
         trait_energy_params = self.trait_energy_params_dict[trait_type]
         factor = trait_energy_params['factor']
         rate = trait_energy_params['rate']
@@ -103,29 +134,29 @@ class PhysicalModel:
         trait_energy = trait_energy_func * gained_energy
         return trait_energy
 
-    def convert_gained_energy_to_trait(self, trait_type: str, old_trait: float,
-                                       gained_energy: float, age: float,
-                                       ):
-        trait_energy = self.calc_trait_energy(trait_type=trait_type, gained_energy=gained_energy, age=age)
+    def _convert_gained_energy_to_trait(self, trait_type: str, old_trait: float,
+                                        gained_energy: float, age: float,
+                                        ):
+        trait_energy = self._calc_trait_energy(trait_type=trait_type, gained_energy=gained_energy, age=age)
         c_trait = self.energy_conversion_factors[trait_type]
         new_trait = old_trait + trait_energy / c_trait
         return new_trait, trait_energy
 
-    def calc_total_force_and_propulsion_energy(self, creature, decision,
-                                               debug_force: bool = False):
+    def _calc_total_force_and_propulsion_energy(self, creature, decision,
+                                                debug_force: bool = False):
         # Propulsion force
-        global_propulsion_force = self.transform_propulsion_force(creature=creature, decision=decision)
-        propulsion_energy = self.calc_propulsion_energy(global_propulsion_force)
+        global_propulsion_force = self._transform_propulsion_force(creature=creature, decision=decision)
+        propulsion_energy = self._calc_propulsion_energy(global_propulsion_force)
 
         # Gravity and normal force
-        gravity_force, normal_force = self.calc_gravity_and_normal_forces(creature=creature)
+        gravity_force, normal_force = self._calc_gravity_and_normal_forces(creature=creature)
 
         # Reaction friction force
-        reaction_friction_force = self.calc_reaction_friction_force(
+        reaction_friction_force = self._calc_reaction_friction_force(
             normal_force=normal_force, propulsion_force=global_propulsion_force)
 
         # Drag force (air resistence)
-        drag_force = self.calc_drag_force(creature=creature)
+        drag_force = self._calc_drag_force(creature=creature)
 
         total_force = reaction_friction_force + drag_force
 
@@ -141,9 +172,9 @@ class PhysicalModel:
 
         return total_force, propulsion_energy
 
-    def update_energy(self, creature, propulsion_energy,
-                      debug_energy: bool = False):
-        inner_energy = self.calc_inner_energy(creature)
+    def _update_energy(self, creature, propulsion_energy,
+                       debug_energy: bool = False):
+        inner_energy = self._calc_inner_energy(creature)
         creature.energy -= propulsion_energy + inner_energy
 
         # if self.is_agent:
@@ -156,8 +187,8 @@ class PhysicalModel:
         if debug_energy: print(f'\t\t{propulsion_energy=:.1f} | {inner_energy=:.1f}')
 
     @staticmethod
-    def update_position_and_velocity(creature, total_force, dt,
-                                     debug_position: bool = False):
+    def _update_position_and_velocity(creature, total_force, dt,
+                                      debug_position: bool = False):
         acceleration = total_force / creature.mass
         new_velocity = creature.velocity + acceleration * dt
         new_position = creature.position + new_velocity * dt
@@ -171,46 +202,3 @@ class PhysicalModel:
         creature.position = new_position
         creature.velocity = new_velocity
         creature.calc_speed()
-
-    def move_creature(self, creature, decision, dt,
-                      debug_position=False, debug_energy=False, debug_force=False):
-        # Calc total force and propulsion energy
-        total_force, propulsion_energy = \
-            self.calc_total_force_and_propulsion_energy(creature=creature, decision=decision,
-                                                        debug_force=debug_force)
-
-        # Update position and velocity
-        self.update_position_and_velocity(creature=creature, total_force=total_force, dt=dt,
-                                          debug_position=debug_position)
-
-        # update energy
-        self.update_energy(creature=creature, propulsion_energy=propulsion_energy, debug_energy=debug_energy)
-
-    def digest_food(self, creature, food_type, food_energy, rebalance: bool):
-        gained_energy = creature.digest_dict[food_type] * food_energy
-
-        if creature.age < creature.adolescence:
-            creature.height, height_energy = self.convert_gained_energy_to_trait(
-                trait_type='height_energy',
-                old_trait=creature.height,
-                gained_energy=gained_energy,
-                age=creature.age,
-            )
-            creature.mass, mass_energy = self.convert_gained_energy_to_trait(
-                trait_type='mass_energy',
-                old_trait=creature.mass,
-                gained_energy=gained_energy,
-                age=creature.age,
-            )
-        else:
-            mass_energy, height_energy = 0, 0
-
-        excess_energy = gained_energy - height_energy - mass_energy
-        if rebalance:
-            creature.log.add_record('energy_excess', excess_energy)
-            creature.log.add_record('energy_gain', gained_energy)
-            creature.log.add_record('energy_height', height_energy)
-            creature.log.add_record('energy_mass', mass_energy)
-        else:
-            creature.log.add_record('energy_excess', excess_energy)
-        creature.energy += excess_energy

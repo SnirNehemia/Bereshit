@@ -3,8 +3,7 @@ import shutil
 import numpy as np
 from scipy.spatial import KDTree
 
-from input.codes.physical_model import physical_model
-from input.codes.config import config
+from input.codes.sim_config import config
 from creature import Creature
 from environment import Environment
 
@@ -106,70 +105,6 @@ def build_creatures_kd_tree(creatures: dict[int, Creature]) -> KDTree:
 
 def update_creatures_kd_tree(creatures: dict[int, Creature]) -> KDTree:
     return build_creatures_kd_tree(creatures)
-
-
-def seek(creatures: dict[int, Creature],
-         creatures_kd_tree: KDTree, env: Environment,
-         creatures_ids_to_kill: list,
-         creature: Creature, noise_std: float = 0.0,
-         ):
-    """
-    Uses the specified eye (given by eye_params: (angle_offset, aperture))
-    to detect a nearby target.
-    Computes the eye's viewing direction by rotating the creature's heading by angle_offset.
-    Returns (distance, signed_angle, idx) if a target is found within half the aperture, else None.
-    """
-    channel_results = {}
-
-    kd_tree = []
-    for i_eye, eye_params in enumerate(creature.eyes_params):
-        for eye_channel in creature.eyes_channels:
-            candidate_points = np.array([])
-            if eye_channel == 'grass':
-                if len(env.grass_points) > 0:
-                    kd_tree = env.grass_kd_tree
-                    candidate_points = np.array(env.grass_points)
-                    candidates_to_remove_list = env.grass_remove_list
-            elif eye_channel == 'leaf':
-                if len(env.leaf_points) > 0:
-                    candidate_points = np.array(env.leaf_points)
-                    candidates_to_remove_list = env.leaf_remove_list
-            # elif eye_channel == 'water':
-            #     candidate_points = np.array([[env.water_source[0], env.water_source[1]]])
-            #     candidates_to_remove_list = env.water_remove_list
-            elif eye_channel == 'creature':
-                kd_tree = creatures_kd_tree
-                candidate_points = np.array([c.position for c in creatures.values()])
-                candidates_to_remove_list = creatures_ids_to_kill
-
-            if len(candidate_points) > 0:
-                result = detect_target_from_kdtree(creature=creature,
-                                                   eye_params=eye_params,
-                                                   kd_tree=kd_tree,
-                                                   candidate_points=candidate_points,
-                                                   candidates_to_remove_list=candidates_to_remove_list,
-                                                   noise_std=noise_std)
-            else:
-                result = None
-
-            channel_name = f'{eye_channel}_{i_eye}'
-            channel_results[channel_name] = result
-
-    return channel_results
-
-
-def use_brain(creature: Creature, env: Environment, seek_result: dict, dt: float):
-    # try:
-    brain_input = get_brain_input(creature=creature, seek_result=seek_result)
-    decision = creature.think(brain_input)
-    physical_model.move_creature(creature=creature, decision=decision, dt=dt)
-    # except Exception as e:
-    #     print(f'Error in Simulation (use_brain, movement) for creature:'
-    #           f' {creature.creature_id}:\n{e}')
-        # breakpoint()
-
-    # Collision detection
-    detect_collision(creature=creature, env=env)
 
 
 def detect_collision(creature, env):
@@ -329,83 +264,6 @@ def calc_distance_and_angle_of_target(candidate, creature,
     return True, distance, angle
 
 
-def eat_food(creature: Creature,
-             env: Environment,
-             seek_result: dict,
-             creatures: dict[int, Creature],
-             creatures_ids_to_kill: list[int],
-             step_counter: int):
-    """
-
-    :param creature:
-    :param env:
-    :param seek_result: dict of '{channel}_{eye_idx}': [distance, angle, idx]
-    :param creatures:
-    :param creatures_ids_to_kill
-    :param step_counter:
-    :return: eaten_food_type: 'grass'/'leaf'/'creature' or None if no food was eaten
-    """
-    # check if creature is full
-    if creature.energy >= creature.max_energy:
-        return None, None
-
-    # init relevant variables
-    food_energy = 0
-    food_point = None
-    eaten_food_type = None
-    is_food_condition_met = False
-    food_list, food_to_remove_list = [], []
-
-    # Eat food if conditions are met
-    for key, value in seek_result.items():
-        food_type = key.split('_')[0]
-
-        # Check if eye found something and if creature can eat it
-        if value is None or creature.digest_dict[food_type] == 0:
-            continue
-        else:
-            food_distance, food_angle, food_idx = seek_result[key]
-
-            if food_type == 'grass':
-                food_list = env.grass_points
-                food_to_remove_list = env.grass_remove_list
-                food_energy = config.GRASS_ENERGY
-                is_food_condition_met = True
-            elif food_type == 'leaf':  # TODO - fix to relevant variables when adding leaves
-                food_list = env.leaf_points
-                food_to_remove_list = env.leaf_remove_list
-                food_energy = config.LEAF_ENERGY
-                is_food_condition_met = creature.height >= food_list[food_idx].height
-            elif food_type == 'creature':
-                food_list = [creature_id for creature_id in creatures.keys()]
-                food_to_remove_list = creatures_ids_to_kill
-                prey_id = food_list[food_idx]
-                prey = creatures[prey_id]
-                food_energy = prey.energy + physical_model.energy_conversion_factors['mass_energy'] * prey.mass
-
-                is_child = creature.creature_id == prey.parent_id
-                is_father = creature.parent_id == prey.creature_id
-                is_food_condition_met = creature.mass >= prey.mass and not is_child and not is_father
-
-            # Check if conditions to eat food are met (if so, eat and add to food_remove_list)
-            food_point = food_list[food_idx]
-            is_food_available = food_point not in food_to_remove_list
-            is_food_close_enough = food_distance <= config.FOOD_DISTANCE_THRESHOLD
-
-            if is_food_available and is_food_close_enough and is_food_condition_met:
-                # eat food and record it
-                physical_model.digest_food(creature=creature, food_type=food_type, food_energy=food_energy,
-                                           rebalance=config.REBALANCE)
-                creature.log.add_record(f'eat_{food_type}', step_counter)
-
-                # remove food
-                food_to_remove_list.append(food_point)
-                eaten_food_type = food_type
-                break
-
-    return eaten_food_type, food_point
-
-
 def do_purge(do_purge: bool,
              creatures: dict[int, Creature],
              creatures_ids_to_kill: list[int],
@@ -429,7 +287,7 @@ def do_purge(do_purge: bool,
                     if creature.max_speed_exp <= config.PURGE_SPEED_THRESHOLD:
                         purge_count += 1
                         creatures_ids_to_purge.append(creature_id)
-            print(f'\nStep {step_counter}: Purging {purge_count} creatures.')
+            # print(f'\nStep {step_counter}: Purging {purge_count} creatures.')
             do_purge = False
 
     return do_purge, creatures_ids_to_purge
@@ -547,13 +405,11 @@ def check_abort_simulation(creatures: dict[int, Creature], step_counter: int):
 
     return abort_simulation
 
-
-def copy_config_and_physical_model_to_output_folder():
-    shutil.copyfile(src=config.yaml_path,
+def copy_config_and_physical_model_to_output_folder(physical_model_full_path):
+    shutil.copyfile(src=config.full_path,
                     dst=config.OUTPUT_FOLDER.joinpath(f"{config.timestamp}_config.yaml"))
-    shutil.copyfile(src=physical_model.yaml_path,
+    shutil.copyfile(src=physical_model_full_path,
                     dst=config.OUTPUT_FOLDER.joinpath(f"{config.timestamp}_physical_model.yaml"))
-
 
 if __name__ == '__main__':
     for frame in range(10):

@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from input.codes.config import config
+from input.codes.sim_config import config
 
 
 def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x_label=False, ax_secondary=None):

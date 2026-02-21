@@ -7,8 +7,8 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 
-from input.codes.config import load_config
-from input.codes.physical_model import load_physical_model
+from input.codes.sim_config import load_config
+from input.codes.physical_models.physical_model2 import load_physical_model
 
 
 class ParametricDashboard:

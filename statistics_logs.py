@@ -1,6 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
-from input.codes.config import config
+from input.codes.sim_config import config
 from creature import Creature
 from environment import Environment
 from json_utils import Serializable

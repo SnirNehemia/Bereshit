@@ -1,5 +1,5 @@
 import numpy as np
-from input.codes.config import config, load_config
+from input.codes.sim_config import config
 
 import importlib
 

@@ -2,8 +2,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 from input.codes import repos_utils
-from input.codes.config import load_config
-from input.codes.physical_model import load_physical_model
+from input.codes.sim_config import load_config
+from input.codes.physical_models.physical_model2 import load_physical_model
 
 from matplotlib import use
 

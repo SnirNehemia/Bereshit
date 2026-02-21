@@ -1,7 +1,7 @@
 import numpy as np
 
-from input.codes.config import Config
-from input.codes.physical_model import PhysicalModel
+from input.codes.sim_config import Config
+from input.codes.physical_models.physical_model2 import PhysicalModel2
 
 
 def validate_config(config: Config):
@@ -19,7 +19,7 @@ def validate_config(config: Config):
         assert 0 <= c_digest <= 1, \
             'Config Error: INIT_CARNIVORE_DIGEST_DICT values must be between 0-1.'
 
-def validate_physical_model(physical_model: PhysicalModel):
+def validate_physical_model(physical_model: PhysicalModel2):
     assert physical_model.mu_static > physical_model.mu_kinetic, \
         f'Physical model error: {physical_model.mu_static=} must be larger' \
         f' than {physical_model.mu_kinetic=}'

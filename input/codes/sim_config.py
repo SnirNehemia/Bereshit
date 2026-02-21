@@ -1,7 +1,6 @@
 import dataclasses
 
 import platform
-from pathlib import Path
 from datetime import datetime
 
 import numpy as np
@@ -9,39 +8,32 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 from input.codes import repos_utils
-from input.codes.yaml_reading import read_yaml
-
-config = None
 
 
-def load_config(yaml_relative_path: str | Path = ""):
-    global config
-    if config is None:
-        config = Config(yaml_relative_path=yaml_relative_path)
-    return config
+# def load_config(config_name: str):
+#     global config
+#     if config is None:
+#         config = Config(config_name=config_name)
+#     return config
 
 
 @dataclasses.dataclass
 class Config:
-    def __init__(self, yaml_relative_path):
+    def __init__(self, config_name):
         # init config based on data from yaml
-        self.project_folder = repos_utils.fetch_directory()
-        self.yaml_path = self.project_folder.joinpath(yaml_relative_path)
-        yaml_data = read_yaml(filepath=self.yaml_path)
-        for key, value in yaml_data.items():
+        data_dict, self.full_path = repos_utils.get_data_from_config(config_name)
+        for key, value in data_dict.items():
             setattr(self, key, value)
 
-        # Define time formats
-        now = datetime.now()
-        self.datestamp = now.strftime('%Y-%m-%d')  # a directory of this name will be created
-        self.timestamp = now.strftime('%Y-%m-%d_T_%H-%M-%S')   # id for all run's outputs
+        # Store project folder
+        self.project_folder = repos_utils.fetch_directory()
 
         # make needed adjustments
-        self.update_config()
+        self.adjust_config()
 
-    def update_config(self):
+    def adjust_config(self):
         # set random seed (for mutation repeatability)
-        np.random.seed = 0
+        np.random.seed(0)
 
         # init plt things
         if platform.system() == 'Darwin':
@@ -64,11 +56,11 @@ class Config:
             self.EYES_PARAMS[i][0] = np.radians(self.EYES_PARAMS[i][0])
             self.EYES_PARAMS[i][1] = np.radians(self.EYES_PARAMS[i][1])
 
-        # Brain parameters  # TODO - need to change norm_input to depend on creature if have different eyes
-        norm_input = self.NORM_INPUT
-        for _ in range(len(self.EYES_PARAMS) * len(self.EYE_CHANNEL)):
-            norm_input = np.append(norm_input, [1, self.VISION_LIMIT, 1])
-        setattr(self, 'NORM_INPUT', norm_input)
+            # Brain parameters  # TODO - need to change norm_input to depend on creature if have different eyes
+            norm_input = self.NORM_INPUT
+            for _ in range(len(self.EYES_PARAMS) * len(self.EYE_CHANNEL)):
+                norm_input = np.append(norm_input, [1, self.VISION_LIMIT, 1])
+            setattr(self, 'NORM_INPUT', norm_input)
 
         # Mutations parameters
         if self.BRAIN_TYPE == 'fully_connected_brain':  # 'fully_connected_brain' or 'graphic_brain'
@@ -78,6 +70,14 @@ class Config:
 
         self.STD_MUTATION_FACTORS['color'] = np.ones(3) * self.STD_MUTATION_FACTORS['color']
         self.STD_MUTATION_FACTORS['eyes_params'] = np.radians(self.STD_MUTATION_FACTORS['eyes_params'])
+
+        self.update_config()
+
+    def update_config(self):
+        # Define time formats
+        now = datetime.now()
+        self.datestamp = now.strftime('%Y-%m-%d')  # a directory of this name will be created
+        self.timestamp = now.strftime('%Y-%m-%d_T_%H-%M-%S')  # id for all run's outputs
 
         # Filepaths
         setattr(self, 'OUTPUT_FOLDER',
@@ -93,3 +93,6 @@ class Config:
                 self.OUTPUT_FOLDER.joinpath(f"{self.timestamp}_env_fig.png"))
         setattr(self, 'STATISTICS_LOGS_JSON_FILEPATH',
                 self.OUTPUT_FOLDER.joinpath(f"{self.timestamp}_statistics_logs.json"))
+
+
+config = Config(config_name="2026_02_19_config.yaml")

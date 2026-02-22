@@ -1,7 +1,4 @@
 import numpy as np
-from input.codes.sim_config import config
-
-import importlib
 
 
 class StaticTraits:

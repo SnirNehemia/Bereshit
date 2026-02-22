@@ -5,7 +5,7 @@ from matplotlib.colors import Normalize
 from matplotlib.patches import FancyArrowPatch
 import platform, matplotlib
 import random, math
-from input.codes.sim_config import config
+from input.codes import sim_config
 
 # TODO: make closed loop activation tanh! or regulate it
 
@@ -243,7 +243,7 @@ class Brain:
         return self
 
     def normalize_input(self, input):
-        input /= config.NORM_INPUT  # normalize the input with prior knowledge
+        input /= sim_config.config.NORM_INPUT  # normalize the input with prior knowledge
         input = np.tanh(input)  # normalize the input further
         return input
 
@@ -533,7 +533,7 @@ if __name__ == '__main__':
 
     # Load config
     config_yaml_relative_path = r"input\yamls\2025_06_20_config.yaml"
-    config = config.load_config(yaml_relative_path=config_yaml_relative_path)
+    config = sim_config.config.load_config(yaml_relative_path=config_yaml_relative_path)
 
     brain = Brain([2, 5])
 
@@ -566,7 +566,7 @@ if __name__ == '__main__':
     # # Introduce a cycle (for demonstration).
     # brain.add_connection("H2", "H1", weight=0.3)
     for i in range(10):
-        brain.mutate(config.MUTATION_GRAPH_BRAIN)
+        brain.mutate(sim_config.config.MUTATION_GRAPH_BRAIN)
     brain.add_connection("H3", "H2", weight=-0.0001)
     # Set initial values for a forward pass starting from inputs.
     input = [1.0, 0.5]
@@ -584,12 +584,12 @@ if __name__ == '__main__':
     # # second forward pass
     # brain.graph.nodes["I0"]['value'] = 1.0
     # brain.graph.nodes["I1"]['value'] = 0.5
-    # brain.mutate(config.MUTATION_GRAPH_BRAIN)
-    # brain.mutate(config.MUTATION_GRAPH_BRAIN)
-    # brain.mutate(config.MUTATION_GRAPH_BRAIN)
-    # brain.mutate(config.MUTATION_GRAPH_BRAIN)
-    # brain.mutate(config.MUTATION_GRAPH_BRAIN)
-    # brain.mutate(config.MUTATION_GRAPH_BRAIN)
+    # brain.mutate(sim_config.config.MUTATION_GRAPH_BRAIN)
+    # brain.mutate(sim_config.config.MUTATION_GRAPH_BRAIN)
+    # brain.mutate(sim_config.config.MUTATION_GRAPH_BRAIN)
+    # brain.mutate(sim_config.config.MUTATION_GRAPH_BRAIN)
+    # brain.mutate(sim_config.config.MUTATION_GRAPH_BRAIN)
+    # brain.mutate(sim_config.config.MUTATION_GRAPH_BRAIN)
     # # brain.remove_node('H1')
     # print("Forward pass (starting from inputs):")
     # outputs = brain.forward(input, normalize=False)

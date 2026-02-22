@@ -1,6 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
-from input.codes.sim_config import config
+from input.codes import sim_config
 from creature import Creature
 from environment import Environment
 from json_utils import Serializable
@@ -19,7 +19,7 @@ class StatisticsLogs(Serializable):
         self.num_grass_history = []
         self.num_leaves_history = []
         self.log_eats_dict = {food_type: list()
-                              for food_type in config.INIT_HERBIVORE_DIGEST_DICT.keys()}
+                              for food_type in sim_config.config.INIT_HERBIVORE_DIGEST_DICT.keys()}
         self.death_causes_dict = {'age': [], 'fatigue': [], 'eaten': [], 'purge': []}
 
         # statistics log parameters
@@ -63,7 +63,7 @@ class StatisticsLogs(Serializable):
             self.update_trait_statistics_logs(creatures=creatures, trait='speed')
 
             # Update eating logs
-            for food_type in config.INIT_HERBIVORE_DIGEST_DICT.keys():
+            for food_type in sim_config.config.INIT_HERBIVORE_DIGEST_DICT.keys():
                 food_type_key = f'eat_{food_type}'
                 creature_ids_that_ate = [creature_id
                                          for creature_id, creature in creatures.items()
@@ -97,7 +97,7 @@ class StatisticsLogs(Serializable):
 
         statistics_fig, statistics_ax = plt.subplots(2, 1, sharex='all')
         statistics_ax[0].plot(num_creatures_per_step, 'b.-', label='alive')
-        statistics_ax[0].axhline(y=config.MAX_NUM_CREATURES,
+        statistics_ax[0].axhline(y=sim_config.config.MAX_NUM_CREATURES,
                                  linestyle='--', color='b', label='max num creatures')
         statistics_ax[0].tick_params(axis='y', colors='b')
         statistics_ax[0].set_title(f'{timestamp}\nNum creatures per step')
@@ -120,7 +120,7 @@ class StatisticsLogs(Serializable):
                                   marker='.',
                                   label=f'mean and std {stat_trait}')
         if stat_trait == 'energy':
-            statistics_ax[1].axhline(y=config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY,
+            statistics_ax[1].axhline(y=sim_config.config.REPRODUCTION_ENERGY + sim_config.config.MIN_LIFE_ENERGY,
                                      linestyle='--', color='r', label='reproduction threshold')
         statistics_ax[1].set_title(f'{stat_trait} statistics per step')
         statistics_ax[1].set_xlabel('step number')
@@ -139,8 +139,8 @@ class StatisticsLogs(Serializable):
             statistics_fig.show()
 
             if to_save:
-                statistics_fig_filepath = config.OUTPUT_FOLDER.joinpath(
-                    config.STATISTICS_FIG_FILEPATH.stem + f'_{stat_trait}.png')
+                statistics_fig_filepath = sim_config.config.OUTPUT_FOLDER.joinpath(
+                    sim_config.config.STATISTICS_FIG_FILEPATH.stem + f'_{stat_trait}.png')
                 statistics_fig.savefig(fname=statistics_fig_filepath)
                 print(f'statistics fig saved as {statistics_fig_filepath.stem}.')
 
@@ -160,7 +160,7 @@ class StatisticsLogs(Serializable):
         env_fig.show()
 
         if to_save:
-            env_fig.savefig(fname=config.ENV_FIG_FILE_PATH)
+            env_fig.savefig(fname=sim_config.config.ENV_FIG_FILE_PATH)
 
     def get_creatures_lifespan_vs_step_matrix(self):
         num_steps = len(self.creatures_id_history)

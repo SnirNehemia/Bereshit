@@ -1,7 +1,5 @@
 from abc import ABC, abstractmethod
 
-from creature import Creature
-
 
 class PhysicalModel(ABC):
     """Abstract base class for all physical models."""
@@ -10,7 +8,7 @@ class PhysicalModel(ABC):
         pass
 
     @abstractmethod
-    def move_creature(self, creature: Creature, decision, dt, **kwargs):
+    def move_creature(self, creature, decision, dt, **kwargs):
         """
         Update creature position, velocity and energy given decision (brain output).
         :param creature: Creature
@@ -19,14 +17,7 @@ class PhysicalModel(ABC):
         :param kwargs:
         :return:
         """
-        # update position, velocity and speed
-        creature.velocity += decision
-        creature.position += creature.velocity * dt
-        creature.calc_speed()
-
-        # update energy
-        propulsion_energy = self.energy_conversion_factors['activity_efficiency'] * decision[0]
-        creature.energy -= propulsion_energy
+        pass
 
     @abstractmethod
     def digest_food(self, creature, food_type, food_energy, **kwargs):
@@ -38,5 +29,4 @@ class PhysicalModel(ABC):
         :param kwargs:
         :return:
         """
-        creature.energy += creature.digest_dict[food_type] * food_energy
-
+        pass

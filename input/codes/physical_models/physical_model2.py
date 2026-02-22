@@ -60,7 +60,7 @@ class PhysicalModel2(PhysicalModel):
         else:
             creature.log.add_record('energy_excess', excess_energy)
 
-    def _transform_propulsion_force(self, decision, creature):
+    def _transform_propulsion_force(self, creature, decision):
         # Clip propulsion force based on strength
         propulsion_force_mag, relative_propulsion_force_angle = decision
         propulsion_force_mag = np.clip(propulsion_force_mag, 0, 1) * creature.strength

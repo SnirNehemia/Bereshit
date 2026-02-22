@@ -1,46 +1,34 @@
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-from input.codes import repos_utils
-from input.codes.sim_config import load_config
-from input.codes.physical_models.physical_model2 import load_physical_model
+from input.codes import repos_utils, sim_config
+from statistics_logs import StatisticsLogs
 
 from matplotlib import use
 
 use('TkAgg')
 
 
-def get_run_folder_relative_path(timestamp: str, outputs_folder_relative_path: Path):
-    datestamp = timestamp.split('_T')[0]
-    run_folder_relative_path = outputs_folder_relative_path.joinpath(datestamp).joinpath(timestamp)
-    return run_folder_relative_path
-
-
-def load_config_and_physical_model(timestamp: str, outputs_folder_relative_path: Path):
-    run_folder_relative_path = get_run_folder_relative_path(
-        timestamp=timestamp, outputs_folder_relative_path=outputs_folder_relative_path)
-    config_path = run_folder_relative_path.joinpath(timestamp + '_config.yaml')
-    physical_model_path = run_folder_relative_path.joinpath(timestamp + '_physical_model.yaml')
-
-    _ = load_config(yaml_relative_path=config_path)
-    _ = load_physical_model(yaml_relative_path=physical_model_path)
-
-
-def load_statistics_logs_obj(timestamp: str, outputs_folder_relative_path: Path):
-    # Load config and physical model
-    load_config_and_physical_model(
-        timestamp=timestamp, outputs_folder_relative_path=outputs_folder_relative_path)
-
-    # Load and reconstruct statistics_logs
+def get_run_folder_path(timestamp: str, outputs_folder_name: str):
     project_folder = repos_utils.fetch_directory()
-    run_folder_relative_path = get_run_folder_relative_path(
-        timestamp=timestamp, outputs_folder_relative_path=outputs_folder_relative_path)
-    statistics_logs_path = project_folder.joinpath(run_folder_relative_path). \
-        joinpath(timestamp + '_statistics_logs.json')
+    datestamp = timestamp.split('_T')[0]
+    run_folder_path = project_folder.joinpath(outputs_folder_name).\
+        joinpath(datestamp).joinpath(timestamp)
+    return run_folder_path
 
-    # Load and reconstruct statistics logs
-    from statistics_logs import StatisticsLogs
 
+def load_statistics_logs_obj(timestamp: str, outputs_folder_name: str):
+    # Get run folder
+    run_folder_path = get_run_folder_path(
+        timestamp=timestamp, outputs_folder_name=outputs_folder_name)
+
+    # Load config
+    config_path = run_folder_path.joinpath(timestamp + '_config.yaml')
+    sim_config.load_config(config_name=config_path,
+                           folder_full_path=run_folder_path)
+
+    # Load statistics_logs
+    statistics_logs_path = run_folder_path.joinpath(timestamp + '_statistics_logs.json')
     statistics_logs = StatisticsLogs.from_json(filepath=statistics_logs_path)
 
     return statistics_logs
@@ -182,10 +170,12 @@ if __name__ == '__main__':
 
     # ---------------------------------------------------------------------------------------
     # Reconstruct statistics logs
-    outputs_folder_relative_path = Path(r"outputs")
-    timestamp = "2025-07-26_T_19-59-00"
+    outputs_folder_name = "outputs"
+    timestamp = "2025-07-27_T_01-11-42"
+    # timestamp = "2026-02-22_T_02-30-07"
+
     statistics_logs = load_statistics_logs_obj(timestamp=timestamp,
-                                               outputs_folder_relative_path=outputs_folder_relative_path)
+                                               outputs_folder_name=outputs_folder_name)
 
     # Plot things
     # statistics_logs.plot_creatures_statistics(timestamp=timestamp, stat_trait='energy')
@@ -194,8 +184,7 @@ if __name__ == '__main__':
     # statistics_logs.plot_creatures_nutrition_vs_step_matrix(timestamp=timestamp) # plot on top of previous graph now.
     # statistics_logs.plot_creatures_lifespan_graphs(timestamp=timestamp)
     # statistics_logs.plot_creatures_nutrition_graphs(timestamp=timestamp)
-    # statistics_logs.plot_num_herbivores_vs_num_carnivores_per_step(timestamp=timestamp)
+    statistics_logs.plot_num_herbivores_vs_num_carnivores_per_step(timestamp=timestamp)
     # statistics_logs.plot_death_causes_statistics(timestamp=timestamp)
-    statistics_logs.plot_nutrition_rate_graph(timestamp=timestamp)
+    # statistics_logs.plot_nutrition_rate_graph(timestamp=timestamp)
     plt.show()
-

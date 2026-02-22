@@ -8,7 +8,7 @@ import matplotlib.gridspec as gridspec
 
 import simulation_utils
 from creature import Creature
-from input.codes.sim_config import config
+from input.codes import sim_config
 import plot_utils as plot
 
 from input.codes.physical_model_factory import PhysicalModelFactory
@@ -32,17 +32,14 @@ class Simulation:
 
     def __init__(self):
         # Init physical model
-        physical_model_config, physical_model_full_path = \
-            repos_utils.get_data_from_config(config_name=config.PHYSICAL_MODEL_CONFIG_NAME)
-        self.physical_model = PhysicalModelFactory.create(model_type=physical_model_config['model_type'],
-                                                          params=physical_model_config['parameters'])
-        self.physical_model_full_path = physical_model_full_path
+        self.physical_model, self.physical_model_path = \
+            PhysicalModelFactory.create(config_name=sim_config.config.PHYSICAL_MODEL_CONFIG_NAME)
 
         # Init environment
         self.env = simulation_utils.init_environment()
 
         # Init creatures (ensuring they are not in forbidden areas)
-        brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
+        brain_module = importlib.import_module(f"brain_models.{sim_config.config.BRAIN_TYPE}")
         brain_obj = getattr(brain_module, 'Brain')
         self.creatures = simulation_utils.init_creatures(env=self.env, brain_obj=brain_obj)
         self.dead_creatures = dict()
@@ -56,25 +53,27 @@ class Simulation:
         self.abort_simulation = False
         self.num_steps_per_frame = 0
         self.step_counter = 0  # Initialize step counter
-        self.id_count = config.NUM_CREATURES - 1
+        self.id_count = sim_config.config.NUM_CREATURES - 1
         self.focus_id = 0
         self.creatures[self.focus_id].make_agent()
-        config.OUTPUT_FOLDER.mkdir(exist_ok=True, parents=True)
+        sim_config.config.OUTPUT_FOLDER.mkdir(exist_ok=True, parents=True)
 
         self.do_purge = True  # flag for purge events
 
         # statistics logs
         self.statistics_logs = StatisticsLogs()
 
-        if config.DEBUG_MODE:
+        if sim_config.config.DEBUG_MODE:
             np.seterr(all='raise')  # Convert NumPy warnings into exceptions
 
-        self.statistics_logs.num_frames = config.NUM_FRAMES
+        self.statistics_logs.num_frames = sim_config.config.NUM_FRAMES
         self.statistics_logs.total_num_steps = \
-            simulation_utils.calc_total_num_steps(config.NUM_FRAMES)
-        print(f'{config.OUTPUT_FOLDER.stem}: '
-              f'Number of frames = {self.statistics_logs.num_frames}, '
-              f'Total number of steps = {self.statistics_logs.total_num_steps}')
+            simulation_utils.calc_total_num_steps(sim_config.config.NUM_FRAMES)
+        print('\n----------------------------------------')
+        print(f'Simulation {sim_config.config.OUTPUT_FOLDER.stem}: '
+              f'num frames = {self.statistics_logs.num_frames}, '
+              f'num steps = {self.statistics_logs.total_num_steps}')
+        print('----------------------------------------')
 
     def seek(self,
              creatures_ids_to_kill: list,
@@ -141,7 +140,7 @@ class Simulation:
         creatures_ids_to_reproduce = []
         creatures_ids_to_kill = []
         to_update_kd_tree = {food_type: False
-                             for food_type in config.INIT_HERBIVORE_DIGEST_DICT.keys()}
+                             for food_type in sim_config.config.INIT_HERBIVORE_DIGEST_DICT.keys()}
 
         for creature_id, creature in self.creatures.items():
             # death from age/fatigue/eaten by another creature
@@ -156,7 +155,7 @@ class Simulation:
                 continue
             else:
                 # Creature get older
-                creature.age += config.DT
+                creature.age += sim_config.config.DT
 
                 # Seek in environment
                 seek_result = self.seek(
@@ -183,7 +182,7 @@ class Simulation:
                         self.statistics_logs.death_causes_dict['eaten'].append(food_point)
 
                 # reproduce if able
-                energy_needed_to_reproduce = creature.reproduction_energy + config.MIN_LIFE_ENERGY
+                energy_needed_to_reproduce = creature.reproduction_energy + sim_config.config.MIN_LIFE_ENERGY
                 if (creature.energy > energy_needed_to_reproduce and
                         creature.can_reproduce(self.step_counter)):
                     creatures_ids_to_reproduce.append(creature_id)
@@ -327,7 +326,7 @@ class Simulation:
             self.positions = np.array([creature.position for creature in self.creatures.values()])
             colors = [creature.color for creature in self.creatures.values()]
             edge_colors = ['r' if creature.digest_dict['creature'] > 0 else 'g' for creature in self.creatures.values()]
-            sizes = np.array([creature.mass for creature in self.creatures.values()]) * config.FOOD_SIZE / 100
+            sizes = np.array([creature.mass for creature in self.creatures.values()]) * sim_config.config.FOOD_SIZE / 100
             scat = axes[1].scatter(self.positions[:, 0], self.positions[:, 1],
                                    c=colors, s=sizes, edgecolor=edge_colors, linewidth=1.5,
                                    transform=axes[1].transData)
@@ -350,7 +349,7 @@ class Simulation:
             agent_scat = axes[1].scatter(
                 [self.creatures[0].position[0]] * 2, [self.creatures[0].position[1]] * 2,
                 # Repeat position for N=2 rings
-                s=[60, 500],  # Different sizes for bullseye rings # config.FOOD_SIZE
+                s=[60, 500],  # Different sizes for bullseye rings # sim_config.config.FOOD_SIZE
                 facecolors=['none', 'none'],
                 edgecolors=['black', 'black'],
                 linewidth=2.5,
@@ -365,17 +364,18 @@ class Simulation:
             traits_scat = axes[3].scatter([], [], c=[], s=50)
 
             # Initialize the progress bar to print
-            if config.STATUS_EVERY_STEP:
-                update_num = simulation_utils.calc_total_num_steps(up_to_frame=config.NUM_FRAMES)
+            if sim_config.config.STATUS_EVERY_STEP:
+                update_num = simulation_utils.calc_total_num_steps(up_to_frame=sim_config.config.NUM_FRAMES)
             else:
-                update_num = config.NUM_FRAMES
+                update_num = sim_config.config.NUM_FRAMES
 
-            progress_bar = tqdm(total=update_num, desc=f"Alive: {len(self.creatures):4} | "
-                                                       f"Children: {self.children_num:4} | "
-                                                       f"Dead: {len(self.dead_creatures):4} | "
-                                                       f"leaves: {len(self.env.leaf_points):3} | "
-                                                       f"grass: {len(self.env.grass_points):3} | "
-                                                       f"Progress")
+            progress_bar = tqdm(total=update_num,
+                                desc=f"Herbivores: {0:4} | "
+                                     f"Carnivores: {0:4} | "
+                                     f"Alive: {0:4} | "
+                                     f"Children: {0:4} | "
+                                     f"Dead: {0:4} | "
+                                     f"Progress")
 
         def init_func():
             """
@@ -407,13 +407,6 @@ class Simulation:
 
             # abort simulation if no creatures left or there are too many creatures
             if self.abort_simulation:
-                if config.DEBUG_MODE:
-                    from matplotlib import use
-
-                    use('TkAgg')
-                    self.statistics_logs.plot_and_save_statistics_graphs(to_save=False)
-                    # breakpoint()
-
                 axes[1].set_title(f"Evolution Simulation ({frame=}, step={self.step_counter})")
                 progress_bar.update(self.num_steps_per_frame)
                 self.step_counter += self.num_steps_per_frame
@@ -423,7 +416,7 @@ class Simulation:
             # Run steps of frame
             for step in range(self.num_steps_per_frame):
                 # Do simulation step
-                child_ids, dead_ids = self.do_step(dt=config.DT, noise_std=config.NOISE_STD)
+                child_ids, dead_ids = self.do_step(dt=sim_config.config.DT, noise_std=sim_config.config.NOISE_STD)
 
                 # Update creatures logs (after movement, eating and reproduction)
                 simulation_utils.update_creatures_logs(creatures=self.creatures)
@@ -440,34 +433,36 @@ class Simulation:
                         step_counter=self.step_counter)
 
                 # Update the progress bar every step
-                if config.STATUS_EVERY_STEP:
-                    progress_bar.set_description(f"Alive: {len(self.creatures):4} | "
-                                                 f"Children: {self.children_num:4} | "
-                                                 f"Dead: {len(self.dead_creatures):4} | "
-                                                 f"leaves: {len(self.env.leaf_points):3} | "
-                                                 f"grass: {len(self.env.grass_points):3} | "
-                                                 f"Progress")
+                if sim_config.config.STATUS_EVERY_STEP:
+                    progress_bar.set_description(
+                        f"Herbivores: {self.statistics_logs.num_herbivores_per_step[-1]:4} | "
+                        f"Carnivores: {self.statistics_logs.num_carnivores_per_step[-1]:4} | "
+                        f"Alive: {len(self.creatures):4} | "
+                        f"Children: {self.children_num:4} | "
+                        f"Dead: {len(self.dead_creatures):4} | "
+                        f"Progress")
                     progress_bar.update(1)  # or self.num_steps_per_frame outside the for loop
 
             # update the progress bar every frame
-            if not config.STATUS_EVERY_STEP:
-                progress_bar.set_description(f"Alive: {len(self.creatures):4} | "
-                                             f"Children: {self.children_num:4} | "
-                                             f"Dead: {len(self.dead_creatures):4} | "
-                                             f"leaves: {len(self.env.leaf_points):3} | "
-                                             f"grass: {len(self.env.grass_points):3} | "
-                                             f"Progress")
+            if not sim_config.config.STATUS_EVERY_STEP:
+                progress_bar.set_description(
+                    f"Herbivores: {self.statistics_logs.num_herbivores_per_step[-1]:4} | "
+                    f"Carnivores: {self.statistics_logs.num_carnivores_per_step[-1]:4} | "
+                    f"Alive: {len(self.creatures):4} | "
+                    f"Children: {self.children_num:4} | "
+                    f"Dead: {len(self.dead_creatures):4} | "
+                    f"Progress")
                 progress_bar.update(1)  # or self.num_steps_per_frame outside the for loop
 
             # Do purge if PURGE_FRAME_FREQUENCY frames passed (to clear static agents)
-            if config.DO_PURGE:
-                is_time_to_purge = frame % config.PURGE_FRAME_FREQUENCY == 0
+            if sim_config.config.DO_PURGE:
+                is_time_to_purge = frame % sim_config.config.PURGE_FRAME_FREQUENCY == 0
                 is_too_many_creatures = \
-                    len(self.creatures) > config.MAX_NUM_CREATURES * config.PURGE_POP_PERCENTAGE
-                if is_time_to_purge and is_too_many_creatures:
+                    len(self.creatures) > sim_config.config.MAX_NUM_CREATURES * sim_config.config.PURGE_POP_PERCENTAGE
+                if is_time_to_purge or is_too_many_creatures:
                     self.do_purge = True
 
-            if config.DEBUG_MODE:
+            if sim_config.config.DEBUG_MODE:
                 from matplotlib import use
 
                 use('TkAgg')
@@ -484,7 +479,7 @@ class Simulation:
                 # Update creature positions and directions
                 num_creatures_in_last_frame = len(self.positions)
                 self.positions = np.array([creature.position for creature in self.creatures.values()])
-                sizes = np.array([creature.mass for creature in self.creatures.values()]) * config.FOOD_SIZE  # / 10
+                sizes = np.array([creature.mass for creature in self.creatures.values()]) * sim_config.config.FOOD_SIZE  # / 10
                 colors = [creature.color for creature in self.creatures.values()]
                 edge_colors = ['r' if creature.digest_dict['creature'] > 0 else 'g' for creature in
                                self.creatures.values()]
@@ -609,7 +604,7 @@ class Simulation:
         try:
             init_fig()
             ani = animation.FuncAnimation(fig=fig, func=update_func, init_func=init_func, blit=True,
-                                          frames=config.NUM_FRAMES, interval=config.FRAME_INTERVAL)
+                                          frames=sim_config.config.NUM_FRAMES, interval=sim_config.config.FRAME_INTERVAL)
             # print('\nSimulation completed successfully. saving progress...')
 
         except KeyboardInterrupt:
@@ -617,15 +612,15 @@ class Simulation:
 
         finally:
             # Save animation
-            ani.save(config.ANIMATION_FILEPATH, writer="ffmpeg", dpi=100)
+            ani.save(sim_config.config.ANIMATION_FILEPATH, writer="ffmpeg", dpi=100)
             plt.close(fig)
-            # print(f'Simulation animation saved as {config.ANIMATION_FILEPATH.stem}.')
+            # print(f'Simulation animation saved as {sim_config.config.ANIMATION_FILEPATH.stem}.')
 
             # Save statistics logs to json file
-            self.statistics_logs.to_json(filepath=config.STATISTICS_LOGS_JSON_FILEPATH)
+            self.statistics_logs.to_json(filepath=sim_config.config.STATISTICS_LOGS_JSON_FILEPATH)
 
             simulation_utils.copy_config_and_physical_model_to_output_folder(
-                physical_model_full_path=self.physical_model_full_path)
+                physical_model_full_path=self.physical_model_path)
 
     def use_brain(self, creature: Creature,
                   seek_result: dict, dt: float):
@@ -678,12 +673,12 @@ class Simulation:
                 if food_type == 'grass':
                     food_list = self.env.grass_points
                     food_to_remove_list = self.env.grass_remove_list
-                    food_energy = config.GRASS_ENERGY
+                    food_energy = sim_config.config.GRASS_ENERGY
                     is_food_condition_met = True
                 elif food_type == 'leaf':  # TODO - fix to relevant variables when adding leaves
                     food_list = self.env.leaf_points
                     food_to_remove_list = self.env.leaf_remove_list
-                    food_energy = config.LEAF_ENERGY
+                    food_energy = sim_config.config.LEAF_ENERGY
                     is_food_condition_met = creature.height >= food_list[food_idx].height
                 elif food_type == 'creature':
                     food_list = [creature_id for creature_id in self.creatures.keys()]
@@ -699,7 +694,7 @@ class Simulation:
                 # Check if conditions to eat food are met (if so, eat and add to food_remove_list)
                 food_point = food_list[food_idx]
                 is_food_available = food_point not in food_to_remove_list
-                is_food_close_enough = food_distance <= config.FOOD_DISTANCE_THRESHOLD
+                is_food_close_enough = food_distance <= sim_config.config.FOOD_DISTANCE_THRESHOLD
 
                 if is_food_available and is_food_close_enough and is_food_condition_met:
                     # eat food and record it

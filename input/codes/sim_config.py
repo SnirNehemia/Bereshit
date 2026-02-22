@@ -2,6 +2,7 @@ import dataclasses
 
 import platform
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 import matplotlib
@@ -9,19 +10,24 @@ import matplotlib.pyplot as plt
 
 from input.codes import repos_utils
 
+config = None
 
-# def load_config(config_name: str):
-#     global config
-#     if config is None:
-#         config = Config(config_name=config_name)
-#     return config
+
+def load_config(config_name: str, folder_full_path: str | Path = ""):
+    global config
+    if config is None:
+        config = Config(config_name=config_name,
+                        folder_full_path=folder_full_path)
 
 
 @dataclasses.dataclass
 class Config:
-    def __init__(self, config_name):
+    def __init__(self, config_name, folder_full_path: str | Path = ""):
         # init config based on data from yaml
-        data_dict, self.full_path = repos_utils.get_data_from_config(config_name)
+        data_dict, self.full_path = repos_utils.get_data_from_config(
+            config_name=config_name,
+            folder_full_path=folder_full_path)
+
         for key, value in data_dict.items():
             setattr(self, key, value)
 
@@ -93,6 +99,3 @@ class Config:
                 self.OUTPUT_FOLDER.joinpath(f"{self.timestamp}_env_fig.png"))
         setattr(self, 'STATISTICS_LOGS_JSON_FILEPATH',
                 self.OUTPUT_FOLDER.joinpath(f"{self.timestamp}_statistics_logs.json"))
-
-
-config = Config(config_name="2026_02_19_config.yaml")

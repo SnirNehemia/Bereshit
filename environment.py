@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import KDTree
 
-from input.codes.sim_config import config
+from input.codes import sim_config
 
 
 class Environment:
@@ -54,19 +54,19 @@ class Environment:
         Note: Over time these lists may become large.
         """
         # Generate new grass points.
-        if len(self.grass_points) + len(self.new_grass_points) >= config.MAX_GRASS_NUM:
+        if len(self.grass_points) + len(self.new_grass_points) >= sim_config.config.MAX_GRASS_NUM:
             num_new_grass = 0
         else:
             num_new_grass = int(self.grass_generation_rate)
         if len(self.grass_indices) > 0 and num_new_grass > 0:
-            if np.random.rand() < config.GRASS_GROWTH_CHANCE:
+            if np.random.rand() < sim_config.config.GRASS_GROWTH_CHANCE:
                 choices = self.grass_indices[np.random.choice(len(self.grass_indices), num_new_grass, replace=True)]
                 for pt in choices:
                     # Convert image coordinates (row, col) to (x, y)
                     self.new_grass_points.append([pt[1], pt[0]])
 
         # Generate new leaf points.
-        if len(self.leaf_points) >= config.MAX_LEAVES_NUM:
+        if len(self.leaf_points) >= sim_config.config.MAX_LEAVES_NUM:
             num_new_leaves = 0
         else:
             num_new_leaves = int(self.leaves_generation_rate)

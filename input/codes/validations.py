@@ -1,21 +1,21 @@
 import numpy as np
 
-from input.codes.sim_config import Config
+from input.codes import sim_config
 from input.codes.physical_models.physical_model2 import PhysicalModel2
 
 
-def validate_config(config: Config):
-    assert list(config.NUM_STEPS_FROM_FRAME_DICT.keys())[0] == 0, \
+def validate_config(config: sim_config.Config):
+    assert list(sim_config.config.NUM_STEPS_FROM_FRAME_DICT.keys())[0] == 0, \
         'Config Error: first key in NUM_STEPS_FROM_FRAME_DICT must be 0'
 
-    assert 0 <= config.CHANCE_TO_HERBIVORE <= 1,\
+    assert 0 <= sim_config.config.CHANCE_TO_HERBIVORE <= 1,\
         'Config Error: CHANCE_TO_HERBIVORE must be between 0-1.'
 
-    for c_digest in config.INIT_HERBIVORE_DIGEST_DICT.values():
+    for c_digest in sim_config.config.INIT_HERBIVORE_DIGEST_DICT.values():
         assert 0 <= c_digest <= 1, \
             'Config Error: INIT_HERBIVORE_DIGEST_DICT values must be between 0-1.'
 
-    for c_digest in config.INIT_CARNIVORE_DIGEST_DICT.values():
+    for c_digest in sim_config.config.INIT_CARNIVORE_DIGEST_DICT.values():
         assert 0 <= c_digest <= 1, \
             'Config Error: INIT_CARNIVORE_DIGEST_DICT values must be between 0-1.'
 

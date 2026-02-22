@@ -3,16 +3,16 @@ import shutil
 import numpy as np
 from scipy.spatial import KDTree
 
-from input.codes.sim_config import config
+from input.codes import sim_config
 from creature import Creature
 from environment import Environment
 
 
 def init_environment():
     # Create the environment. Ensure that 'map.png' exists and follows the color conventions.
-    return Environment(map_filename=config.ENV_PATH,
-                       grass_generation_rate=config.GRASS_GENERATION_RATE,
-                       leaves_generation_rate=config.LEAVES_GENERATION_RATE)
+    return Environment(map_filename=sim_config.config.ENV_PATH,
+                       grass_generation_rate=sim_config.config.GRASS_GENERATION_RATE,
+                       leaves_generation_rate=sim_config.config.LEAVES_GENERATION_RATE)
 
 
 def init_creatures(env: Environment, brain_obj) -> dict[int, Creature]:
@@ -20,8 +20,8 @@ def init_creatures(env: Environment, brain_obj) -> dict[int, Creature]:
     Initializes creatures ensuring they are not placed in a forbidden (black) area.
     """
     creatures = dict()
-    num_creatures = config.NUM_CREATURES
-    output_size = config.OUTPUT_SIZE
+    num_creatures = sim_config.config.NUM_CREATURES
+    output_size = sim_config.config.OUTPUT_SIZE
 
     for creature_id in range(num_creatures):
         # get a valid position
@@ -32,29 +32,29 @@ def init_creatures(env: Environment, brain_obj) -> dict[int, Creature]:
         parent_id = None
         birth_step = 0
         color = np.random.rand(3)  # Random RGB color.
-        max_age = int(np.random.uniform(low=0.8, high=1) * config.INIT_MAX_AGE)
+        max_age = int(np.random.uniform(low=0.8, high=1) * sim_config.config.INIT_MAX_AGE)
 
-        max_mass = np.random.uniform(low=0.8, high=1) * config.INIT_MAX_MASS
-        max_height = np.random.uniform(low=0.8, high=1) * config.INIT_MAX_HEIGHT
-        max_strength = np.random.uniform(low=0.8, high=1) * config.INIT_MAX_STRENGTH
+        max_mass = np.random.uniform(low=0.8, high=1) * sim_config.config.INIT_MAX_MASS
+        max_height = np.random.uniform(low=0.8, high=1) * sim_config.config.INIT_MAX_HEIGHT
+        max_strength = np.random.uniform(low=0.8, high=1) * sim_config.config.INIT_MAX_STRENGTH
 
-        max_speed = np.random.uniform(low=0.8, high=1) * config.MAX_SPEED
-        max_energy = np.random.uniform(low=0.8, high=1) * config.INIT_MAX_ENERGY
+        max_speed = np.random.uniform(low=0.8, high=1) * sim_config.config.MAX_SPEED
+        max_energy = np.random.uniform(low=0.8, high=1) * sim_config.config.INIT_MAX_ENERGY
 
-        reproduction_energy = config.REPRODUCTION_ENERGY
+        reproduction_energy = sim_config.config.REPRODUCTION_ENERGY
 
         # choose randomly if creature is herbivore or carnivore
         digest_roll = np.random.rand()
-        if digest_roll <= config.CHANCE_TO_HERBIVORE:
-            digest_dict = config.INIT_HERBIVORE_DIGEST_DICT
-            eyes_channels = config.EYE_CHANNEL  # sees only grass: [config.EYE_CHANNEL[0]]
-            eyes_params = config.EYES_PARAMS  # sees only grass: config.EYES_PARAMS[0]
+        if digest_roll <= sim_config.config.CHANCE_TO_HERBIVORE:
+            digest_dict = sim_config.config.INIT_HERBIVORE_DIGEST_DICT
+            eyes_channels = sim_config.config.EYE_CHANNEL  # sees only grass: [sim_config.config.EYE_CHANNEL[0]]
+            eyes_params = sim_config.config.EYES_PARAMS  # sees only grass: sim_config.config.EYES_PARAMS[0]
         else:
-            digest_dict = config.INIT_CARNIVORE_DIGEST_DICT
-            eyes_channels = config.EYE_CHANNEL  # sees only creatures: [config.EYE_CHANNEL[1]]
-            eyes_params = config.EYES_PARAMS  # sees only creatures: [config.EYES_PARAMS[1]]
+            digest_dict = sim_config.config.INIT_CARNIVORE_DIGEST_DICT
+            eyes_channels = sim_config.config.EYE_CHANNEL  # sees only creatures: [sim_config.config.EYE_CHANNEL[1]]
+            eyes_params = sim_config.config.EYES_PARAMS  # sees only creatures: [sim_config.config.EYES_PARAMS[1]]
 
-        vision_limit = config.VISION_LIMIT
+        vision_limit = sim_config.config.VISION_LIMIT
         eyes_dofs = 3 * len(eyes_params) * len(eyes_channels)  # 3 (flag, distance, angle) for each eye * X channels
         other_dofs = 3  # hunger, thirst, speed
         input_size = other_dofs + eyes_dofs
@@ -114,18 +114,24 @@ def detect_collision(creature, env):
     :param env:
     :return:
     """
-    try:
-        col, row = map(int, creature.position)  # Convert (x, y) to image indices (col, row)
-        height, width = env.map_data.shape[:2]
-        if col < 0 or col >= width or row < 0 or row >= height or env.obstacle_mask[row, col]:
-            # choose if the velocity is set to zero or get mirrored
-            if config.BOUNDARY_CONDITION == 'zero':
-                creature.velocity = np.array([0.0, 0.0])
-            elif config.BOUNDARY_CONDITION == 'mirror':
-                creature.velocity = -creature.velocity
-    except Exception as e:
-        print(f'Error in Simulation (use_brain, collision detection) for creature: {creature.creature_id}:\n{e}')
-        # breakpoint()
+    height, width = env.map_data.shape[:2]
+    creature.position = np.clip(creature.position, [0, 0], [width, height])
+    # TODO - how to handle obstacles?
+
+    # try:
+    #     col, row = map(int, creature.position)  # Convert (x, y) to image indices (col, row)
+    #     height, width = env.map_data.shape[:2]
+    #     if col < 0 or col >= width or row < 0 or row >= height or env.obstacle_mask[row, col]:
+    #
+    #         # choose if the velocity is set to zero or get mirrored
+    #         if sim_config.config.BOUNDARY_CONDITION == 'zero':
+    #             creature.velocity = np.array([0.0, 0.0])
+    #
+    #         elif sim_config.config.BOUNDARY_CONDITION == 'mirror':
+    #             creature.velocity = -creature.velocity
+    # except Exception as e:
+    #     print(f'Error in Simulation (use_brain, collision detection) for creature: {creature.creature_id}:\n{e}')
+    #     # breakpoint()
 
 
 def get_brain_input(creature: Creature, seek_result: dict):
@@ -270,7 +276,7 @@ def do_purge(do_purge: bool,
              creatures_ids_to_reproduce: list[int],
              step_counter: int):
     creatures_ids_to_purge = []
-    if config.DO_PURGE:
+    if sim_config.config.DO_PURGE:
         if do_purge:  # criterion met
             purge_count = 0
             for creature_id, creature in creatures.items():
@@ -284,7 +290,7 @@ def do_purge(do_purge: bool,
                         creatures_ids_to_purge.append(creature_id)
 
                     # kill if creature is always slow
-                    if creature.max_speed_exp <= config.PURGE_SPEED_THRESHOLD:
+                    elif creature.max_speed_exp <= sim_config.config.PURGE_SPEED_THRESHOLD:
                         purge_count += 1
                         creatures_ids_to_purge.append(creature_id)
             # print(f'\nStep {step_counter}: Purging {purge_count} creatures.')
@@ -343,7 +349,7 @@ def update_environment_and_kd_trees(env: Environment,
     env.update()
 
     # Update KDTree if needed or every "kdtree_update_interval" steps
-    is_time_to_update_kd_trees = step_counter % config.UPDATE_KDTREE_INTERVAL == 0
+    is_time_to_update_kd_trees = step_counter % sim_config.config.UPDATE_KDTREE_INTERVAL == 0
     if to_update_kd_tree['grass'] or is_time_to_update_kd_trees:
         env.update_grass_kd_tree()
 
@@ -357,10 +363,10 @@ def update_environment_and_kd_trees(env: Environment,
 
 
 def calc_num_steps_per_frame(frame: int) -> int:
-    keys = list(config.NUM_STEPS_FROM_FRAME_DICT.keys())
-    previous_value = config.NUM_STEPS_FROM_FRAME_DICT[keys[0]]
+    keys = list(sim_config.config.NUM_STEPS_FROM_FRAME_DICT.keys())
+    previous_value = sim_config.config.NUM_STEPS_FROM_FRAME_DICT[keys[0]]
 
-    for key, value in config.NUM_STEPS_FROM_FRAME_DICT.items():
+    for key, value in sim_config.config.NUM_STEPS_FROM_FRAME_DICT.items():
         if frame < key:
             break
         else:
@@ -374,8 +380,8 @@ def calc_num_steps_per_frame(frame: int) -> int:
 def calc_total_num_steps(up_to_frame: int) -> int:
     total_steps = 0
 
-    keys = list(config.NUM_STEPS_FROM_FRAME_DICT.keys())
-    values = list(config.NUM_STEPS_FROM_FRAME_DICT.values())
+    keys = list(sim_config.config.NUM_STEPS_FROM_FRAME_DICT.keys())
+    values = list(sim_config.config.NUM_STEPS_FROM_FRAME_DICT.values())
 
     for i in range(len(keys)):
         start = keys[i]
@@ -396,7 +402,7 @@ def calc_total_num_steps(up_to_frame: int) -> int:
 
 def check_abort_simulation(creatures: dict[int, Creature], step_counter: int):
     abort_simulation = False
-    if len(creatures) > config.MAX_NUM_CREATURES:
+    if len(creatures) > sim_config.config.MAX_NUM_CREATURES:
         print(f'step={step_counter}: Too many creatures, simulation is too slow.')
         abort_simulation = True
     elif len(creatures) <= 0:
@@ -406,12 +412,12 @@ def check_abort_simulation(creatures: dict[int, Creature], step_counter: int):
     return abort_simulation
 
 def copy_config_and_physical_model_to_output_folder(physical_model_full_path):
-    shutil.copyfile(src=config.full_path,
-                    dst=config.OUTPUT_FOLDER.joinpath(f"{config.timestamp}_config.yaml"))
+    shutil.copyfile(src=sim_config.config.full_path,
+                    dst=sim_config.config.OUTPUT_FOLDER.joinpath(f"{sim_config.config.timestamp}_config.yaml"))
     shutil.copyfile(src=physical_model_full_path,
-                    dst=config.OUTPUT_FOLDER.joinpath(f"{config.timestamp}_physical_model.yaml"))
+                    dst=sim_config.config.OUTPUT_FOLDER.joinpath(f"{sim_config.config.timestamp}_physical_model.yaml"))
 
 if __name__ == '__main__':
-    for frame in range(10):
-        num_steps = calc_num_steps_per_frame(frame=frame)
-        print(f'{frame=}: {num_steps=}')
+    for frame in range(40, 50):
+        num_steps = calc_total_num_steps(up_to_frame=frame)
+        print(f'up to {frame=}: {num_steps=}')

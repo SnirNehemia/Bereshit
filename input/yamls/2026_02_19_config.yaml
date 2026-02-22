@@ -1,17 +1,17 @@
 # Simulation parameters
 VERSION: 2.0
-NUM_RUNS: 10
+NUM_RUNS: 5
 PHYSICAL_MODEL_CONFIG_NAME: 2026_02_21_physical_model1.yaml
 
-DT: 1  # time passing between consecutive steps (relevant for age and movement)
-NUM_FRAMES: 1  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+DT: 2.5  # time passing between consecutive steps (relevant for age and movement)
+NUM_FRAMES: 100  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
 # key is frame number and value is num steps per frame from this frame onward
-NUM_STEPS_FROM_FRAME_DICT: { 0: 10,
-                             5: 300,
+NUM_STEPS_FROM_FRAME_DICT: { 0: 2000,
+                             10: 300
 }
 
 FRAME_INTERVAL: 75  # interval between frames in animation [in ms]
-STATUS_EVERY_STEP: True  # choose if to update every step or every frame
+STATUS_EVERY_STEP: False  # choose if to update every step or every frame
 UPDATE_KDTREE_INTERVAL: 120  # update the kdtree every n steps
 DEBUG_MODE: False  # breakpoint in update_func after each frame (not step!)
 REBALANCE: True

@@ -1,9 +1,8 @@
 import cProfile
 import functools
 import os
-from pathlib import Path
 
-from input.codes.sim_config import config
+from input.codes import sim_config
 
 
 def profileit():
@@ -11,10 +10,10 @@ def profileit():
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             # make sure directory exists
-            os.makedirs(config.OUTPUT_FOLDER, exist_ok=True)
+            os.makedirs(sim_config.config.OUTPUT_FOLDER, exist_ok=True)
 
             # get filename with timestamp
-            filepath = f"{config.OUTPUT_FOLDER}/{config.timestamp}_{func.__name__}_profiler.prof"
+            filepath = f"{sim_config.config.OUTPUT_FOLDER}/{sim_config.config.timestamp}_{func.__name__}_profiler.prof"
             profiler = cProfile.Profile()
             profiler.enable()
             try:

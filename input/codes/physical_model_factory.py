@@ -2,6 +2,7 @@ import importlib
 import pkgutil
 
 import input.codes.physical_models as physical_models  # Your folder containing model scripts
+from input.codes import repos_utils
 from input.codes.physical_models.physical_model_abc import PhysicalModel
 
 
@@ -24,8 +25,16 @@ class PhysicalModelFactory:
         # print(f"Discovered physical models: {list(cls._registry.keys())}")
 
     @classmethod
-    def create(cls, model_type, params):
+    def create(cls, config_name: str):
+
+        # get path, model type and params
+        model_config, model_path = \
+            repos_utils.get_data_from_config(config_name=config_name)
+        model_type = model_config['model_type']
+        params = model_config['parameters']
+
+        # create physical model obj
         model_class = cls._registry.get(model_type.lower())
         if not model_class:
             raise ValueError(f"Model '{model_type}' not found.")
-        return model_class(**params)  # Unpacking params into the constructor
+        return model_class(**params), model_path  # Unpacking params into the constructor

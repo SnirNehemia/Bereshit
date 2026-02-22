@@ -4,7 +4,7 @@ import numpy as np
 
 from static_traits import StaticTraits
 from creatures_log import CreaturesLogs
-from input.codes.sim_config import config
+from input.codes import sim_config
 
 import importlib
 
@@ -53,8 +53,8 @@ class Creature(StaticTraits):
         """
         self.is_agent = False
         # static trait - update for current max_age
-        self.adolescence = self.max_age * config.ADOLESCENCE_AGE_FRACTION
-        self.reproduction_cooldown = config.REPRODUCTION_COOLDOWN
+        self.adolescence = self.max_age * sim_config.config.ADOLESCENCE_AGE_FRACTION
+        self.reproduction_cooldown = sim_config.config.REPRODUCTION_COOLDOWN
 
         # dynamic traits
         self.age = 0
@@ -64,7 +64,7 @@ class Creature(StaticTraits):
             self.strength = 0.1 * self.max_strength
 
         self.energy = 0.8 * (
-                config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY)  # TODO: patch for runability | was self.max_energy
+                sim_config.config.REPRODUCTION_ENERGY + sim_config.config.MIN_LIFE_ENERGY)  # TODO: patch for runability | was self.max_energy
         self.velocity = (np.random.rand(2) - 0.5) * self.max_speed
         self.max_speed_exp = np.linalg.norm(self.velocity)
         self.calc_speed()
@@ -106,7 +106,7 @@ class Creature(StaticTraits):
         """
         if self.age > self.adolescence:
             if len(self.log.record['reproduce']) > 0:
-                if (step_num - self.log.record['reproduce'][-1]) * config.DT > self.reproduction_cooldown:
+                if (step_num - self.log.record['reproduce'][-1]) * sim_config.config.DT > self.reproduction_cooldown:
                     return 1
                 else:
                     return 0
@@ -137,9 +137,9 @@ class Creature(StaticTraits):
         self.creature_id = None  # updated in simulation
 
         self.mutate()
-        self.brain.mutate(brain_mutation_rate=config.MUTATION_BRAIN)
+        self.brain.mutate(brain_mutation_rate=sim_config.config.MUTATION_BRAIN)
         self.init_state()
-        self.age = config.DT  # fix a delay in the logs
+        self.age = sim_config.config.DT  # fix a delay in the logs
         self.velocity = -self.velocity  # go opposite to father
         self.calc_speed()
         # TODO: make the solution better than this patch...
@@ -149,9 +149,9 @@ class Creature(StaticTraits):
         """
         mutate the desired traits.
         """
-        std_mutation_factors = config.STD_MUTATION_FACTORS
+        std_mutation_factors = sim_config.config.STD_MUTATION_FACTORS
         for trait_key in std_mutation_factors:
-            if np.random.rand(1) < config.MUTATION_CHANCE:
+            if np.random.rand(1) < sim_config.config.MUTATION_CHANCE:
                 if trait_key == 'eyes_params':
                     for eye_idx in range(len(self.eyes_params)):
                         for j in range(2):  # 2 for: angle offset, aperture
@@ -178,16 +178,16 @@ class Creature(StaticTraits):
 
 if __name__ == '__main__':
 
-    brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
+    brain_module = importlib.import_module(f"brain_models.{sim_config.config.BRAIN_TYPE}")
     brain_obj = getattr(brain_module, 'Brain')
-    brain = brain_obj([config.INPUT_SIZE, config.OUTPUT_SIZE])
+    brain = brain_obj([sim_config.config.INPUT_SIZE, sim_config.config.OUTPUT_SIZE])
 
     creature = Creature(creature_id=0, gen=0, parent_id="0", birth_step=0,
-                        max_age=100, max_mass=20, max_height=2, max_strength=config.INIT_MAX_STRENGTH,
-                        max_speed=config.MAX_SPEED, max_energy=config.INIT_MAX_ENERGY, color=np.random.rand(3),
-                        digest_dict=config.INIT_HERBIVORE_DIGEST_DICT, reproduction_energy=config.REPRODUCTION_ENERGY,
-                        eyes_channels=config.EYE_CHANNEL, eyes_params=config.EYES_PARAMS,
-                        vision_limit=config.VISION_LIMIT,
+                        max_age=100, max_mass=20, max_height=2, max_strength=sim_config.config.INIT_MAX_STRENGTH,
+                        max_speed=sim_config.config.MAX_SPEED, max_energy=sim_config.config.INIT_MAX_ENERGY, color=np.random.rand(3),
+                        digest_dict=sim_config.config.INIT_HERBIVORE_DIGEST_DICT, reproduction_energy=sim_config.config.REPRODUCTION_ENERGY,
+                        eyes_channels=sim_config.config.EYE_CHANNEL, eyes_params=sim_config.config.EYES_PARAMS,
+                        vision_limit=sim_config.config.VISION_LIMIT,
                         brain=brain,
                         position=np.array([10, 10]))
 

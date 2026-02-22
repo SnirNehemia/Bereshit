@@ -142,7 +142,6 @@ class Creature(StaticTraits):
         self.age = sim_config.config.DT  # fix a delay in the logs
         self.velocity = -self.velocity  # go opposite to father
         self.calc_speed()
-        # TODO: make the solution better than this patch...
         self.log.add_record('speed', self.speed)
 
     def mutate(self):

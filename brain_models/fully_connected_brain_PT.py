@@ -114,7 +114,7 @@ class Brain(nn.Module):
             self.layers[-1] = nn.Parameter(self.layers[-1][:-1, :])
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x /= config.NORM_INPUT.astype(np.float32)  # normalize the input with prior knowledge
+        x /= sim_config.config.NORM_INPUT.astype(np.float32)  # normalize the input with prior knowledge
         x = torch.tanh(x)  # Initial normalization
         x = torch.cat([x, self.memory_nodes])
 
@@ -219,7 +219,7 @@ if __name__ == '__main__':
 
     # Load config
     config_yaml_relative_path = r"input\yamls\2025_06_20_config.yaml"
-    config = config.load_config(yaml_relative_path=config_yaml_relative_path)
+    config = sim_config.load_config(yaml_relative_path=config_yaml_relative_path)
 
     # Example usage
     torch.manual_seed(0)

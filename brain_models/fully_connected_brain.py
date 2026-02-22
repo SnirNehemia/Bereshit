@@ -119,7 +119,7 @@ class Brain:
         self.size = sum(layer.size for layer in self.layers)
 
     def forward(self, input_data: np.ndarray) -> np.ndarray:
-        input_data /= config.NORM_INPUT  # normalize the input with prior knowledge
+        input_data /= sim_config.config.NORM_INPUT  # normalize the input with prior knowledge
         input_data = np.tanh(input_data)  # normalize the input further
         x = np.concatenate([input_data, self.memory_nodes])
         self.neuron_values = [x]
@@ -235,7 +235,7 @@ if __name__ == '__main__':
 
     # Load config
     config_yaml_relative_path = r"input\yamls\2025_06_20_config.yaml"
-    config = config.load_config(yaml_relative_path=config_yaml_relative_path)
+    config = sim_config.load_config(yaml_relative_path=config_yaml_relative_path)
 
     # np.random.seed(0)
     # Example usage

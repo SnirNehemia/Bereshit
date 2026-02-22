@@ -1,11 +1,9 @@
-# fully_connected_brain.py
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-from input.codes import config
+from input.codes import sim_config
 
 
-# TODO: pay attention to activation function and run as main to check the hidden layers
 # Activation functions
 def relu(x: np.ndarray) -> np.ndarray:
     return np.maximum(0, x)
@@ -39,7 +37,7 @@ class Brain:
         # self.memory_values = np.zeros(layers_size[-1])
         # self.activation = ACTIVATION_FUNCTIONS.get(activation)
         self.size = 0  # Effective network size
-        self.random_magnitude = 0.2
+        self.random_magnitude = sim_config.config.BRAIN_RANDOM_MAGNITUDE
         self.layers = []
         # Initialize a simple two-layer network
         if no_lineage:
@@ -119,7 +117,7 @@ class Brain:
         self.size = sum(layer.size for layer in self.layers)
 
     def forward(self, input_data: np.ndarray) -> np.ndarray:
-        input_data /= config.NORM_INPUT  # normalize the input with prior knowledge
+        input_data /= sim_config.config.NORM_INPUT  # normalize the input with prior knowledge
         input_data = np.tanh(input_data)  # normalize the input further
         x = np.concatenate([input_data, self.memory_nodes])
         self.neuron_values = [x]
@@ -235,7 +233,7 @@ if __name__ == '__main__':
 
     # Load config
     config_yaml_relative_path = r"input\yamls\2025_06_20_config.yaml"
-    config = config.load_config(yaml_relative_path=config_yaml_relative_path)
+    config = sim_config.load_config(yaml_relative_path=config_yaml_relative_path)
 
     # np.random.seed(0)
     # Example usage

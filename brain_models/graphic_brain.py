@@ -5,14 +5,13 @@ from matplotlib.colors import Normalize
 from matplotlib.patches import FancyArrowPatch
 import platform, matplotlib
 import random, math
-from input.codes import config
-
-# TODO: make closed loop activation tanh! or regulate it
+from input.codes import sim_config
 
 if platform.system() == 'Darwin':
     matplotlib.use('MacOSX')
 else:
     matplotlib.use('TkAgg')
+
 
 def relu(x: np.ndarray) -> np.ndarray:
     return np.maximum(0, x)
@@ -29,11 +28,12 @@ def tanh(x: np.ndarray) -> np.ndarray:
 def identity(x: np.ndarray) -> np.ndarray:
     return x
 
+
 ACTIVATION_FUNCTIONS = {'relu': relu, 'sigmoid': sigmoid, 'tanh': tanh, 'I': identity}
 
 
 class Brain:
-    def __init__(self, layers_size: list, activation = 'tanh'):
+    def __init__(self, layers_size: list, activation='tanh'):
         # Create a directed graph.
         self.input_counter = 0
         self.output_counter = 0
@@ -44,12 +44,12 @@ class Brain:
         for i_in in range(input_size):
             self.add_node('input', 'I')
         for i_out in range(output_size):
-            self.add_node( 'output', activation)
+            self.add_node('output', activation)
         for i_in in range(input_size):
             for i_out in range(output_size):
                 self.add_connection(f'I{i_in}', f'O{i_out}', weight=np.random.randn())
         self.pos = 'none'
-        self.random_magnitude = 0.2  # TODO: change to something from config
+        self.random_magnitude = sim_config.config.BRAIN_RANDOM_MAGNITUDE
         self.self_connected = []
         self.size = len(self.graph.nodes)
 
@@ -111,11 +111,11 @@ class Brain:
         """
         if self.graph.has_edge(from_node, to_node):
             old_weight = self.graph[from_node][to_node]['weight']
-            new_weight = old_weight / 2 + np.random.randn()*old_weight/5
+            new_weight = old_weight / 2 + np.random.randn() * old_weight / 5
             new_node = self.add_node('hidden', 'tanh')
             self.remove_connection(from_node, to_node)
             self.add_connection(from_node, new_node, weight=new_weight)
-            self.add_connection(new_node, to_node, weight=old_weight-new_weight)
+            self.add_connection(new_node, to_node, weight=old_weight - new_weight)
 
     def adjust_weight(self, from_node, to_node):
         """Adjust the weight of an existing connection."""
@@ -170,7 +170,8 @@ class Brain:
 
         if mutation_roll[2] < brain_mutation_rate['modify_edges']:
             indices = np.random.choice(len(self.graph.edges),
-                                    math.ceil(brain_mutation_rate['modify_edges_percentage']*len(self.graph.edges)))
+                                       math.ceil(
+                                           brain_mutation_rate['modify_edges_percentage'] * len(self.graph.edges)))
             if len(indices) > 0:
                 for ind in indices:
                     self.adjust_weight(list(self.graph.edges)[ind][0], list(self.graph.edges)[ind][1])
@@ -178,7 +179,8 @@ class Brain:
         if mutation_roll[3] < brain_mutation_rate['add_edge']:
             # Build the set of all possible directed edges (excluding self-loops if desired)
             all_possible = {(i, o) for i in self.graph.nodes for o in self.graph.nodes
-                            if i != o or not i[0] == 'O' or not o[0] == 'I'} # ignore possible input\output non sensible connections
+                            if i != o or not i[0] == 'O' or not o[
+                                                                    0] == 'I'}  # ignore possible input\output non sensible connections
             # Get the set of existing edges
             existing = set(self.graph.edges())
             # Missing edges are those in 'all_possible' but not in 'existing'
@@ -239,7 +241,7 @@ class Brain:
         return self
 
     def normalize_input(self, input):
-        input /= config.NORM_INPUT  # normalize the input with prior knowledge
+        input /= sim_config.config.NORM_INPUT  # normalize the input with prior knowledge
         input = np.tanh(input)  # normalize the input further
         return input
 
@@ -269,7 +271,8 @@ class Brain:
                 if self.graph.nodes[node].get('type') == 'output':
                     total = 0.0
                 else:
-                    total = self.graph.nodes[node]['value']  # to remain memory. alternatively, set to zero or multiply by forget coefficient (<1)
+                    total = self.graph.nodes[node][
+                        'value']  # to remain memory. alternatively, set to zero or multiply by forget coefficient (<1)
                 for pred in self.graph.predecessors(node):
                     total += self.graph.nodes[pred]['value'] * self.graph[pred][node]['weight']
                 new_values[node] = total
@@ -328,19 +331,21 @@ class Brain:
             pos_hidden = {}
             if hidden_nodes:
                 # Extract depths (ignoring any that might be None).
-                depths = [self.graph.nodes[n]["depth"] for n in hidden_nodes if self.graph.nodes[n]["depth"] is not None]
+                depths = [self.graph.nodes[n]["depth"] for n in hidden_nodes if
+                          self.graph.nodes[n]["depth"] is not None]
                 if depths:
                     min_depth, max_depth = min(depths), max(depths)
                 else:
                     min_depth, max_depth = 0, 1  # Fallback if all depths are None.
                 y_min, y_max = 0.3, 0.7
                 # Sort hidden nodes by depth for consistent x placement.
-                hidden_nodes_sorted = sorted(hidden_nodes, key=lambda n: self.graph.nodes[n]["depth"] if self.graph.nodes[n][
-                                                                                                    "depth"] is not None else 0.5)
+                hidden_nodes_sorted = sorted(hidden_nodes,
+                                             key=lambda n: self.graph.nodes[n]["depth"] if self.graph.nodes[n][
+                                                                                               "depth"] is not None else 0.5)
                 n_hidden = len(hidden_nodes_sorted)
                 for i, node in enumerate(hidden_nodes_sorted):
                     depth = self.graph.nodes[node]["depth"] if self.graph.nodes[node]["depth"] is not None else (
-                                                                                                          min_depth + max_depth) / 2
+                                                                                                                        min_depth + max_depth) / 2
                     # Normalize depth within the chosen y range.
                     if max_depth > min_depth:
                         y = y_min + (depth - min_depth) / (max_depth - min_depth) * (y_max - y_min)
@@ -410,7 +415,7 @@ class Brain:
             self.get_pos()  # Consistent layout
         # pos = nx.nx_agraph.graphviz_layout(self.graph, prog="dot")
         # Setup colormap for nodes.
-        node_abs_max = max([abs(self.graph.nodes[n]['value']) for n in self.graph.nodes()]) # normalize node display
+        node_abs_max = max([abs(self.graph.nodes[n]['value']) for n in self.graph.nodes()])  # normalize node display
         if node_abs_max:
             norm = Normalize(vmin=-node_abs_max, vmax=node_abs_max)
         else:
@@ -425,22 +430,22 @@ class Brain:
             # circle = Circle((x, y), radius=0.05, facecolor=color, alpha=0.5,
             #                 edgecolor=color_dict[self.graph.nodes[node].get('type')], linewidth=2.5, zorder=3)
             # ax.add_patch(circle)
-            ax.scatter(x,y,s=200, facecolor=color, alpha=1, edgecolor=color_dict[self.graph.nodes[node].get('type')],
+            ax.scatter(x, y, s=200, facecolor=color, alpha=1, edgecolor=color_dict[self.graph.nodes[node].get('type')],
                        linewidth=1, zorder=3)
             if not self.graph.nodes[node].get('type') == 'hidden':
                 ax.scatter(x, y, s=400, facecolor='none', edgecolor=color_dict[self.graph.nodes[node].get('type')],
                            linewidth=1.5, zorder=4)
             if plot_values:
-                ax.text(x, y, str(np.round(self.graph.nodes[node]['value'],1)),
+                ax.text(x, y, str(np.round(self.graph.nodes[node]['value'], 1)),
                         fontsize=8, ha='center', va='center', zorder=4)
                 # ax.text(x, y, self.graph.nodes[node]['activation'],
                 #         fontsize=8, ha='center', va='top', zorder=4)
             if plot_activation:
                 ax.annotate(self.graph.nodes[node]['activation_str'], xy=(x, y),
-                         xytext=(0, -30), textcoords="offset points", ha='center')
+                            xytext=(0, -30), textcoords="offset points", ha='center')
 
         # Setup colormap for edges.
-        weights_abs_max = 2 # max([abs(self.graph[u][v]['weight']) for u, v in self.graph.edges()])
+        weights_abs_max = 2  # max([abs(self.graph[u][v]['weight']) for u, v in self.graph.edges()])
         if weights_abs_max:
             w_norm = Normalize(vmin=-weights_abs_max, vmax=weights_abs_max)
         else:
@@ -453,7 +458,7 @@ class Brain:
             end_point = self.pos[v]
             weight = self.graph[u][v]['weight']
             color = edge_cmap(w_norm(weight))
-            rad = np.tanh(weight) * 0.4 # weight
+            rad = np.tanh(weight) * 0.4  # weight
             # rad = 0.4 # + (np.random.random() - 0.5) * 0.1
             # if (v, u) in self.graph.edges():
             #     rad = np.random.random() - 0.5 # 0.4 + (np.random.random() - 0.5) * 0.4
@@ -463,7 +468,7 @@ class Brain:
             #     #     rad = -0.2
             # else:
             #     rad = 0.2
-            if np.linalg.norm(start_point-end_point) <= 1e-1:
+            if np.linalg.norm(start_point - end_point) <= 1e-1:
                 # For a self-loop, use a fixed curvature (rad) that draws a circular arc.
                 # print(start_point)
                 # offset = 10  # tweak as needed for your coordinate scale
@@ -491,18 +496,11 @@ class Brain:
                     color=color,
                     lw=2,
                     zorder=2,
-                    connectionstyle=f'arc3,rad={rad}',  # Use your variable rad for regular edges
+                    connectionstyle=f'arc3,rad={rad}',  # This sets the curvature. Use your 'rad' for regular edges
                     shrinkA=10,
                     shrinkB=20,
-                    alpha=np.clip(abs(weight),1e-2,1)
+                    alpha=np.clip(abs(weight), 1e-2, 1)
                 )
-            # arrow = FancyArrowPatch(start_point, end_point,
-            #                         arrowstyle='-|>', mutation_scale=15,
-            #                         color=color, lw=2, zorder=2,
-            #                         connectionstyle=f'arc3,rad={rad}',  # This sets the curvature
-            #                         shrinkA=10,  # Pull back from start point by x points TODO: Modify with network size?
-            #                         shrinkB=20  # Pull back from end point by x points
-            #                         )
             ax.add_patch(arrow)
 
         ax.set_aspect('equal')
@@ -526,9 +524,9 @@ if __name__ == '__main__':
 
     # Load config
     config_yaml_relative_path = r"input\yamls\2025_06_20_config.yaml"
-    config = config.load_config(yaml_relative_path=config_yaml_relative_path)
+    config = sim_config.load_config(yaml_relative_path=config_yaml_relative_path)
 
-    brain = Brain([2,5])
+    brain = Brain([2, 5])
 
     # Add nodes.
     # brain.add_node("I1", "input")
@@ -559,7 +557,7 @@ if __name__ == '__main__':
     # # Introduce a cycle (for demonstration).
     # brain.add_connection("H2", "H1", weight=0.3)
     for i in range(10):
-        brain.mutate(config.MUTATION_GRAPH_BRAIN)
+        brain.mutate(sim_config.config.MUTATION_GRAPH_BRAIN)
     brain.add_connection("H3", "H2", weight=-0.0001)
     # Set initial values for a forward pass starting from inputs.
     input = [1.0, 0.5]
@@ -577,12 +575,12 @@ if __name__ == '__main__':
     # # second forward pass
     # brain.graph.nodes["I0"]['value'] = 1.0
     # brain.graph.nodes["I1"]['value'] = 0.5
-    # brain.mutate(config.MUTATION_GRAPH_BRAIN)
-    # brain.mutate(config.MUTATION_GRAPH_BRAIN)
-    # brain.mutate(config.MUTATION_GRAPH_BRAIN)
-    # brain.mutate(config.MUTATION_GRAPH_BRAIN)
-    # brain.mutate(config.MUTATION_GRAPH_BRAIN)
-    # brain.mutate(config.MUTATION_GRAPH_BRAIN)
+    # brain.mutate(sim_config.config.MUTATION_GRAPH_BRAIN)
+    # brain.mutate(sim_config.config.MUTATION_GRAPH_BRAIN)
+    # brain.mutate(sim_config.config.MUTATION_GRAPH_BRAIN)
+    # brain.mutate(sim_config.config.MUTATION_GRAPH_BRAIN)
+    # brain.mutate(sim_config.config.MUTATION_GRAPH_BRAIN)
+    # brain.mutate(sim_config.config.MUTATION_GRAPH_BRAIN)
     # # brain.remove_node('H1')
     # print("Forward pass (starting from inputs):")
     # outputs = brain.forward(input, normalize=False)

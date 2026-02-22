@@ -1,6 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
-from input.codes.config import config
+from input.codes import sim_config
 
 class CreaturesLogs:
     def __init__(self, id):

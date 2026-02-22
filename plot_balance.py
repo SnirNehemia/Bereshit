@@ -1,15 +1,13 @@
 import importlib
 from math import floor
 
-import numpy as np
 import matplotlib
 
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 
-from input.codes.config import load_config
-from input.codes.physical_model import load_physical_model
+from input.codes import sim_config
 
 
 class ParametricDashboard:
@@ -214,7 +212,6 @@ class ParametricDashboard:
         slider_height = 0.02
         slider_gap = 0.02
         # self.x_vector = {}
-        # TODO: make sure we take physical properties into account, for each key (in physical or agent) check which one it fits.
         for i, args in enumerate(self.init_struct_list):
             slider_group = []
             if isinstance(args, (tuple, list)) and not isinstance(args[0], (int, float, str)):
@@ -331,7 +328,6 @@ class ParametricDashboard:
 
 
 import numpy as np
-from types import SimpleNamespace
 
 
 # -------------- Energy functions --------------
@@ -373,17 +369,17 @@ def total_drag_force(agent, physical_model):
 
 
 def sim_linear_force(agent, physical_model):
-    index = min([floor(agent.t / config.DT), len(agent.log.record['reaction_friction_force']) - 1])
+    index = min([floor(agent.t / sim_config.config.DT), len(agent.log.record['reaction_friction_force']) - 1])
     return np.linalg.norm(agent.log.record['linear_drag_force'][index])
 
 
 def sim_total_drag_force(agent, physical_model):
-    index = min([floor(agent.t / config.DT), len(agent.log.record['reaction_friction_force']) - 1])
+    index = min([floor(agent.t / sim_config.config.DT), len(agent.log.record['reaction_friction_force']) - 1])
     return np.linalg.norm(agent.log.record['drag_force'][index])
 
 
 def sim_propulsion_force(agent, physical_model):
-    index = min([floor(agent.t / config.DT), len(agent.log.record['reaction_friction_force']) - 1])
+    index = min([floor(agent.t / sim_config.config.DT), len(agent.log.record['reaction_friction_force']) - 1])
     return np.linalg.norm(agent.log.record['reaction_friction_force'][index])
 
 
@@ -411,7 +407,7 @@ def run_simulation(agent, physical_model,
         agent.eat_count = 0
         agent.children_count = 0
         agent.energy = 0.8 * (
-                config.REPRODUCTION_ENERGY + config.MIN_LIFE_ENERGY)
+                sim_config.config.REPRODUCTION_ENERGY + sim_config.config.MIN_LIFE_ENERGY)
         agent.position = [0, 0]
         agent.velocity = np.array([0.01, 0.01])
         agent.speed = np.linalg.norm(agent.velocity)
@@ -428,10 +424,10 @@ def run_simulation(agent, physical_model,
         decision[0], decision[1] = agent.decision, np.pi
     if 1.5 < agent.own_0_const_1_rand_2 < 2.5:
         decision[0], decision[1] = (
-            agent.randn_t[floor(agent.t / config.DT)] * agent.decision_rand_mag + agent.decision, np.pi)
+            agent.randn_t[floor(agent.t / sim_config.config.DT)] * agent.decision_rand_mag + agent.decision, np.pi)
     if debug_energy: print(f'\t{agent.t:.1f} after thinking -> \t{agent.energy:.1f}')
     if debug_energy: print(f'\t\t{decision=}')
-    agent.move(decision=decision, dt=config.DT,
+    agent.move(decision=decision, dt=sim_config.config.DT,
                debug_energy=debug_energy, debug_position=debug_position, debug_force=debug_force)
     if debug_position: print(f'\t{agent.t:.1f} after moving -> \t{np.linalg.norm(agent.position)=:.1f}')
     if debug_energy: print(f'\t{agent.t:.1f} after moving -> \t{agent.energy:.1f}')
@@ -441,11 +437,10 @@ def run_simulation(agent, physical_model,
             agent.energy += agent.digest_dict['grass'] * physical_model.GRASS_ENERGY
             agent.eat_count += 1
     else:
-        if agent.rand_t[floor(agent.t / config.DT)] * average_eating_rate < config.DT:
-            # creature.eat(food_type='grass', food_energy=config.GRASS_ENERGY)  # TODO: make it work!
+        if agent.rand_t[floor(agent.t / sim_config.config.DT)] * average_eating_rate < sim_config.config.DT:
             agent.energy += agent.digest_dict['grass'] * physical_model.GRASS_ENERGY
             agent.eat_count += 1
-    if agent.energy > agent.reproduction_energy + config.MIN_LIFE_ENERGY:
+    if agent.energy > agent.reproduction_energy + sim_config.config.MIN_LIFE_ENERGY:
         agent.energy -= agent.reproduction_energy
         agent.children_count += 1
 
@@ -461,7 +456,7 @@ def position_over_time(agent, physical_model, debug_position=False):
 
 
 def speed_over_time(agent, physical_model):
-    index = min([floor(agent.t / config.DT), len(agent.log.record['speed']) - 1])
+    index = min([floor(agent.t / sim_config.config.DT), len(agent.log.record['speed']) - 1])
     if index == -1:
         return 0
     else:
@@ -469,12 +464,12 @@ def speed_over_time(agent, physical_model):
 
 
 def sim_energy_inner(agent, physical_model):
-    index = min([floor(agent.t / config.DT), len(agent.log.record['energy_inner']) - 1])
+    index = min([floor(agent.t / sim_config.config.DT), len(agent.log.record['energy_inner']) - 1])
     return agent.log.record['energy_inner'][index]
 
 
 def sim_energy_propulsion(agent, physical_model):
-    index = min([floor(agent.t / config.DT), len(agent.log.record['energy_propulsion']) - 1])
+    index = min([floor(agent.t / sim_config.config.DT), len(agent.log.record['energy_propulsion']) - 1])
     return agent.log.record['energy_propulsion'][index]
 
     # step_num = len(creature.t)
@@ -486,11 +481,11 @@ def sim_energy_propulsion(agent, physical_model):
     #     brain_input.append(np.concatenate(eyes_inputs))
     #     brain_input = np.hstack(brain_input)
     #     decision = creature.think(brain_input)
-    #     creature.move(decision=decision, dt=config.DT)
+    #     creature.move(decision=decision, dt=sim_config.config.DT)
     #     if creature.t[i_t]%average_eating_rate:
-    #         creature.eat(food_type='grass', food_energy=config.GRASS_ENERGY)
+    #         creature.eat(food_type='grass', food_energy=sim_config.config.GRASS_ENERGY)
     #         eat_count += 1
-    #     if creature.energy > creature.reproduction_energy + config.MIN_LIFE_ENERGY:
+    #     if creature.energy > creature.reproduction_energy + sim_config.config.MIN_LIFE_ENERGY:
     #         creature.energy -= creature.reproduction_energy
     #         children_count += 1
     #         if creature.energy <= 0:
@@ -503,7 +498,7 @@ def sim_energy_propulsion(agent, physical_model):
 if __name__ == '__main__':
     # Load config
     config_yaml_relative_path = r"input\yamls\2025_06_20_config.yaml"
-    config = load_config(yaml_relative_path=config_yaml_relative_path)
+    config = sim_config.load_config(yaml_relative_path=config_yaml_relative_path)
 
     # Load physical model
     physical_model_yaml_relative_path = r"input\yamls\2025_04_18_physical_model.yaml"
@@ -513,27 +508,27 @@ if __name__ == '__main__':
     from environment import Environment
     import simulation_utils
 
-    env = Environment(map_filename=config.ENV_PATH,
-                      grass_generation_rate=config.GRASS_GENERATION_RATE,
-                      leaves_generation_rate=config.LEAVES_GENERATION_RATE)
+    env = Environment(map_filename=sim_config.config.ENV_PATH,
+                      grass_generation_rate=sim_config.config.GRASS_GENERATION_RATE,
+                      leaves_generation_rate=sim_config.config.LEAVES_GENERATION_RATE)
 
     # Initialize creatures (ensuring they are not in forbidden areas).
-    brain_module = importlib.import_module(f"brain_models.{config.BRAIN_TYPE}")
+    brain_module = importlib.import_module(f"brain_models.{sim_config.config.BRAIN_TYPE}")
     brain_obj = getattr(brain_module, 'Brain')
-    agents = simulation_utils.initialize_creatures(env=env, brain_obj=brain_obj)
+    agents = simulation_utils.init_creatures(env=env, brain_obj=brain_obj)
 
     agent = agents[0]
-    agent.t = np.arange(0, agent.max_age) * config.DT  # time vector
+    agent.t = np.arange(0, agent.max_age) * sim_config.config.DT  # time vector
     agent.average_eating_rate = 500
-    agent.rand_t = np.random.rand(int(agent.max_age // config.DT) + 1)
-    agent.randn_t = np.random.randn(int(agent.max_age // config.DT) + 1)
+    agent.rand_t = np.random.rand(int(agent.max_age // sim_config.config.DT) + 1)
+    agent.randn_t = np.random.randn(int(agent.max_age // sim_config.config.DT) + 1)
     agent.own_0_const_1_rand_2 = 1
     agent.decision = 1
     agent.decision_rand_mag = 0.5
-    agent.move(decision=[agent.decision, 0], dt=config.DT)
+    agent.move(decision=[agent.decision, 0], dt=sim_config.config.DT)
     agent.max_age = agent.max_age // 10
 
-    physical_model.GRASS_ENERGY = config.GRASS_ENERGY
+    physical_model.GRASS_ENERGY = sim_config.config.GRASS_ENERGY
 
     slider_names = ['mass',
                     'height',
@@ -560,7 +555,7 @@ if __name__ == '__main__':
                     'GRASS_ENERGY']
     param_limits = [
         (0.1, 80),  # mass (x)
-        (config.INIT_MAX_HEIGHT * 0.01, config.INIT_MAX_HEIGHT),  # height
+        (sim_config.config.INIT_MAX_HEIGHT * 0.01, sim_config.config.INIT_MAX_HEIGHT),  # height
         (0.5, 30),  # strength
         (0, 2),  # mu_static
         (0, 2),  # mu_kinetic
@@ -573,7 +568,7 @@ if __name__ == '__main__':
         (0.001, 5.0),  # energy_conversion_factors.brain_consumption
         (0.001, 5.0),  # energy_conversion_factors.mass_energy
         (5.0, 15.0),  # physical_model.g
-        (0, config.MAX_SPEED * 10),  # speed
+        (0, sim_config.config.MAX_SPEED * 10),  # speed
         (0, physical_model.gamma * 2),  # physical_model.gamma
         (0, physical_model.c_drag * 2),  # physical_model.c_drag
         (0, agent.max_age),  # t
@@ -584,9 +579,9 @@ if __name__ == '__main__':
         (1000, 10000),  # GRASS_ENERGY
     ]
     slider_marks = [
-        [config.INIT_MAX_MASS],  # mass (x)
-        [config.INIT_MAX_HEIGHT],  # height
-        [config.INIT_MAX_STRENGTH],  # strength
+        [sim_config.config.INIT_MAX_MASS],  # mass (x)
+        [sim_config.config.INIT_MAX_HEIGHT],  # height
+        [sim_config.config.INIT_MAX_STRENGTH],  # strength
         [physical_model.mu_static],  # mu_static
         [physical_model.mu_kinetic],  # mu_kinetic
         [],  # brain.size
@@ -598,7 +593,7 @@ if __name__ == '__main__':
         [physical_model.energy_conversion_factors['brain_consumption']],  # energy_conversion_factors.brain_consumption
         [],  # energy_conversion_factors.mass
         [physical_model.g],  # physical_model.g
-        [config.MAX_SPEED],  # speed
+        [sim_config.config.MAX_SPEED],  # speed
         [physical_model.gamma],  # physical_model.gamma
         [physical_model.c_drag * 0.1, physical_model.c_drag * 10],  # physical_model.c_drag
         [0, agent.max_age],  # t
@@ -650,7 +645,7 @@ if __name__ == '__main__':
 
     f_list.append(energy_over_time)
     x_attr_list.append('t')
-    sample_num.append(int(agent.max_age // config.DT))
+    sample_num.append(int(agent.max_age // sim_config.config.DT))
     init_struct_list.append((agent, physical_model))
     x_labels.append('time [s]')
     y_labels.append('Energy [J]')
@@ -661,7 +656,7 @@ if __name__ == '__main__':
     #
     # f_list.append(position_over_time)
     # x_attr_list.append('t')
-    # sample_num.append(int(agent.max_age//config.DT))
+    # sample_num.append(int(agent.max_age//sim_config.config.DT))
     # init_struct_list.append((agent, physical_model))
     # x_labels.append('time [s]')
     # y_labels.append('Position [m]')
@@ -675,7 +670,7 @@ if __name__ == '__main__':
     f_list[-1].append(sim_total_drag_force)
     f_list[-1].append(sim_propulsion_force)
     x_attr_list.append('t')
-    sample_num.append(int(agent.max_age // config.DT))
+    sample_num.append(int(agent.max_age // sim_config.config.DT))
     init_struct_list.append((agent, physical_model))
     x_labels.append('time [s]')
     y_labels.append('Force [N]')
@@ -688,7 +683,7 @@ if __name__ == '__main__':
     f_list[-1].append(sim_energy_inner)
     f_list[-1].append(sim_energy_propulsion)
     x_attr_list.append('t')
-    sample_num.append(int(agent.max_age // config.DT))
+    sample_num.append(int(agent.max_age // sim_config.config.DT))
     init_struct_list.append((agent, physical_model))
     x_labels.append('time [s]')
     y_labels.append('Power [Watt]')
@@ -699,7 +694,7 @@ if __name__ == '__main__':
 
     f_list.append(speed_over_time)
     x_attr_list.append('t')
-    sample_num.append(int(agent.max_age // config.DT))
+    sample_num.append(int(agent.max_age // sim_config.config.DT))
     init_struct_list.append((agent, physical_model))
     x_labels.append('time [s]')
     y_labels.append('speed [m/s]')

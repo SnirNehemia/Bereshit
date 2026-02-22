@@ -1,8 +1,7 @@
-# fully_connected_brain.py
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-from input.codes import config
+from input.codes import sim_config
 
 import torch
 import torch.nn as nn
@@ -22,7 +21,7 @@ class Brain(nn.Module):
 
         self.input_size = layers_size[0] + memory_nodes_count
         self.output_size = layers_size[-1] + memory_nodes_count
-        self.random_magnitude = 0.2
+        self.random_magnitude = sim_config.config.BRAIN_RANDOM_MAGNITUDE
         self.size = 0  # Effective network size
         self.layers = nn.ParameterList()
         self.activations_str = []
@@ -114,7 +113,7 @@ class Brain(nn.Module):
             self.layers[-1] = nn.Parameter(self.layers[-1][:-1, :])
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x /= config.NORM_INPUT.astype(np.float32)  # normalize the input with prior knowledge
+        x /= sim_config.config.NORM_INPUT.astype(np.float32)  # normalize the input with prior knowledge
         x = torch.tanh(x)  # Initial normalization
         x = torch.cat([x, self.memory_nodes])
 
@@ -219,7 +218,7 @@ if __name__ == '__main__':
 
     # Load config
     config_yaml_relative_path = r"input\yamls\2025_06_20_config.yaml"
-    config = config.load_config(yaml_relative_path=config_yaml_relative_path)
+    config = sim_config.load_config(yaml_relative_path=config_yaml_relative_path)
 
     # Example usage
     torch.manual_seed(0)

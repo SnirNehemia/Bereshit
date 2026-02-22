@@ -1,19 +1,27 @@
+import shutil
+
 import numpy as np
 from scipy.spatial import KDTree
 
-from input.codes.physical_model import physical_model
-from input.codes.config import config
+from input.codes import sim_config
 from creature import Creature
 from environment import Environment
 
 
-def initialize_creatures(env: Environment, brain_obj) -> dict[int, Creature]:
+def init_environment():
+    # Create the environment. Ensure that 'map.png' exists and follows the color conventions.
+    return Environment(map_filename=sim_config.config.ENV_PATH,
+                       grass_generation_rate=sim_config.config.GRASS_GENERATION_RATE,
+                       leaves_generation_rate=sim_config.config.LEAVES_GENERATION_RATE)
+
+
+def init_creatures(env: Environment, brain_obj) -> dict[int, Creature]:
     """
     Initializes creatures ensuring they are not placed in a forbidden (black) area.
     """
     creatures = dict()
-    num_creatures = config.NUM_CREATURES
-    output_size = config.OUTPUT_SIZE
+    num_creatures = sim_config.config.NUM_CREATURES
+    output_size = sim_config.config.OUTPUT_SIZE
 
     for creature_id in range(num_creatures):
         # get a valid position
@@ -24,29 +32,29 @@ def initialize_creatures(env: Environment, brain_obj) -> dict[int, Creature]:
         parent_id = None
         birth_step = 0
         color = np.random.rand(3)  # Random RGB color.
-        max_age = int(np.random.uniform(low=0.8, high=1) * config.INIT_MAX_AGE)
+        max_age = int(np.random.uniform(low=0.8, high=1) * sim_config.config.INIT_MAX_AGE)
 
-        max_mass = np.random.uniform(low=0.8, high=1) * config.INIT_MAX_MASS
-        max_height = np.random.uniform(low=0.8, high=1) * config.INIT_MAX_HEIGHT
-        max_strength = np.random.uniform(low=0.8, high=1) * config.INIT_MAX_STRENGTH
+        max_mass = np.random.uniform(low=0.8, high=1) * sim_config.config.INIT_MAX_MASS
+        max_height = np.random.uniform(low=0.8, high=1) * sim_config.config.INIT_MAX_HEIGHT
+        max_strength = np.random.uniform(low=0.8, high=1) * sim_config.config.INIT_MAX_STRENGTH
 
-        max_speed = np.random.uniform(low=0.8, high=1) * config.MAX_SPEED
-        max_energy = np.random.uniform(low=0.8, high=1) * config.INIT_MAX_ENERGY
+        max_speed = np.random.uniform(low=0.8, high=1) * sim_config.config.MAX_SPEED
+        max_energy = np.random.uniform(low=0.8, high=1) * sim_config.config.INIT_MAX_ENERGY
 
-        reproduction_energy = config.REPRODUCTION_ENERGY
+        reproduction_energy = sim_config.config.REPRODUCTION_ENERGY
 
         # choose randomly if creature is herbivore or carnivore
         digest_roll = np.random.rand()
-        if digest_roll <= config.CHANCE_TO_HERBIVORE:
-            digest_dict = config.INIT_HERBIVORE_DIGEST_DICT
-            eyes_channels = config.EYE_CHANNEL  # sees only grass: [config.EYE_CHANNEL[0]]
-            eyes_params = config.EYES_PARAMS  # sees only grass: config.EYES_PARAMS[0]
+        if digest_roll <= sim_config.config.CHANCE_TO_HERBIVORE:
+            digest_dict = sim_config.config.INIT_HERBIVORE_DIGEST_DICT
+            eyes_channels = sim_config.config.EYE_CHANNEL  # sees only grass: [sim_config.config.EYE_CHANNEL[0]]
+            eyes_params = sim_config.config.EYES_PARAMS  # sees only grass: sim_config.config.EYES_PARAMS[0]
         else:
-            digest_dict = config.INIT_CARNIVORE_DIGEST_DICT
-            eyes_channels = config.EYE_CHANNEL  # sees only creatures: [config.EYE_CHANNEL[1]]
-            eyes_params = config.EYES_PARAMS  # sees only creatures: [config.EYES_PARAMS[1]]
+            digest_dict = sim_config.config.INIT_CARNIVORE_DIGEST_DICT
+            eyes_channels = sim_config.config.EYE_CHANNEL  # sees only creatures: [sim_config.config.EYE_CHANNEL[1]]
+            eyes_params = sim_config.config.EYES_PARAMS  # sees only creatures: [sim_config.config.EYES_PARAMS[1]]
 
-        vision_limit = config.VISION_LIMIT
+        vision_limit = sim_config.config.VISION_LIMIT
         eyes_dofs = 3 * len(eyes_params) * len(eyes_channels)  # 3 (flag, distance, angle) for each eye * X channels
         other_dofs = 3  # hunger, thirst, speed
         input_size = other_dofs + eyes_dofs
@@ -95,74 +103,6 @@ def build_creatures_kd_tree(creatures: dict[int, Creature]) -> KDTree:
         return KDTree([[0, 0]])
 
 
-def update_creatures_kd_tree(creatures: dict[int, Creature]) -> KDTree:
-    return build_creatures_kd_tree(creatures)
-
-
-def seek(creatures: dict[int, Creature],
-         creatures_kd_tree: KDTree, env: Environment,
-         creatures_ids_to_kill: list,
-         creature: Creature, noise_std: float = 0.0,
-         ):
-    """
-    Uses the specified eye (given by eye_params: (angle_offset, aperture))
-    to detect a nearby target.
-    Computes the eye's viewing direction by rotating the creature's heading by angle_offset.
-    Returns (distance, signed_angle, idx) if a target is found within half the aperture, else None.
-    """
-    channel_results = {}
-
-    kd_tree = []
-    for i_eye, eye_params in enumerate(creature.eyes_params):
-        for eye_channel in creature.eyes_channels:
-            candidate_points = np.array([])
-            if eye_channel == 'grass':
-                if len(env.grass_points) > 0:
-                    kd_tree = env.grass_kd_tree
-                    candidate_points = np.array(env.grass_points)
-                    candidates_to_remove_list = env.grass_remove_list
-            elif eye_channel == 'leaf':
-                if len(env.leaf_points) > 0:
-                    candidate_points = np.array(env.leaf_points)
-                    candidates_to_remove_list = env.leaf_remove_list
-            # elif eye_channel == 'water':
-            #     candidate_points = np.array([[env.water_source[0], env.water_source[1]]])
-            #     candidates_to_remove_list = env.water_remove_list
-            elif eye_channel == 'creature':
-                kd_tree = creatures_kd_tree
-                candidate_points = np.array([c.position for c in creatures.values()])
-                candidates_to_remove_list = creatures_ids_to_kill
-
-            if len(candidate_points) > 0:
-                result = detect_target_from_kdtree(creature=creature,
-                                                   eye_params=eye_params,
-                                                   kd_tree=kd_tree,
-                                                   candidate_points=candidate_points,
-                                                   candidates_to_remove_list=candidates_to_remove_list,
-                                                   noise_std=noise_std)
-            else:
-                result = None
-
-            channel_name = f'{eye_channel}_{i_eye}'
-            channel_results[channel_name] = result
-
-    return channel_results
-
-
-def use_brain(creature: Creature, env: Environment, seek_result: dict, dt: float):
-    try:
-        brain_input = get_brain_input(creature=creature, seek_result=seek_result)
-        decision = creature.think(brain_input)
-        creature.move(decision=decision, dt=dt)
-    except Exception as e:
-        print(f'Error in Simulation (use_brain, movement) for creature:'
-              f' {creature.creature_id}:\n{e}')
-        # breakpoint()
-
-    # Collision detection
-    detect_collision(creature=creature, env=env)
-
-
 def detect_collision(creature, env):
     """
     Handle cases where creature's new position is inside an obstacle or outbound.
@@ -170,18 +110,18 @@ def detect_collision(creature, env):
     :param env:
     :return:
     """
-    try:
-        col, row = map(int, creature.position)  # Convert (x, y) to image indices (col, row)
-        height, width = env.map_data.shape[:2]
-        if col < 0 or col >= width or row < 0 or row >= height or env.obstacle_mask[row, col]:
-            # choose if the velocity is set to zero or get mirrored
-            if config.BOUNDARY_CONDITION == 'zero':
-                creature.velocity = np.array([0.0, 0.0])
-            elif config.BOUNDARY_CONDITION == 'mirror':
-                creature.velocity = -creature.velocity
-    except Exception as e:
-        print(f'Error in Simulation (use_brain, collision detection) for creature: {creature.creature_id}:\n{e}')
-        # breakpoint()
+    height, width = env.map_data.shape[:2]
+    col, row = map(int, creature.position)  # Convert (x, y) to image indices (col, row)
+    if col < 0 or col >= width or row < 0 or row >= height or env.obstacle_mask[row, col]:
+
+        # choose if the velocity is set to zero or get mirrored
+        if sim_config.config.BOUNDARY_CONDITION == 'zero':
+            creature.position = np.clip(creature.position, [0, 0], [width, height])
+            creature.velocity = np.array([0.0, 0.0])
+
+        elif sim_config.config.BOUNDARY_CONDITION == 'mirror':
+            creature.position = np.clip(creature.position, [0, 0], [width, height])
+            creature.velocity = -creature.velocity
 
 
 def get_brain_input(creature: Creature, seek_result: dict):
@@ -226,42 +166,42 @@ def detect_target_from_kdtree(creature: Creature, eye_params,
     Returns:
       A tuple (distance, signed_angle, idx) for the detected target, or None if no target qualifies.
     """
-    try:
-        # get eye position and direction
-        eye_position, eye_direction, eye_aperture = \
-            get_eye_position_and_direction(creature=creature,
-                                           eye_params=eye_params)
+    # get eye position and direction
+    eye_position, eye_direction, eye_aperture = \
+        get_eye_position_and_direction(creature=creature,
+                                       eye_params=eye_params)
 
-        # Query the KDTree for candidate indices within the creature's vision range.
-        candidate_indices = kd_tree.query_ball_point(x=eye_position,
-                                                     r=creature.vision_limit)
+    # Query the KDTree for candidate indices within the creature's vision range.
+    candidate_indices = kd_tree.query_ball_point(x=eye_position,
+                                                 r=creature.vision_limit)
 
-        # Check which candidate indices satisfies the eye aperture and choose the closest one
-        best_distance = float('inf')
-        detected_info = None
-        for idx in candidate_indices:
-            try:
+    # Check which candidate indices satisfies the eye aperture and choose the closest one
+    best_distance = float('inf')
+    detected_info = None
+    for idx in candidate_indices:
+        try:   # if updating creature kd tree every step then try\expect is not needed.
+            if idx in candidates_to_remove_list:
+                continue
+            else:
                 candidate = candidate_points[idx]
-            except IndexError:  # TODO - need to fix: maybe candidates_to_remove_list is needed
-                continue
+        except IndexError:
+            print(f'IndexError in detect_target_from_kdtree: {len(kd_tree.data)=} while {len(candidate_points)=}.')
+            continue
 
-            is_relevant, distance, angle = \
-                calc_distance_and_angle_of_target(candidate=candidate, creature=creature,
-                                                  eye_position=eye_position,
-                                                  eye_direction=eye_direction,
-                                                  eye_aperture=eye_aperture,
-                                                  noise_std=noise_std)
+        is_relevant, distance, angle = \
+            calc_distance_and_angle_of_target(candidate=candidate, creature=creature,
+                                              eye_position=eye_position,
+                                              eye_direction=eye_direction,
+                                              eye_aperture=eye_aperture,
+                                              noise_std=noise_std)
 
-            if not is_relevant:
-                continue
+        if not is_relevant:
+            continue
 
-            # update detected_info if current target is closer
-            if distance < best_distance:
-                best_distance = distance
-                detected_info = (distance, angle, idx)
-    except Exception as e:
-        print(e)
-        breakpoint()
+        # update detected_info if current target is closer
+        if distance < best_distance:
+            best_distance = distance
+            detected_info = (distance, angle, idx)
     return detected_info
 
 
@@ -296,14 +236,17 @@ def calc_distance_and_angle_of_target(candidate, creature,
     if np.allclose(candidate, creature.position):
         return False, None, None
 
-    # Check that target is in vision limit # TODO - why is it needed? KDtree check that
+    # calc candidate distance and direction relative to current creature
     target_vector = candidate - eye_position
     distance = np.linalg.norm(target_vector)
+    target_direction = target_vector / distance
+
+    # Check that target is in vision limit (needed since candidate can move since last kd tree update,
+    # we use kd_tree.query_ball_point on old positions)
     if distance == 0 or distance > creature.vision_limit:
         return False, None, None
 
     # Only accept targets within half the aperture
-    target_direction = target_vector / distance
     dot = np.dot(eye_direction, target_direction)
     det = eye_direction[0] * target_direction[1] - \
           eye_direction[1] * target_direction[0]
@@ -320,89 +263,13 @@ def calc_distance_and_angle_of_target(candidate, creature,
     return True, distance, angle
 
 
-def eat_food(creature: Creature,
-             env: Environment,
-             seek_result: dict,
-             creatures: dict[int, Creature],
-             creatures_ids_to_kill: list[int],
-             step_counter: int):
-    """
-
-    :param creature:
-    :param env:
-    :param seek_result: dict of '{channel}_{eye_idx}': [distance, angle, idx]
-    :param creatures:
-    :param creatures_ids_to_kill
-    :param step_counter:
-    :return: eaten_food_type: 'grass'/'leaf'/'creature' or None if no food was eaten
-    """
-    # check if creature is full
-    if creature.energy >= creature.max_energy:
-        return None, None
-
-    # init relevant variables
-    food_energy = 0
-    food_point = None
-    eaten_food_type = None
-    is_food_condition_met = False
-    food_list, food_to_remove_list = [], []
-
-    # Eat food if conditions are met
-    for key, value in seek_result.items():
-        food_type = key.split('_')[0]
-
-        # Check if eye found something and if creature can eat it
-        if value is None or creature.digest_dict[food_type] == 0:
-            continue
-        else:
-            food_distance, food_angle, food_idx = seek_result[key]
-
-            if food_type == 'grass':
-                food_list = env.grass_points
-                food_to_remove_list = env.grass_remove_list
-                food_energy = config.GRASS_ENERGY
-                is_food_condition_met = True
-            elif food_type == 'leaf':  # TODO - fix to relevant variables when adding leaves
-                food_list = env.leaf_points
-                food_to_remove_list = env.leaf_remove_list
-                food_energy = config.LEAF_ENERGY
-                is_food_condition_met = creature.height >= food_list[food_idx].height
-            elif food_type == 'creature':
-                food_list = [creature_id for creature_id in creatures.keys()]
-                food_to_remove_list = creatures_ids_to_kill
-                prey_id = food_list[food_idx]
-                prey = creatures[prey_id]
-                food_energy = prey.energy + physical_model.energy_conversion_factors['mass_energy'] * prey.mass
-
-                is_child = creature.creature_id == prey.parent_id
-                is_father = creature.parent_id == prey.creature_id
-                is_food_condition_met = creature.mass >= prey.mass and not is_child and not is_father
-
-            # Check if conditions to eat food are met (if so, eat and add to food_remove_list)
-            food_point = food_list[food_idx]
-            is_food_available = food_point not in food_to_remove_list
-            is_food_close_enough = food_distance <= config.FOOD_DISTANCE_THRESHOLD
-
-            if is_food_available and is_food_close_enough and is_food_condition_met:
-                # eat food and record it
-                creature.eat(food_type=food_type, food_energy=food_energy)
-                creature.log.add_record(f'eat_{food_type}', step_counter)
-
-                # remove food
-                food_to_remove_list.append(food_point)
-                eaten_food_type = food_type
-                break
-
-    return eaten_food_type, food_point
-
-
 def do_purge(do_purge: bool,
              creatures: dict[int, Creature],
              creatures_ids_to_kill: list[int],
              creatures_ids_to_reproduce: list[int],
              step_counter: int):
     creatures_ids_to_purge = []
-    if config.DO_PURGE:
+    if sim_config.config.DO_PURGE:
         if do_purge:  # criterion met
             purge_count = 0
             for creature_id, creature in creatures.items():
@@ -416,10 +283,10 @@ def do_purge(do_purge: bool,
                         creatures_ids_to_purge.append(creature_id)
 
                     # kill if creature is always slow
-                    if creature.max_speed_exp <= config.PURGE_SPEED_THRESHOLD:
+                    elif creature.max_speed_exp <= sim_config.config.PURGE_SPEED_THRESHOLD:
                         purge_count += 1
                         creatures_ids_to_purge.append(creature_id)
-            print(f'\nStep {step_counter}: Purging {purge_count} creatures.')
+            # print(f'\nStep {step_counter}: Purging {purge_count} creatures.')
             do_purge = False
 
     return do_purge, creatures_ids_to_purge
@@ -475,7 +342,7 @@ def update_environment_and_kd_trees(env: Environment,
     env.update()
 
     # Update KDTree if needed or every "kdtree_update_interval" steps
-    is_time_to_update_kd_trees = step_counter % config.UPDATE_KDTREE_INTERVAL == 0
+    is_time_to_update_kd_trees = step_counter % sim_config.config.UPDATE_KDTREE_INTERVAL == 0
     if to_update_kd_tree['grass'] or is_time_to_update_kd_trees:
         env.update_grass_kd_tree()
 
@@ -483,16 +350,16 @@ def update_environment_and_kd_trees(env: Environment,
         pass
 
     if to_update_kd_tree['creature'] or is_time_to_update_kd_trees:
-        creatures_kd_tree = update_creatures_kd_tree(creatures=creatures)
+        creatures_kd_tree = build_creatures_kd_tree(creatures=creatures)
 
     return creatures_kd_tree
 
 
 def calc_num_steps_per_frame(frame: int) -> int:
-    keys = list(config.NUM_STEPS_FROM_FRAME_DICT.keys())
-    previous_value = config.NUM_STEPS_FROM_FRAME_DICT[keys[0]]
+    keys = list(sim_config.config.NUM_STEPS_FROM_FRAME_DICT.keys())
+    previous_value = sim_config.config.NUM_STEPS_FROM_FRAME_DICT[keys[0]]
 
-    for key, value in config.NUM_STEPS_FROM_FRAME_DICT.items():
+    for key, value in sim_config.config.NUM_STEPS_FROM_FRAME_DICT.items():
         if frame < key:
             break
         else:
@@ -506,8 +373,8 @@ def calc_num_steps_per_frame(frame: int) -> int:
 def calc_total_num_steps(up_to_frame: int) -> int:
     total_steps = 0
 
-    keys = list(config.NUM_STEPS_FROM_FRAME_DICT.keys())
-    values = list(config.NUM_STEPS_FROM_FRAME_DICT.values())
+    keys = list(sim_config.config.NUM_STEPS_FROM_FRAME_DICT.keys())
+    values = list(sim_config.config.NUM_STEPS_FROM_FRAME_DICT.values())
 
     for i in range(len(keys)):
         start = keys[i]
@@ -528,7 +395,7 @@ def calc_total_num_steps(up_to_frame: int) -> int:
 
 def check_abort_simulation(creatures: dict[int, Creature], step_counter: int):
     abort_simulation = False
-    if len(creatures) > config.MAX_NUM_CREATURES:
+    if len(creatures) > sim_config.config.MAX_NUM_CREATURES:
         print(f'step={step_counter}: Too many creatures, simulation is too slow.')
         abort_simulation = True
     elif len(creatures) <= 0:
@@ -538,7 +405,21 @@ def check_abort_simulation(creatures: dict[int, Creature], step_counter: int):
     return abort_simulation
 
 
+def copy_config_and_physical_model_to_output_folder(physical_model_full_path):
+    shutil.copyfile(src=sim_config.config.full_path,
+                    dst=sim_config.config.OUTPUT_FOLDER.joinpath(f"{sim_config.config.timestamp}_config.yaml"))
+    shutil.copyfile(src=physical_model_full_path,
+                    dst=sim_config.config.OUTPUT_FOLDER.joinpath(f"{sim_config.config.timestamp}_physical_model.yaml"))
+
+
 if __name__ == '__main__':
-    for frame in range(10):
-        num_steps = calc_num_steps_per_frame(frame=frame)
-        print(f'{frame=}: {num_steps=}')
+
+    # Load config
+    config_name = "2026_02_19_config.yaml"
+    sim_config.load_config(config_name=config_name)
+
+    # Calc num steps up to given frame
+    num_frames = sim_config.config.NUM_FRAMES
+    for frame in range(int(0.8 * num_frames), num_frames):
+        num_steps = calc_total_num_steps(up_to_frame=frame)
+        print(f'up to {frame=}: {num_steps=}')

@@ -1,7 +1,4 @@
 import numpy as np
-from input.codes.config import config, load_config
-
-import importlib
 
 
 class StaticTraits:
@@ -52,5 +49,7 @@ class StaticTraits:
     def think(self, input_vector: np.ndarray) -> np.ndarray:
         """
         Processes the input vector through the brain to generate a decision.
+        decision = [propulsion_force_mag, relative_propulsion_force_angle].
+        angle is relative to heading (== velocity direction)
         """
         return self.brain.forward(input_vector)

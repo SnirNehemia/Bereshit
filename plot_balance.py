@@ -212,7 +212,6 @@ class ParametricDashboard:
         slider_height = 0.02
         slider_gap = 0.02
         # self.x_vector = {}
-        # TODO: make sure we take physical properties into account, for each key (in physical or agent) check which one it fits.
         for i, args in enumerate(self.init_struct_list):
             slider_group = []
             if isinstance(args, (tuple, list)) and not isinstance(args[0], (int, float, str)):
@@ -439,7 +438,6 @@ def run_simulation(agent, physical_model,
             agent.eat_count += 1
     else:
         if agent.rand_t[floor(agent.t / sim_config.config.DT)] * average_eating_rate < sim_config.config.DT:
-            # creature.eat(food_type='grass', food_energy=sim_config.config.GRASS_ENERGY)  # TODO: make it work!
             agent.energy += agent.digest_dict['grass'] * physical_model.GRASS_ENERGY
             agent.eat_count += 1
     if agent.energy > agent.reproduction_energy + sim_config.config.MIN_LIFE_ENERGY:

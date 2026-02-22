@@ -64,7 +64,7 @@ class Creature(StaticTraits):
             self.strength = 0.1 * self.max_strength
 
         self.energy = 0.8 * (
-                sim_config.config.REPRODUCTION_ENERGY + sim_config.config.MIN_LIFE_ENERGY)  # TODO: patch for runability | was self.max_energy
+                sim_config.config.REPRODUCTION_ENERGY + sim_config.config.MIN_LIFE_ENERGY)
         self.velocity = (np.random.rand(2) - 0.5) * self.max_speed
         self.max_speed_exp = np.linalg.norm(self.velocity)
         self.calc_speed()
@@ -72,7 +72,6 @@ class Creature(StaticTraits):
         self.hunger = 100
         self.thirst = 100
 
-        # TODO: logs are in step units for now
         self.log = CreaturesLogs(
             self.creature_id)  # pay attention! the id is None for children and it is defines only later, in the simulation
 

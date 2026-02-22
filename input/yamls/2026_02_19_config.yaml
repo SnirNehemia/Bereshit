@@ -4,15 +4,15 @@ NUM_RUNS: 5
 PHYSICAL_MODEL_CONFIG_NAME: 2026_02_21_physical_model1.yaml
 
 DT: 2.5  # time passing between consecutive steps (relevant for age and movement)
-NUM_FRAMES: 100  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
+NUM_FRAMES: 50  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
 # key is frame number and value is num steps per frame from this frame onward
 NUM_STEPS_FROM_FRAME_DICT: { 0: 2000,
-                             10: 300
+                             10: 500
 }
 
 FRAME_INTERVAL: 75  # interval between frames in animation [in ms]
 STATUS_EVERY_STEP: False  # choose if to update every step or every frame
-UPDATE_KDTREE_INTERVAL: 120  # update the kdtree every n steps
+UPDATE_KDTREE_INTERVAL: 120  # 120 update the kdtree every n steps
 DEBUG_MODE: False  # breakpoint in update_func after each frame (not step!)
 REBALANCE: True
 PURGE_POP_PERCENTAGE: 0.75  # percentage of MAX_NUM_CREATURES to stuck simulation
@@ -77,8 +77,8 @@ NOISE_STD: 0.5  # gaussian noise for vision - currently not in use
 
 # Brain parameters
 BRAIN_TYPE: 'graphic_brain'  # 'fully_connected_brain' or 'graphic_brain'
-# d_velocity and d_angle
-OUTPUT_SIZE: 2
+BRAIN_RANDOM_MAGNITUDE: 0.2
+OUTPUT_SIZE: 2  # magnitude and direction
 NORM_INPUT: [ 1, 1, 1 ]
 
 # Mutations

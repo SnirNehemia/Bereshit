@@ -7,8 +7,6 @@ import platform, matplotlib
 import random, math
 from input.codes import sim_config
 
-# TODO: make closed loop activation tanh! or regulate it
-
 if platform.system() == 'Darwin':
     matplotlib.use('MacOSX')
 else:
@@ -51,7 +49,7 @@ class Brain:
             for i_out in range(output_size):
                 self.add_connection(f'I{i_in}', f'O{i_out}', weight=np.random.randn())
         self.pos = 'none'
-        self.random_magnitude = 0.2  # TODO: change to something from config
+        self.random_magnitude = sim_config.config.BRAIN_RANDOM_MAGNITUDE
         self.self_connected = []
         self.size = len(self.graph.nodes)
 
@@ -498,18 +496,11 @@ class Brain:
                     color=color,
                     lw=2,
                     zorder=2,
-                    connectionstyle=f'arc3,rad={rad}',  # Use your variable rad for regular edges
+                    connectionstyle=f'arc3,rad={rad}',  # This sets the curvature. Use your 'rad' for regular edges
                     shrinkA=10,
                     shrinkB=20,
                     alpha=np.clip(abs(weight), 1e-2, 1)
                 )
-            # arrow = FancyArrowPatch(start_point, end_point,
-            #                         arrowstyle='-|>', mutation_scale=15,
-            #                         color=color, lw=2, zorder=2,
-            #                         connectionstyle=f'arc3,rad={rad}',  # This sets the curvature
-            #                         shrinkA=10,  # Pull back from start point by x points TODO: Modify with network size?
-            #                         shrinkB=20  # Pull back from end point by x points
-            #                         )
             ax.add_patch(arrow)
 
         ax.set_aspect('equal')

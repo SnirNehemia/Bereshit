@@ -62,7 +62,7 @@ class Config:
             self.EYES_PARAMS[i][0] = np.radians(self.EYES_PARAMS[i][0])
             self.EYES_PARAMS[i][1] = np.radians(self.EYES_PARAMS[i][1])
 
-            # Brain parameters  # TODO - need to change norm_input to depend on creature if have different eyes
+            # Brain parameters
             norm_input = self.NORM_INPUT
             for _ in range(len(self.EYES_PARAMS) * len(self.EYE_CHANNEL)):
                 norm_input = np.append(norm_input, [1, self.VISION_LIMIT, 1])

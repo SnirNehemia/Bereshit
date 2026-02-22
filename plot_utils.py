@@ -6,7 +6,6 @@ from input.codes import sim_config
 
 
 def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x_label=False, ax_secondary=None):
-    # TODO: rename | assign better colors | remove title and x label for most | show angle friction in RHS
     if debug:
         import matplotlib.pyplot as plt
         plt.ion()
@@ -16,7 +15,7 @@ def plot_rebalance(ax, agent, debug=False, mode='energy', add_title=False, add_x
         if add_title:
             if len(agent.log.record['eat']) > 0 and len(
                     agent.log.record[
-                        'energy_consumption']) > 3:  # TODO: make sure energy consumption exclude eating events
+                        'energy_consumption']) > 3:
                 title = (f"P out = {np.mean(agent.log.record['energy_consumption']) / sim_config.config.DT:.1f} J/sec | "
                          f"Meals dt = {np.mean(np.diff([agent.birth_step] + agent.log.record['eat'])) * sim_config.config.DT:.0f} sec | "
                          f"Meal E = {np.mean(agent.log.record['energy_excess']):.0f} J | "

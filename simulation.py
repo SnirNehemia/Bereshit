@@ -77,6 +77,7 @@ class Simulation:
 
     def seek(self,
              creatures_ids_to_kill: list,
+             creatures_positions: list,
              creature: Creature, noise_std: float = 0.0,
              ):
         """
@@ -105,7 +106,7 @@ class Simulation:
                 #     candidates_to_remove_list = self.env.water_remove_list
                 elif eye_channel == 'creature':
                     kd_tree = self.creatures_kd_tree
-                    candidate_points = np.array([c.position for c in self.creatures.values()])
+                    candidate_points = creatures_positions
                     candidates_to_remove_list = creatures_ids_to_kill
 
                 if len(candidate_points) > 0:
@@ -141,6 +142,7 @@ class Simulation:
         creatures_ids_to_kill = []
         to_update_kd_tree = {food_type: False
                              for food_type in sim_config.config.INIT_HERBIVORE_DIGEST_DICT.keys()}
+        creatures_positions = np.array([c.position for c in self.creatures.values()])
 
         for creature_id, creature in self.creatures.items():
             # death from age/fatigue/eaten by another creature
@@ -160,7 +162,8 @@ class Simulation:
                 # Seek in environment
                 seek_result = self.seek(
                     creature=creature, noise_std=noise_std,
-                    creatures_ids_to_kill=creatures_ids_to_kill)
+                    creatures_ids_to_kill=creatures_ids_to_kill,
+                    creatures_positions=creatures_positions)
 
                 # Use brain to move
                 self.use_brain(
@@ -213,6 +216,10 @@ class Simulation:
             creatures=self.creatures,
             dead_creatures=self.dead_creatures)
 
+        # Ensure creatures kd tree is updated if creatures are added/killed.
+        if len(new_child_ids) > 0 or len(new_dead_ids) > 0:
+            to_update_kd_tree['creature'] = True
+
         # Update environment (generate new food points) and update KD trees if conditions are met
         self.creatures_kd_tree = simulation_utils.update_environment_and_kd_trees(
             env=self.env,
@@ -247,7 +254,6 @@ class Simulation:
             global fig, axes, progress_bar
 
             # init fig with the grid layout with uneven ratios
-            # TODO: fig, axes = set_animation_figure()
             fig = plt.figure(figsize=(16, 8))
             fig_grid = gridspec.GridSpec(2, 3, width_ratios=[1, 2, 1], height_ratios=[1, 1])
             axes = []
@@ -326,7 +332,8 @@ class Simulation:
             self.positions = np.array([creature.position for creature in self.creatures.values()])
             colors = [creature.color for creature in self.creatures.values()]
             edge_colors = ['r' if creature.digest_dict['creature'] > 0 else 'g' for creature in self.creatures.values()]
-            sizes = np.array([creature.mass for creature in self.creatures.values()]) * sim_config.config.FOOD_SIZE / 100
+            sizes = np.array(
+                [creature.mass for creature in self.creatures.values()]) * sim_config.config.FOOD_SIZE / 100
             scat = axes[1].scatter(self.positions[:, 0], self.positions[:, 1],
                                    c=colors, s=sizes, edgecolor=edge_colors, linewidth=1.5,
                                    transform=axes[1].transData)
@@ -479,7 +486,8 @@ class Simulation:
                 # Update creature positions and directions
                 num_creatures_in_last_frame = len(self.positions)
                 self.positions = np.array([creature.position for creature in self.creatures.values()])
-                sizes = np.array([creature.mass for creature in self.creatures.values()]) * sim_config.config.FOOD_SIZE  # / 10
+                sizes = np.array(
+                    [creature.mass for creature in self.creatures.values()]) * sim_config.config.FOOD_SIZE  # / 10
                 colors = [creature.color for creature in self.creatures.values()]
                 edge_colors = ['r' if creature.digest_dict['creature'] > 0 else 'g' for creature in
                                self.creatures.values()]
@@ -524,7 +532,6 @@ class Simulation:
                     quiv = axes[1].quiver([1], [1], [1], [1])
 
                 # Update vegetation scatter data
-                # num_grass_points_in_last_frame = TODO
                 num_grass_points_after_step = len(self.env.grass_points)
                 if num_grass_points_after_step > 0:
                     # if num_grass_points_after_step == num_grass_points_in_last_frame:
@@ -535,7 +542,6 @@ class Simulation:
                                                  edgecolors='black',
                                                  s=10)
 
-                # num_leaf_points_in_last_frame = TODO
                 num_leaf_points_after_step = len(self.env.leaf_points)
                 if num_leaf_points_after_step > 0:
                     # if num_leaf_points_after_step == num_grass_points_in_last_frame:
@@ -604,7 +610,8 @@ class Simulation:
         try:
             init_fig()
             ani = animation.FuncAnimation(fig=fig, func=update_func, init_func=init_func, blit=True,
-                                          frames=sim_config.config.NUM_FRAMES, interval=sim_config.config.FRAME_INTERVAL)
+                                          frames=sim_config.config.NUM_FRAMES,
+                                          interval=sim_config.config.FRAME_INTERVAL)
             # print('\nSimulation completed successfully. saving progress...')
 
         except KeyboardInterrupt:
@@ -624,14 +631,9 @@ class Simulation:
 
     def use_brain(self, creature: Creature,
                   seek_result: dict, dt: float):
-        # try:
         brain_input = simulation_utils.get_brain_input(creature=creature, seek_result=seek_result)
         decision = creature.think(brain_input)
         self.physical_model.move_creature(creature=creature, decision=decision, dt=dt)
-        # except Exception as e:
-        #     print(f'Error in Simulation (use_brain, movement) for creature:'
-        #           f' {creature.creature_id}:\n{e}')
-        # breakpoint()
 
         # Collision detection
         simulation_utils.detect_collision(creature=creature, env=self.env)
@@ -675,7 +677,7 @@ class Simulation:
                     food_to_remove_list = self.env.grass_remove_list
                     food_energy = sim_config.config.GRASS_ENERGY
                     is_food_condition_met = True
-                elif food_type == 'leaf':  # TODO - fix to relevant variables when adding leaves
+                elif food_type == 'leaf':
                     food_list = self.env.leaf_points
                     food_to_remove_list = self.env.leaf_remove_list
                     food_energy = sim_config.config.LEAF_ENERGY

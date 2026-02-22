@@ -1,4 +1,3 @@
-# fully_connected_brain.py
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
@@ -22,7 +21,7 @@ class Brain(nn.Module):
 
         self.input_size = layers_size[0] + memory_nodes_count
         self.output_size = layers_size[-1] + memory_nodes_count
-        self.random_magnitude = 0.2
+        self.random_magnitude = sim_config.config.BRAIN_RANDOM_MAGNITUDE
         self.size = 0  # Effective network size
         self.layers = nn.ParameterList()
         self.activations_str = []

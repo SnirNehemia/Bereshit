@@ -103,10 +103,6 @@ def build_creatures_kd_tree(creatures: dict[int, Creature]) -> KDTree:
         return KDTree([[0, 0]])
 
 
-def update_creatures_kd_tree(creatures: dict[int, Creature]) -> KDTree:
-    return build_creatures_kd_tree(creatures)
-
-
 def detect_collision(creature, env):
     """
     Handle cases where creature's new position is inside an obstacle or outbound.
@@ -115,23 +111,17 @@ def detect_collision(creature, env):
     :return:
     """
     height, width = env.map_data.shape[:2]
-    creature.position = np.clip(creature.position, [0, 0], [width, height])
-    # TODO - how to handle obstacles?
+    col, row = map(int, creature.position)  # Convert (x, y) to image indices (col, row)
+    if col < 0 or col >= width or row < 0 or row >= height or env.obstacle_mask[row, col]:
 
-    # try:
-    #     col, row = map(int, creature.position)  # Convert (x, y) to image indices (col, row)
-    #     height, width = env.map_data.shape[:2]
-    #     if col < 0 or col >= width or row < 0 or row >= height or env.obstacle_mask[row, col]:
-    #
-    #         # choose if the velocity is set to zero or get mirrored
-    #         if sim_config.config.BOUNDARY_CONDITION == 'zero':
-    #             creature.velocity = np.array([0.0, 0.0])
-    #
-    #         elif sim_config.config.BOUNDARY_CONDITION == 'mirror':
-    #             creature.velocity = -creature.velocity
-    # except Exception as e:
-    #     print(f'Error in Simulation (use_brain, collision detection) for creature: {creature.creature_id}:\n{e}')
-    #     # breakpoint()
+        # choose if the velocity is set to zero or get mirrored
+        if sim_config.config.BOUNDARY_CONDITION == 'zero':
+            creature.position = np.clip(creature.position, [0, 0], [width, height])
+            creature.velocity = np.array([0.0, 0.0])
+
+        elif sim_config.config.BOUNDARY_CONDITION == 'mirror':
+            creature.position = np.clip(creature.position, [0, 0], [width, height])
+            creature.velocity = -creature.velocity
 
 
 def get_brain_input(creature: Creature, seek_result: dict):
@@ -176,42 +166,42 @@ def detect_target_from_kdtree(creature: Creature, eye_params,
     Returns:
       A tuple (distance, signed_angle, idx) for the detected target, or None if no target qualifies.
     """
-    try:
-        # get eye position and direction
-        eye_position, eye_direction, eye_aperture = \
-            get_eye_position_and_direction(creature=creature,
-                                           eye_params=eye_params)
+    # get eye position and direction
+    eye_position, eye_direction, eye_aperture = \
+        get_eye_position_and_direction(creature=creature,
+                                       eye_params=eye_params)
 
-        # Query the KDTree for candidate indices within the creature's vision range.
-        candidate_indices = kd_tree.query_ball_point(x=eye_position,
-                                                     r=creature.vision_limit)
+    # Query the KDTree for candidate indices within the creature's vision range.
+    candidate_indices = kd_tree.query_ball_point(x=eye_position,
+                                                 r=creature.vision_limit)
 
-        # Check which candidate indices satisfies the eye aperture and choose the closest one
-        best_distance = float('inf')
-        detected_info = None
-        for idx in candidate_indices:
-            try:
+    # Check which candidate indices satisfies the eye aperture and choose the closest one
+    best_distance = float('inf')
+    detected_info = None
+    for idx in candidate_indices:
+        try:   # if updating creature kd tree every step then try\expect is not needed.
+            if idx in candidates_to_remove_list:
+                continue
+            else:
                 candidate = candidate_points[idx]
-            except IndexError:  # TODO - need to fix: maybe candidates_to_remove_list is needed
-                continue
+        except IndexError:
+            breakpoint()
+            continue
 
-            is_relevant, distance, angle = \
-                calc_distance_and_angle_of_target(candidate=candidate, creature=creature,
-                                                  eye_position=eye_position,
-                                                  eye_direction=eye_direction,
-                                                  eye_aperture=eye_aperture,
-                                                  noise_std=noise_std)
+        is_relevant, distance, angle = \
+            calc_distance_and_angle_of_target(candidate=candidate, creature=creature,
+                                              eye_position=eye_position,
+                                              eye_direction=eye_direction,
+                                              eye_aperture=eye_aperture,
+                                              noise_std=noise_std)
 
-            if not is_relevant:
-                continue
+        if not is_relevant:
+            continue
 
-            # update detected_info if current target is closer
-            if distance < best_distance:
-                best_distance = distance
-                detected_info = (distance, angle, idx)
-    except Exception as e:
-        print(e)
-        breakpoint()
+        # update detected_info if current target is closer
+        if distance < best_distance:
+            best_distance = distance
+            detected_info = (distance, angle, idx)
     return detected_info
 
 
@@ -246,14 +236,17 @@ def calc_distance_and_angle_of_target(candidate, creature,
     if np.allclose(candidate, creature.position):
         return False, None, None
 
-    # Check that target is in vision limit # TODO - why is it needed? KDtree check that
+    # calc candidate distance and direction relative to current creature
     target_vector = candidate - eye_position
     distance = np.linalg.norm(target_vector)
+    target_direction = target_vector / distance
+
+    # Check that target is in vision limit (needed since candidate can move since last kd tree update,
+    # we use kd_tree.query_ball_point on old positions)
     if distance == 0 or distance > creature.vision_limit:
         return False, None, None
 
     # Only accept targets within half the aperture
-    target_direction = target_vector / distance
     dot = np.dot(eye_direction, target_direction)
     det = eye_direction[0] * target_direction[1] - \
           eye_direction[1] * target_direction[0]
@@ -357,7 +350,7 @@ def update_environment_and_kd_trees(env: Environment,
         pass
 
     if to_update_kd_tree['creature'] or is_time_to_update_kd_trees:
-        creatures_kd_tree = update_creatures_kd_tree(creatures=creatures)
+        creatures_kd_tree = build_creatures_kd_tree(creatures=creatures)
 
     return creatures_kd_tree
 
@@ -411,13 +404,22 @@ def check_abort_simulation(creatures: dict[int, Creature], step_counter: int):
 
     return abort_simulation
 
+
 def copy_config_and_physical_model_to_output_folder(physical_model_full_path):
     shutil.copyfile(src=sim_config.config.full_path,
                     dst=sim_config.config.OUTPUT_FOLDER.joinpath(f"{sim_config.config.timestamp}_config.yaml"))
     shutil.copyfile(src=physical_model_full_path,
                     dst=sim_config.config.OUTPUT_FOLDER.joinpath(f"{sim_config.config.timestamp}_physical_model.yaml"))
 
+
 if __name__ == '__main__':
-    for frame in range(40, 50):
+
+    # Load config
+    config_name = "2026_02_19_config.yaml"
+    sim_config.load_config(config_name=config_name)
+
+    # Calc num steps up to given frame
+    num_frames = sim_config.config.NUM_FRAMES
+    for frame in range(int(0.8 * num_frames), num_frames):
         num_steps = calc_total_num_steps(up_to_frame=frame)
         print(f'up to {frame=}: {num_steps=}')

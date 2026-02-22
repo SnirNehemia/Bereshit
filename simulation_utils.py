@@ -185,7 +185,7 @@ def detect_target_from_kdtree(creature: Creature, eye_params,
             else:
                 candidate = candidate_points[idx]
         except IndexError:
-            breakpoint()
+            print(f'IndexError in detect_target_from_kdtree: {len(kd_tree.data)=} while {len(candidate_points)=}.')
             continue
 
         is_relevant, distance, angle = \

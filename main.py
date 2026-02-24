@@ -1,9 +1,9 @@
 import time
 
-from input.codes import sim_config
-from input.codes.physical_model_factory import PhysicalModelFactory
-from profiles.profiler import profileit
-from simulation import Simulation
+from b_basic.sim_config.codes import sim_config
+from c_models.physical_model_factory import PhysicalModelFactory
+from d_controllers.simulation import Simulation
+from f_post_analysis.profiles.profiler import profileit
 
 
 @profileit()
@@ -28,5 +28,5 @@ if __name__ == "__main__":
         total_time = time.time() - start_time
         print('\n----------------------------------------')
         print(f"Simulation {sim_config.config.timestamp} running time "
-              f"({i}/{sim_config.config.NUM_RUNS}): {total_time:.2f} seconds")
+              f"({i + 1}/{sim_config.config.NUM_RUNS}): {total_time:.2f} seconds")
         print('----------------------------------------')

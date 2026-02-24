@@ -1,8 +1,0 @@
-# physical model type
-model_type: physicalmodel1
-
-parameters:
-  # convert physical parameters to energy
-  energy_conversion_factors: { 'activity_efficiency': 0.75,  #0.25,  # propulsion force to energy factor (higher -> efficient)
-                               'mass_energy': 25  # [E]/[m] = [v^2] = [m^2/sec^4]  convert mass to energy
-  }

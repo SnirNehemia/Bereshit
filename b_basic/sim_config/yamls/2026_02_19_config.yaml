@@ -1,28 +1,29 @@
 # Simulation parameters
 VERSION: 2.0
-DT: 2.5  # time passing between consecutive steps (relevant for age and movement)
-NUM_FRAMES: 305  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
-
+NUM_RUNS: 5
+NUM_FRAMES: 50  # the actual number of steps = NUM_FRAMES * UPDATE_ANIMATION_INTERVAL
 # key is frame number and value is num steps per frame from this frame onward
 NUM_STEPS_FROM_FRAME_DICT: { 0: 2000,
-                             5: 300,
+                             10: 500
 }
+UPDATE_KDTREE_INTERVAL: 120  # 120 update the kdtree every n steps
+STATUS_EVERY_STEP: False  # choose if to update every step or every frame
 
-FRAME_INTERVAL: 75  # interval between frames in animation [in ms]
-STATUS_EVERY_STEP: True  # choose if to update every step or every frame
-UPDATE_KDTREE_INTERVAL: 120  # update the kdtree every n steps
-DEBUG_MODE: False  # breakpoint in update_func after each frame (not step!)
+# Debug parameters
 REBALANCE: True
-PURGE_POP_PERCENTAGE: 0.75  # percentage of MAX_NUM_CREATURES to stuck simulation
+DEBUG_MODE: False  # breakpoint in update_func after each frame (not step!)
 
-# Purge parameters
-DO_PURGE: True
-PURGE_FRAME_FREQUENCY: 50  # do purge every PURGE_FRAME_FREQUENCY frames
-PURGE_PERCENTAGE: 0.1  # percentage out of MAX_NUM_CREATURES to do purge
-PURGE_SPEED_THRESHOLD: 0.1  # if the creature's speed is below this threshold at first reproduction, it will be removed
+# Physical model parameters
+physical_model_type: physicalmodel1  # physical model type
+
+physical_model_parameters:
+  # convert physical parameters to energy
+  energy_conversion_factors: { 'activity_efficiency': 0.75,  #0.25,  # propulsion force to energy factor (higher -> efficient)
+                               'mass_energy': 25  # [E]/[m] = [v^2] = [m^2/sec^4]  convert mass to energy
+  }
 
 # Environment parameters
-ENV_PATH: env_images/Env8.png
+ENV_PATH: b_basic\environments\env_images\Env8.png
 BOUNDARY_CONDITION: 'zero'  # what to do with the velocity on the boundaries - 'mirror' or 'zero'
 MAX_GRASS_NUM: 100
 GRASS_GENERATION_RATE: 5  # if exceeding MAX_GRASS_NUM replace GRASS_GENERATION_RATE grass points
@@ -30,27 +31,6 @@ GRASS_GROWTH_CHANCE: 0.1  # changed: 0.5  # maybe will be useful to create droug
 MAX_LEAVES_NUM: 50
 LEAVES_GENERATION_RATE: 0  # if exceeding MAX_LEAVES_NUM replace LEAVES_GENERATION_RATE grass points
 LEAVES_GROWTH_CHANCE: 0.5  # maybe will be useful to create droughts
-
-# Food parameters
-LEAF_HEIGHT: 10
-FOOD_DISTANCE_THRESHOLD: 75
-
-# Energy parameters
-INIT_MAX_ENERGY: 20000  # used now to indicate if creature is full (no more food). maybe useful for maturity test before reproduction
-REPRODUCTION_ENERGY: 5000 # changed: 5000  # energy cost of reproduction
-MIN_LIFE_ENERGY: 5000  # energy to be left after reproduction
-GRASS_ENERGY: 2000
-LEAF_ENERGY: 2000
-
-CHANCE_TO_HERBIVORE: 0.85
-
-INIT_HERBIVORE_DIGEST_DICT: { 'grass': 1,
-                              'leaf': 0,
-                              'creature': 0 }
-
-INIT_CARNIVORE_DIGEST_DICT: { 'grass': 0,
-                              'leaf': 0,
-                              'creature': 1 }
 
 # Creatures parameters
 NUM_CREATURES: 200  # init size of population
@@ -75,11 +55,11 @@ NOISE_STD: 0.5  # gaussian noise for vision - currently not in use
 
 # Brain parameters
 BRAIN_TYPE: 'graphic_brain'  # 'fully_connected_brain' or 'graphic_brain'
-# d_velocity and d_angle
-OUTPUT_SIZE: 2
+BRAIN_RANDOM_MAGNITUDE: 0.2
+OUTPUT_SIZE: 2  # magnitude and direction
 NORM_INPUT: [ 1, 1, 1 ]
 
-# Mutations
+# Mutations parameters
 MUTATION_CHANCE: 0.3  # number between 0-1 indicating chance of trait to be mutated
 STD_MUTATION_FACTORS: { 'color': 0.1,  # +-in each RGB color
 
@@ -112,7 +92,40 @@ MUTATION_GRAPH_BRAIN: { 'add_node': 0.1,
                         'add_loop': 0.2,
                         'break_edge': 0.5 }
 
-# Filepaths
-FFMPEG_PATH: ffmpeg-2025-02-20-git-bc1a3bfd2c-essentials_build\bin\ffmpeg.exe
+# Energy/time parameters
+DT: 2.5  # time passing between consecutive steps (relevant for age and movement)
+INIT_MAX_ENERGY: 20000  # used now to indicate if creature is full (no more food). maybe useful for maturity test before reproduction
+REPRODUCTION_ENERGY: 5000 # changed: 5000  # energy cost of reproduction
+MIN_LIFE_ENERGY: 5000  # energy to be left after reproduction
+GRASS_ENERGY: 2000
+LEAF_ENERGY: 2000
+
+# Food parameters
+LEAF_HEIGHT: 10
+FOOD_DISTANCE_THRESHOLD: 75
+CHANCE_TO_HERBIVORE: 0.85
+
+INIT_HERBIVORE_DIGEST_DICT: { 'grass': 1,
+                              'leaf': 0,
+                              'creature': 0 }
+
+INIT_CARNIVORE_DIGEST_DICT: { 'grass': 0,
+                              'leaf': 0,
+                              'creature': 1 }
+
+# Purge parameters
+DO_PURGE: True
+PURGE_FRAME_FREQUENCY: 50  # do purge every PURGE_FRAME_FREQUENCY frames
+PURGE_PERCENTAGE: 0.1  # percentage out of MAX_NUM_CREATURES to do purge
+PURGE_SPEED_THRESHOLD: 0.1  # if the creature's speed is below this threshold at first reproduction, it will be removed
+PURGE_POP_PERCENTAGE: 0.75  # percentage of MAX_NUM_CREATURES to stuck simulation
+
+# Movie parameters
+FRAME_INTERVAL: 75  # interval between frames in animation [in ms]
+FFMPEG_PATH: a_utils\ffmpeg-2025-02-20-git-bc1a3bfd2c-essentials_build\bin\ffmpeg.exe
+
+
+
+
 
 

@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 from tqdm import tqdm
 
@@ -37,90 +39,98 @@ class Simulation:
         brain_module = importlib.import_module(f"c_models.brain_models.{sim_config.config.BRAIN_TYPE}")
         brain_obj = getattr(brain_module, 'Brain')
         self.creatures = simulation_utils.init_creatures(env=self.env, brain_obj=brain_obj)
+
         self.dead_creatures = dict()
-        self.positions = []
+        self.creatures_ids = list(self.creatures.keys())
+        self.positions = np.array([creature.position
+                                   for creature in self.creatures.values()])
 
         # Build a KDTree for creature positions.
-        self.creatures_kd_tree = simulation_utils.build_creatures_kd_tree(creatures=self.creatures)
-        self.children_num = 0
+        self.creatures_kd_tree = simulation_utils.build_creatures_kd_tree(positions=self.positions)
+        self.num_children = 0
 
         # simulation control parameters
+        self.num_creatures_in_last_frame = len(self.creatures)
+        self.id_count = self.num_creatures_in_last_frame - 1
+        self.num_creatures_threshold = \
+            int(sim_config.config.PURGE_POPULATION_PERCENTAGE * sim_config.config.MAX_NUM_CREATURES)
         self.abort_simulation = False
         self.num_steps_per_frame = 0
-        self.step_counter = 0  # Initialize step counter
-        self.id_count = sim_config.config.NUM_CREATURES - 1
+        self.step_counter = 0
         self.focus_id = 0
         self.creatures[self.focus_id].make_agent()
         sim_config.config.OUTPUT_FOLDER.mkdir(exist_ok=True, parents=True)
 
-        self.do_purge = True  # flag for purge events
-
         # statistics logs
         self.statistics_logs = StatisticsLogs()
-
-        if sim_config.config.DEBUG_MODE:
-            np.seterr(all='raise')  # Convert NumPy warnings into exceptions
-
         self.statistics_logs.num_frames = sim_config.config.NUM_FRAMES
         self.statistics_logs.total_num_steps = \
             simulation_utils.calc_total_num_steps(
                 num_steps_from_frame_dict=sim_config.config.NUM_STEPS_FROM_FRAME_DICT,
                 up_to_frame=sim_config.config.NUM_FRAMES)
+
         print('\n----------------------------------------')
         print(f'Simulation {sim_config.config.OUTPUT_FOLDER.stem}: '
               f'num frames = {self.statistics_logs.num_frames}, '
               f'num steps = {self.statistics_logs.total_num_steps}')
         print('----------------------------------------')
 
+        if sim_config.config.DEBUG_MODE:
+            np.seterr(all='raise')  # Convert NumPy warnings into exceptions
+
     def seek(self,
-             creatures_ids_to_kill: list,
-             creatures_positions: list,
-             creature: Creature, noise_std: float = 0.0,
+             creature: Creature, i_creature: int,
+             creatures_positions: list | np.ndarray,
+             creatures_indices_to_kill: list,
+             noise_std: float = 0.0,
              ):
         """
-        Uses the specified eye (given by eye_params: (angle_offset, aperture))
-        to detect a nearby target.
-        Computes the eye's viewing direction by rotating the creature's heading by angle_offset.
+        Search targets for each eye (angle_offset, aperture) in each channel (grass/creature/...)
         Returns (distance, signed_angle, idx) if a target is found within half the aperture, else None.
         """
-        channel_results = {}
-
         kd_tree = []
-        for i_eye, eye_params in enumerate(creature.eyes_params):
-            for eye_channel in creature.eyes_channels:
+        seek_results = {}
+        candidates_indices_to_remove = []
+
+        for i_eye in range(len(creature.eyes)):
+            for channel_name in sim_config.config.CHANNELS_LIST:
                 candidate_points = np.array([])
-                if eye_channel == 'grass':
+                if channel_name == 'grass':
                     if len(self.env.grass_points) > 0:
                         kd_tree = self.env.grass_kd_tree
                         candidate_points = np.array(self.env.grass_points)
-                        candidates_to_remove_list = self.env.grass_remove_list
-                elif eye_channel == 'leaf':
+                        candidates_indices_to_remove = self.env.grass_indices_to_remove
+                        i_creature = -1
+                elif channel_name == 'leaf':
                     if len(self.env.leaf_points) > 0:
+                        kd_tree = self.env.leaves_kd_tree
                         candidate_points = np.array(self.env.leaf_points)
-                        candidates_to_remove_list = self.env.leaf_remove_list
-                # elif eye_channel == 'water':
+                        candidates_indices_to_remove = self.env.leaf_indices_to_remove
+                        i_creature = -1
+                # elif channel_name == 'water':
                 #     candidate_points = np.array([[self.env.water_source[0], self.env.water_source[1]]])
-                #     candidates_to_remove_list = self.env.water_remove_list
-                elif eye_channel == 'creature':
+                #     candidates_indices_to_remove = self.env.water_remove_list
+                elif channel_name == 'creature':
                     kd_tree = self.creatures_kd_tree
                     candidate_points = creatures_positions
-                    candidates_to_remove_list = creatures_ids_to_kill
+                    candidates_indices_to_remove = creatures_indices_to_kill
 
                 if len(candidate_points) > 0:
                     result = simulation_utils.detect_target_from_kdtree(
                         creature=creature,
-                        eye_params=eye_params,
+                        i_creature=i_creature,
+                        eye_idx=i_eye,
                         kd_tree=kd_tree,
                         candidate_points=candidate_points,
-                        candidates_to_remove_list=candidates_to_remove_list,
+                        candidates_indices_to_remove=candidates_indices_to_remove,
                         noise_std=noise_std)
                 else:
                     result = None
 
-                channel_name = f'{eye_channel}_{i_eye}'
-                channel_results[channel_name] = result
+                eye_channel_name = f'{i_eye}_{channel_name}'
+                seek_results[eye_channel_name] = result
 
-        return channel_results
+        return seek_results
 
     def do_step(self, dt: float, noise_std: float = 0.0):
         """
@@ -134,23 +144,22 @@ class Simulation:
         """
 
         # ------------------------------------ Creatures actions ------------------------------------
-
+        creatures_indices_to_kill = []
         creatures_ids_to_reproduce = []
-        creatures_ids_to_kill = []
         to_update_kd_tree = {food_type: False
                              for food_type in sim_config.config.INIT_HERBIVORE_DIGEST_DICT.keys()}
-        creatures_positions = np.array([c.position for c in self.creatures.values()])
 
-        for creature_id, creature in self.creatures.items():
+        for i_creature, creature in enumerate(self.creatures.values()):
+            creature_id = creature.creature_id
             # death from age/fatigue/eaten by another creature
             if creature.age >= creature.max_age:
                 self.statistics_logs.death_causes_dict['age'].append(creature_id)
-                creatures_ids_to_kill.append(creature_id)
+                creatures_indices_to_kill.append(i_creature)
             elif creature.energy <= 0:
                 self.statistics_logs.death_causes_dict['fatigue'].append(creature_id)
-                creatures_ids_to_kill.append(creature_id)
+                creatures_indices_to_kill.append(i_creature)
 
-            if creature_id in creatures_ids_to_kill:
+            if i_creature in creatures_indices_to_kill:
                 continue
             else:
                 # Creature get older
@@ -158,9 +167,10 @@ class Simulation:
 
                 # Seek in environment
                 seek_result = self.seek(
-                    creature=creature, noise_std=noise_std,
-                    creatures_ids_to_kill=creatures_ids_to_kill,
-                    creatures_positions=creatures_positions)
+                    creature=creature, i_creature=i_creature,
+                    creatures_positions=self.positions,
+                    creatures_indices_to_kill=creatures_indices_to_kill,
+                    noise_std=noise_std)
 
                 # Use brain to move
                 self.use_brain(
@@ -169,58 +179,65 @@ class Simulation:
                     dt=dt)
 
                 # Check for nearby food
-                eaten_food_type, food_point = self.eat_food(
+                eaten_food_type, food_idx = self.eat_food(
                     creature=creature,
                     seek_result=seek_result,
-                    creatures_ids_to_kill=creatures_ids_to_kill,
+                    creatures_indices_to_kill=creatures_indices_to_kill,
                     step_counter=self.step_counter)
 
                 # record eaten_food_type to update kd tree afterward
                 if eaten_food_type is not None:
                     to_update_kd_tree[eaten_food_type] = True
                     if eaten_food_type == 'creature':
-                        self.statistics_logs.death_causes_dict['eaten'].append(food_point)
+                        self.statistics_logs.death_causes_dict['eaten'] \
+                            .append(self.creatures_ids[food_idx])
 
                 # reproduce if able
                 energy_needed_to_reproduce = creature.reproduction_energy + sim_config.config.MIN_LIFE_ENERGY
-                if (creature.energy > energy_needed_to_reproduce and
-                        creature.can_reproduce(self.step_counter)):
+                if creature.energy > energy_needed_to_reproduce and \
+                        creature.can_reproduce(self.step_counter):
                     creatures_ids_to_reproduce.append(creature_id)
 
         # ---------------------------- After all creatures actions ----------------------------------
+        # Convert from indices to ids
+        creatures_ids_to_kill = list(np.array(self.creatures_ids)[creatures_indices_to_kill])
+
         # Reproduction
-        new_child_ids, self.children_num, self.id_count = \
+        new_children_ids, self.num_children, self.id_count = \
             simulation_utils.reporduce_creatures(creatures_ids_to_reproduce=creatures_ids_to_reproduce,
                                                  creatures=self.creatures,
                                                  id_count=self.id_count,
-                                                 children_num=self.children_num,
+                                                 num_children=self.num_children,
                                                  step_counter=self.step_counter)
 
-        # Purge
-        self.do_purge, creatures_ids_to_purge = \
-            simulation_utils.do_purge(
-                do_purge=self.do_purge,
-                creatures=self.creatures,
-                creatures_ids_to_kill=creatures_ids_to_kill,
-                creatures_ids_to_reproduce=creatures_ids_to_reproduce,
-                step_counter=self.step_counter)
-        self.statistics_logs.death_causes_dict['purge'].extend(creatures_ids_to_purge)
-        creatures_ids_to_kill.extend(creatures_ids_to_purge)
-
-        # kill creatures
-        new_dead_ids = simulation_utils.kill_creatures(
+        # Kill creatures
+        simulation_utils.kill_creatures(
             creatures_ids_to_kill=creatures_ids_to_kill,
             creatures=self.creatures,
             dead_creatures=self.dead_creatures)
 
+        # Purge
+        if sim_config.config.DO_PURGE:
+            purged_creatures_ids = simulation_utils.do_purge(
+                num_creatures_threshold=self.num_creatures_threshold,
+                creatures=self.creatures,
+                dead_creatures=self.dead_creatures,
+                step_counter=self.step_counter,
+                statistics_logs=self.statistics_logs)
+            creatures_ids_to_kill.extend(purged_creatures_ids)
+
         # Ensure creatures kd tree is updated if creatures are added/killed.
-        if len(new_child_ids) > 0 or len(new_dead_ids) > 0:
+        if len(new_children_ids) > 0 or len(creatures_ids_to_kill) > 0:
             to_update_kd_tree['creature'] = True
 
-        # Update environment (generate new food points) and update KD trees if conditions are met
-        self.creatures_kd_tree = simulation_utils.update_environment_and_kd_trees(
+        # Update creatures ids and positions
+        self.creatures_ids = list(self.creatures.keys())
+        self.positions = np.array([creature.position for creature in self.creatures.values()])
+
+        # Update KD trees if conditions are met
+        self.creatures_kd_tree = simulation_utils.update_kd_trees(
             env=self.env,
-            creatures=self.creatures,
+            positions=self.positions,
             creatures_kd_tree=self.creatures_kd_tree,
             to_update_kd_tree=to_update_kd_tree,
             step_counter=self.step_counter)
@@ -228,7 +245,7 @@ class Simulation:
         # Update step counter
         self.step_counter += 1
 
-        return new_child_ids, new_dead_ids
+        return new_children_ids, creatures_ids_to_kill
 
     def run_and_visualize(self):
         """
@@ -326,7 +343,6 @@ class Simulation:
             axes[1].add_patch(water_circle)
 
             # Initial creature positions
-            self.positions = np.array([creature.position for creature in self.creatures.values()])
             colors = [creature.color for creature in self.creatures.values()]
             edge_colors = ['r' if creature.digest_dict['creature'] > 0 else 'g' for creature in self.creatures.values()]
             sizes = np.array(
@@ -419,10 +435,12 @@ class Simulation:
 
                 return scat, quiv, grass_scat, leaves_scat, agent_scat, traits_scat
 
+            # ------------------- EVERY STEP ------------------- #
             # Run steps of frame
             for step in range(self.num_steps_per_frame):
                 # Do simulation step
-                child_ids, dead_ids = self.do_step(dt=sim_config.config.DT, noise_std=sim_config.config.NOISE_STD)
+                child_ids, dead_ids = self.do_step(dt=sim_config.config.DT,
+                                                   noise_std=sim_config.config.NOISE_STD)
 
                 # Update creatures logs (after movement, eating and reproduction)
                 simulation_utils.update_creatures_logs(creatures=self.creatures)
@@ -444,38 +462,24 @@ class Simulation:
                         f"Herbivores: {self.statistics_logs.num_herbivores_per_step[-1]:4} | "
                         f"Carnivores: {self.statistics_logs.num_carnivores_per_step[-1]:4} | "
                         f"Alive: {len(self.creatures):4} | "
-                        f"Children: {self.children_num:4} | "
+                        f"Children: {self.num_children:4} | "
                         f"Dead: {len(self.dead_creatures):4} | "
                         f"Progress")
                     progress_bar.update(1)  # or self.num_steps_per_frame outside the for loop
 
+            # -------------------- EVERY FRAME ------------------------- #
             # update the progress bar every frame
             if not sim_config.config.STATUS_EVERY_STEP:
                 progress_bar.set_description(
                     f"Herbivores: {self.statistics_logs.num_herbivores_per_step[-1]:4} | "
                     f"Carnivores: {self.statistics_logs.num_carnivores_per_step[-1]:4} | "
                     f"Alive: {len(self.creatures):4} | "
-                    f"Children: {self.children_num:4} | "
+                    f"Children: {self.num_children:4} | "
                     f"Dead: {len(self.dead_creatures):4} | "
                     f"Progress")
                 progress_bar.update(1)  # or self.num_steps_per_frame outside the for loop
 
-            # Do purge if PURGE_FRAME_FREQUENCY frames passed (to clear static agents)
-            if sim_config.config.DO_PURGE:
-                is_time_to_purge = frame % sim_config.config.PURGE_FRAME_FREQUENCY == 0
-                is_too_many_creatures = \
-                    len(self.creatures) > sim_config.config.MAX_NUM_CREATURES * sim_config.config.PURGE_POP_PERCENTAGE
-                if is_time_to_purge or is_too_many_creatures:
-                    self.do_purge = True
-
-            if sim_config.config.DEBUG_MODE:
-                from matplotlib import use
-
-                use('TkAgg')
-                self.statistics_logs.plot_and_save_statistics_graphs(to_save=False)
-
-                # breakpoint()
-            # --------------------------- Plot --------------------------- #
+            # Plot
             if 'grass_scat' in globals():
                 try:  # in case it's empty
                     grass_scat.remove()
@@ -483,13 +487,11 @@ class Simulation:
                     pass
             try:
                 # Update creature positions and directions
-                num_creatures_in_last_frame = len(self.positions)
-                self.positions = np.array([creature.position for creature in self.creatures.values()])
-                sizes = np.array(
-                    [creature.mass for creature in self.creatures.values()]) * sim_config.config.FOOD_SIZE  # / 10
                 colors = [creature.color for creature in self.creatures.values()]
-                edge_colors = ['r' if creature.digest_dict['creature'] > 0 else 'g' for creature in
-                               self.creatures.values()]
+                sizes = np.array([creature.mass for creature in self.creatures.values()]) \
+                        * sim_config.config.FOOD_SIZE
+                edge_colors = ['r' if creature.digest_dict['creature'] > 0
+                               else 'g' for creature in self.creatures.values()]
 
                 U, V = [], []
                 for creature in self.creatures.values():
@@ -503,7 +505,7 @@ class Simulation:
                 # Update or redraw scat and quiver plots
                 num_creatures_after_step = len(self.creatures)
                 if num_creatures_after_step > 0:
-                    if num_creatures_after_step == num_creatures_in_last_frame:
+                    if num_creatures_after_step == self.num_creatures_in_last_frame:
                         # Update scatter and quiver plot (positions & directions)
                         scat.set_offsets(self.positions)
                         scat.set_facecolor(colors)
@@ -598,6 +600,9 @@ class Simulation:
                     # plot.plot_live_status_power(axes[5][1], agent, plot_horizontal=True)
                     # plot.plot_acc_status(axes[5][0], agent, plot_type=1, curr_step=self.step_counter)
 
+                # Update num creatures in last frame (to update plot efficiently)
+                self.num_creatures_in_last_frame = len(self.creatures)
+
             except Exception as e:
                 # breakpoint('Error in simulation (update_func): cannot plot')
                 print(f'Error in simulation (update_func): cannot plot because {e}.')
@@ -606,6 +611,7 @@ class Simulation:
             return scat, quiv, grass_scat, leaves_scat, agent_scat, traits_scat
 
         # Run simulation
+        start_time = time.time()
         try:
             init_fig()
             ani = animation.FuncAnimation(fig=fig, func=update_func, init_func=init_func, blit=True,
@@ -622,10 +628,17 @@ class Simulation:
             plt.close(fig)
             # print(f'Simulation animation saved as {sim_config.config.ANIMATION_FILEPATH.stem}.')
 
+            # copy config to output folder
+            simulation_utils.copy_config_file_to_output_folder()
+
+            # save total time in statistics logs
+            total_time = time.time() - start_time
+            self.statistics_logs.total_time = total_time
+
             # Save statistics logs to json file
             self.statistics_logs.to_json(filepath=sim_config.config.STATISTICS_LOGS_JSON_FILEPATH)
 
-            simulation_utils.copy_config_file_to_output_folder()
+            return total_time
 
     def use_brain(self, creature: Creature,
                   seek_result: dict, dt: float):
@@ -639,13 +652,13 @@ class Simulation:
     def eat_food(self,
                  creature: Creature,
                  seek_result: dict,
-                 creatures_ids_to_kill: list[int],
+                 creatures_indices_to_kill: list[int],
                  step_counter: int):
         """
 
         :param creature:
         :param seek_result: dict of '{channel}_{eye_idx}': [distance, angle, idx]
-        :param creatures_ids_to_kill
+        :param creatures_indices_to_kill
         :param step_counter:
         :return: eaten_food_type: 'grass'/'leaf'/'creature' or None if no food was eaten
         """
@@ -655,35 +668,32 @@ class Simulation:
 
         # init relevant variables
         food_energy = 0
-        food_point = None
+        food_idx = None
         eaten_food_type = None
         is_food_condition_met = False
         food_list, food_to_remove_list = [], []
 
         # Eat food if conditions are met
-        for key, value in seek_result.items():
-            food_type = key.split('_')[0]
-
+        for key, result in seek_result.items():
             # Check if eye found something and if creature can eat it
-            if value is None or creature.digest_dict[food_type] == 0:
+            food_type = key.split('_')[1]
+            if result is None or creature.digest_dict[food_type] == 0:
                 continue
             else:
-                food_distance, food_angle, food_idx = seek_result[key]
+                food_distance, food_angle, food_idx = result
 
                 if food_type == 'grass':
-                    food_list = self.env.grass_points
-                    food_to_remove_list = self.env.grass_remove_list
+                    food_to_remove_list = self.env.grass_indices_to_remove
                     food_energy = sim_config.config.GRASS_ENERGY
                     is_food_condition_met = True
                 elif food_type == 'leaf':
-                    food_list = self.env.leaf_points
-                    food_to_remove_list = self.env.leaf_remove_list
+                    food_to_remove_list = self.env.leaf_indices_to_remove
                     food_energy = sim_config.config.LEAF_ENERGY
-                    is_food_condition_met = creature.height >= food_list[food_idx].height
+                    is_food_condition_met = \
+                        creature.height >= self.env.leaf_points[food_idx].height
                 elif food_type == 'creature':
-                    food_list = [creature_id for creature_id in self.creatures.keys()]
-                    food_to_remove_list = creatures_ids_to_kill
-                    prey_id = food_list[food_idx]
+                    food_to_remove_list = creatures_indices_to_kill
+                    prey_id = self.creatures_ids[food_idx]
                     prey = self.creatures[prey_id]
                     food_energy = prey.energy + self.physical_model.energy_conversion_factors['mass_energy'] * prey.mass
 
@@ -692,8 +702,7 @@ class Simulation:
                     is_food_condition_met = creature.mass >= prey.mass and not is_child and not is_father
 
                 # Check if conditions to eat food are met (if so, eat and add to food_remove_list)
-                food_point = food_list[food_idx]
-                is_food_available = food_point not in food_to_remove_list
+                is_food_available = food_idx not in food_to_remove_list
                 is_food_close_enough = food_distance <= sim_config.config.FOOD_DISTANCE_THRESHOLD
 
                 if is_food_available and is_food_close_enough and is_food_condition_met:
@@ -703,8 +712,8 @@ class Simulation:
                     creature.log.add_record(f'eat_{food_type}', step_counter)
 
                     # remove food
-                    food_to_remove_list.append(food_point)
+                    food_to_remove_list.append(food_idx)
                     eaten_food_type = food_type
                     break
 
-        return eaten_food_type, food_point
+        return eaten_food_type, food_idx

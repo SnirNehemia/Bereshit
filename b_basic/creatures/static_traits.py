@@ -10,11 +10,11 @@ class StaticTraits:
                  gen: int, parent_id: str | None, birth_step: int, color: np.ndarray,
                  max_age: int, max_mass: float, max_height: float, max_strength: float,
                  max_speed: float, max_energy: float,
-                 digest_dict: dict, reproduction_energy: float,
-                 eyes_channels: list[str], eyes_params: list[tuple], vision_limit: float,
-                 brain):
+                 digest_dict: dict,
+                 reproduction_cooldown: float, reproduction_energy: float,
+                 eyes: list[list], vision_limit: float, brain):
         """
-        eyes_params is a list of tuples: (angle_offset, aperture)
+        eyes is a list of tuples: (angle_offset, aperture)
         where angle_offset (in radians) is relative to the creature's heading.
         """
         # for lineage tracking
@@ -27,7 +27,7 @@ class StaticTraits:
 
         # for constraining dynamic traits
         self.max_age = max_age
-        self.adulescence = self.max_age / 4
+        self.adolescence = 0
         self.max_mass = max_mass
         self.max_height = max_height
         self.max_strength = max_strength
@@ -39,11 +39,24 @@ class StaticTraits:
         self.digest_dict = digest_dict  # numbers between 0 and 1
 
         # reproduction energy
+        self.reproduction_cooldown = reproduction_cooldown
         self.reproduction_energy = reproduction_energy
 
-        self.eyes_channels = eyes_channels
-        self.eyes_params = eyes_params
+        # Eyes
+        self.eyes = eyes
+        self.eye_cos_offset = []  # used for faster calc
+        self.eye_sin_offset = []  # used for faster calc
+        self.eye_cos_half_aperture = []  # used for faster calc
+        for i_eye in range(len(self.eyes)):
+            angle_offset, eye_aperture = self.eyes[i_eye]
+            self.eye_cos_offset.append(np.cos(np.radians(angle_offset)))
+            self.eye_sin_offset.append(np.sin(np.radians(angle_offset)))
+            self.eye_cos_half_aperture.append(np.cos(np.radians(eye_aperture) / 2.0))
+
         self.vision_limit = vision_limit
+        self.vision_limit_sq = self.vision_limit ** 2  # for faster calc
+
+        # Brain
         self.brain = brain
 
     def think(self, input_vector: np.ndarray) -> np.ndarray:

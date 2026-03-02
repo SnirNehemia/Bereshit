@@ -33,7 +33,7 @@ class PhysicalModel2(PhysicalModel):
                     rebalance: bool = False):
         gained_energy = creature.digest_dict[food_type] * food_energy
 
-        if creature.age < creature.adolescence:
+        if creature.age <= creature.adolescence:
             creature.height, height_energy = self._convert_gained_energy_to_trait(
                 trait_type='height_energy',
                 old_trait=creature.height,

@@ -39,7 +39,7 @@ class Config:
 
     def adjust_config(self):
         # set random seed (for mutation repeatability)
-        np.random.seed(0)
+        np.random.seed(self.RANDOM_SEED)
 
         # init plt things
         if platform.system() == 'Darwin':
@@ -56,17 +56,10 @@ class Config:
         # Food parameters
         setattr(self, 'FOOD_SIZE', self.FOOD_DISTANCE_THRESHOLD / 2)  # for display
 
-        # Eyes parameters
-        # Convert degrees to radians
-        for i in range(len(self.EYES_PARAMS)):
-            self.EYES_PARAMS[i][0] = np.radians(self.EYES_PARAMS[i][0])
-            self.EYES_PARAMS[i][1] = np.radians(self.EYES_PARAMS[i][1])
-
-            # Brain parameters
-            norm_input = self.NORM_INPUT
-            for _ in range(len(self.EYES_PARAMS) * len(self.EYE_CHANNEL)):
-                norm_input = np.append(norm_input, [1, self.VISION_LIMIT, 1])
-            setattr(self, 'NORM_INPUT', norm_input)
+        # Eyes and brain parameters
+        num_channels = len(self.CHANNELS_LIST) * len(self.EYES)
+        norm_input = np.append(self.NORM_INPUT, [1, self.VISION_LIMIT, 1] * num_channels)
+        setattr(self, 'NORM_INPUT', norm_input)
 
         # Mutations parameters
         if self.BRAIN_TYPE == 'fully_connected_brain':  # 'fully_connected_brain' or 'graphic_brain'
@@ -75,7 +68,7 @@ class Config:
             setattr(self, 'MUTATION_BRAIN', self.MUTATION_GRAPH_BRAIN)
 
         self.STD_MUTATION_FACTORS['color'] = np.ones(3) * self.STD_MUTATION_FACTORS['color']
-        self.STD_MUTATION_FACTORS['eyes_params'] = np.radians(self.STD_MUTATION_FACTORS['eyes_params'])
+        self.STD_MUTATION_FACTORS['eyes'] = np.radians(self.STD_MUTATION_FACTORS['eyes'])
 
         self.update_config()
 

@@ -12,23 +12,24 @@ import importlib
 class Creature(StaticTraits):
     """
     A dynamic creature in the simulation.
-    Inherits static traits and adds dynamic properties such as position, speed, hunger, etc.
+    Inherits static traits and adds dynamic properties such as position, velocity, etc.
     """
 
     def __init__(self, creature_id: int, gen: int, parent_id: str | None, birth_step: int, color: np.ndarray,
                  max_age: int, max_mass: float, max_height: float, max_strength: float,
                  max_speed: float, max_energy: float,
-                 digest_dict: dict, reproduction_energy: float,
-                 eyes_channels: list[str], eyes_params: list[tuple], vision_limit: float,
+                 digest_dict: dict,
+                 reproduction_cooldown: float, reproduction_energy: float,
+                 eyes: list[list], vision_limit: float,
                  brain,
                  position: np.ndarray):
         super().__init__(creature_id=creature_id,
                          gen=gen, parent_id=parent_id, birth_step=birth_step, color=color,
                          max_age=max_age, max_mass=max_mass, max_height=max_height, max_strength=max_strength,
                          max_speed=max_speed, max_energy=max_energy,
-                         digest_dict=digest_dict, reproduction_energy=reproduction_energy,
-                         eyes_channels=eyes_channels, eyes_params=eyes_params, vision_limit=vision_limit,
-                         brain=brain)
+                         digest_dict=digest_dict,
+                         reproduction_cooldown=reproduction_cooldown, reproduction_energy=reproduction_energy,
+                         eyes=eyes, vision_limit=vision_limit, brain=brain)
 
         self.age = None
         self.mass = None
@@ -40,9 +41,7 @@ class Creature(StaticTraits):
         self.speed = None
         self.max_speed_exp = None
         self.energy = None
-
-        self.hunger = None
-        self.thirst = None
+        self.is_agent = False
 
         self.init_state()
         # self.log.record['speed'] = [self.speed]  # fixes an issue with the first generation
@@ -54,7 +53,6 @@ class Creature(StaticTraits):
         self.is_agent = False
         # static trait - update for current max_age
         self.adolescence = self.max_age * sim_config.config.ADOLESCENCE_AGE_FRACTION
-        self.reproduction_cooldown = sim_config.config.REPRODUCTION_COOLDOWN
 
         # dynamic traits
         self.age = 0
@@ -68,9 +66,6 @@ class Creature(StaticTraits):
         self.velocity = (np.random.rand(2) - 0.5) * self.max_speed
         self.max_speed_exp = np.linalg.norm(self.velocity)
         self.calc_speed()
-
-        self.hunger = 100
-        self.thirst = 100
 
         self.log = CreaturesLogs(
             self.creature_id)  # pay attention! the id is None for children and it is defines only later, in the simulation
@@ -148,23 +143,21 @@ class Creature(StaticTraits):
         mutate the desired traits.
         """
         std_mutation_factors = sim_config.config.STD_MUTATION_FACTORS
-        for trait_key in std_mutation_factors:
+        for trait_key, std_mutation_factor in std_mutation_factors.items():
             if np.random.rand(1) < sim_config.config.MUTATION_CHANCE:
-                if trait_key == 'eyes_params':
-                    for eye_idx in range(len(self.eyes_params)):
-                        for j in range(2):  # 2 for: angle offset, aperture
-                            std_mutation_factor = std_mutation_factors[trait_key]
-                            mutation_factor = np.random.normal(scale=std_mutation_factor)
-                            self.eyes_params[eye_idx][j] += mutation_factor
+                if trait_key == 'eyes':
+                    for eye_idx in range(len(self.eyes)):
+                        mutation_factor = np.random.normal(scale=std_mutation_factor,
+                                                           size=2)  # 2 for angle offset and aperture
+                        self.eyes[eye_idx] += mutation_factor
                 elif trait_key == 'digest_dict':
-                    std_mutation_factor = np.array(list(std_mutation_factors[trait_key].values()))
+                    std_mutation_factor = np.array(list(std_mutation_factor.values()))
                     mutation_factor = np.random.normal(scale=std_mutation_factor)
                     for i, food_type in enumerate(self.digest_dict.keys()):
                         if self.digest_dict[food_type] > 0:  # verify creature can eat this food type
                             self.digest_dict[food_type] += mutation_factor[i]
                             self.digest_dict[food_type] = np.clip(self.digest_dict[food_type], 0, 1)
                 else:
-                    std_mutation_factor = std_mutation_factors[trait_key]
                     mutation_factor = np.random.normal(scale=std_mutation_factor)
                     new_trait = getattr(self, trait_key) + mutation_factor
                     if trait_key == 'color':
@@ -182,9 +175,12 @@ if __name__ == '__main__':
 
     creature = Creature(creature_id=0, gen=0, parent_id="0", birth_step=0,
                         max_age=100, max_mass=20, max_height=2, max_strength=sim_config.config.INIT_MAX_STRENGTH,
-                        max_speed=sim_config.config.MAX_SPEED, max_energy=sim_config.config.INIT_MAX_ENERGY, color=np.random.rand(3),
-                        digest_dict=sim_config.config.INIT_HERBIVORE_DIGEST_DICT, reproduction_energy=sim_config.config.REPRODUCTION_ENERGY,
-                        eyes_channels=sim_config.config.EYE_CHANNEL, eyes_params=sim_config.config.EYES_PARAMS,
+                        max_speed=sim_config.config.INIT_MAX_SPEED, max_energy=sim_config.config.INIT_MAX_ENERGY,
+                        color=np.random.rand(3),
+                        digest_dict=sim_config.config.INIT_HERBIVORE_DIGEST_DICT,
+                        reproduction_energy=sim_config.config.REPRODUCTION_ENERGY,
+                        reproduction_cooldown=sim_config.config.REPRODUCTION_COOLDOWN,
+                        eyes=sim_config.config.EYES,
                         vision_limit=sim_config.config.VISION_LIMIT,
                         brain=brain,
                         position=np.array([10, 10]))

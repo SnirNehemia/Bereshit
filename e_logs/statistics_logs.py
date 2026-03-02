@@ -9,6 +9,7 @@ from b_basic.sim_config.codes import sim_config
 
 class StatisticsLogs(Serializable):
     def __init__(self):
+        self.total_time = 0
         self.num_frames = 0
         self.total_num_steps = 0
         self.num_creatures_per_step = []

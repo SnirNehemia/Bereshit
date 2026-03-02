@@ -1,4 +1,3 @@
-# environment.py
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import KDTree
@@ -37,48 +36,41 @@ class Environment:
 
         # Pre-calculate indices for grass and tree regions for fast random sampling.
         self.grass_indices = np.argwhere(self.grass_mask)
-        self.tree_indices = np.argwhere(self.tree_mask)
+        self.leaf_indices = np.argwhere(self.tree_mask)
 
         # Lists to hold dynamically generated vegetation points.
         self.grass_points = []
-        self.leaf_points = []
+        self.grass_indices_to_remove = []
 
-        self.new_grass_points = []
-        self.grass_remove_list = []
+        self.leaf_points = []
+        self.leaf_indices_to_remove = []
 
         self.grass_kd_tree = self.build_grass_kd_tree()
 
-    def update(self):
-        """
-        Generates new vegetation points (grass and leaves) based on generation rates.
-        Note: Over time these lists may become large.
-        """
-        # Generate new grass points.
-        if len(self.grass_points) + len(self.new_grass_points) >= sim_config.config.MAX_GRASS_NUM:
-            num_new_grass = 0
-        else:
-            num_new_grass = int(self.grass_generation_rate)
-        if len(self.grass_indices) > 0 and num_new_grass > 0:
-            if np.random.rand() < sim_config.config.GRASS_GROWTH_CHANCE:
-                choices = self.grass_indices[np.random.choice(len(self.grass_indices), num_new_grass, replace=True)]
-                for pt in choices:
-                    # Convert image coordinates (row, col) to (x, y)
-                    self.new_grass_points.append([pt[1], pt[0]])
+    @staticmethod
+    def _generate_new_food_points(food_indices, food_points,
+                                  max_food_num_points, food_generation_rate,
+                                  food_growth_chance):
+        num_food_indices = len(food_indices)
+        new_food_points = []
+        if num_food_indices > 0:
+            # Calculate how many new food points to add
+            num_food_points_to_add = min([int(food_generation_rate),
+                                          max_food_num_points - len(food_points)])
 
-        # Generate new leaf points.
-        if len(self.leaf_points) >= sim_config.config.MAX_LEAVES_NUM:
-            num_new_leaves = 0
-        else:
-            num_new_leaves = int(self.leaves_generation_rate)
-        if len(self.tree_indices) > 0 and num_new_leaves > 0:
-            choices = self.tree_indices[np.random.choice(len(self.tree_indices), num_new_leaves, replace=True)]
-            for pt in choices:
-                self.leaf_points.append([pt[1], pt[0]])
+            # Add food points
+            if num_food_points_to_add > 0:
+                if np.random.rand() < food_growth_chance:
+                    choices = food_indices[np.random.choice(
+                        num_food_indices, num_food_points_to_add, replace=True)]
+                    for pt in choices:
+                        new_food_points.append([pt[1], pt[0]])  # Convert image coordinates (row, col) to (x, y)
+            return new_food_points
 
     def remove_grass_points(self):
-        for grass_point in self.grass_remove_list:
-            self.grass_points.remove(grass_point)
-        self.grass_remove_list = []
+        for grass_idx in self.grass_indices_to_remove:
+            self.grass_points.pop(grass_idx)
+        self.grass_indices_to_remove = []
 
     def get_extent(self):
         """
@@ -105,8 +97,14 @@ class Environment:
         self.remove_grass_points()
 
         # add points
-        self.grass_points.extend(self.new_grass_points)
-        self.new_grass_points = []
+        # Generate new grass points
+        new_food_points = self._generate_new_food_points(
+            food_indices=self.grass_indices,
+            food_points=self.grass_points,
+            max_food_num_points=sim_config.config.MAX_GRASS_NUM,
+            food_generation_rate=self.grass_generation_rate,
+            food_growth_chance=sim_config.config.GRASS_GROWTH_CHANCE)
+        self.grass_points.extend(new_food_points)
 
         # rebuild kdtree
         self.grass_kd_tree = self.build_grass_kd_tree()

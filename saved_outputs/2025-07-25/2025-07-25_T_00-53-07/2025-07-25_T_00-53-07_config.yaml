@@ -22,7 +22,7 @@ PURGE_PERCENTAGE: 0.1  # percentage out of MAX_NUM_CREATURES to do purge
 PURGE_SPEED_THRESHOLD: 0.1  # if the creature's speed is below this threshold at first reproduction, it will be removed
 
 # Environment parameters
-ENV_PATH: Penvs/Env8.png
+ENV_PATH: env_images/Env8.png
 BOUNDARY_CONDITION: 'zero'  # what to do with the velocity on the boundaries - 'mirror' or 'zero'
 MAX_GRASS_NUM: 100
 GRASS_GENERATION_RATE: 5  # if exceeding MAX_GRASS_NUM replace GRASS_GENERATION_RATE grass points

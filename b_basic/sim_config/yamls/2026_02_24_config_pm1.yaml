@@ -1,0 +1,132 @@
+# Simulation parameters
+VERSION: 2.0
+NUM_RUNS: 5
+NUM_FRAMES: 70  # number of frames in simulation video
+# key is frame number and value is num steps per frame from this frame onward
+NUM_STEPS_FROM_FRAME_DICT: { 0: 1000, # 2000
+                             10: 500 # 500
+}
+STATUS_EVERY_STEP: False  # choose if to update every step or every frame
+UPDATE_KDTREE_INTERVAL: 120  # update the kdtree every n steps
+RANDOM_SEED: 0
+
+# Debug parameters
+REBALANCE: True
+DEBUG_MODE: False  # breakpoint in update_func after each frame (not step!)
+
+# Physical model parameters
+physical_model_type: physicalmodel1  # physical model type
+
+physical_model_parameters:
+  # convert physical parameters to energy
+  energy_conversion_factors: { 'activity_efficiency': 0.75,  #0.25,  # propulsion force to energy factor (higher -> efficient)
+                               'mass_energy': 25  # [E]/[m] = [v^2] = [m^2/sec^4]  convert mass to energy
+  }
+
+# Environment parameters
+ENV_PATH: b_basic\environments\env_images\Env8.png
+BOUNDARY_CONDITION: 'zero'  # what to do with the velocity on the boundaries - 'mirror' or 'zero'
+FOOD_DISTANCE_THRESHOLD: 75
+
+GRASS_MAX_NUM: 100
+GRASS_GENERATION_RATE: 5
+GRASS_GROWTH_CHANCE: 0.1  # maybe will be useful to create droughts
+GRASS_ENERGY: 2000
+
+LEAVES_MAX_NUM: 50
+LEAVES_GENERATION_RATE: 0
+LEAVES_GROWTH_CHANCE: 0.5  # maybe will be useful to create droughts
+LEAF_ENERGY: 2000
+LEAF_HEIGHT: 10
+
+# Creatures parameters
+MAX_NUM_CREATURES: 500
+NUM_CREATURES: 200  # init size of population
+
+INIT_MAX_AGE: 40000 # changed: 60000  # [sec] step_number * config.DT
+INIT_MAX_MASS: 10  # [kg]
+INIT_MAX_HEIGHT: 1  # [m]
+INIT_MAX_STRENGTH: 5  # [N]
+INIT_MAX_SPEED: 2.5  # [m/sec] maximum speed of the creature
+INIT_MAX_ENERGY: 20000  # used now to indicate if creature is full (no more food). maybe useful for maturity test before reproduction
+INIT_MAX_FRACTION: 0.8
+INIT_FROM_MAX_FRACTION: 0.1
+INIT_ENERGY_FRACTION: 0.8
+
+REPRODUCTION_ENERGY: 5000 # changed: 5000  # energy cost of reproduction
+MIN_LIFE_ENERGY: 5000  # energy to be left after reproduction
+
+# Eyes parameters
+CHANNELS_LIST: [ 'grass' , 'creature' ]  # ['grass', 'leaves', 'water', 'creature']
+EYES: [ [ 0, 90 ] ]  # list of eyes where eye = [angle_offset (degrees), aperture (degrees)]
+VISION_LIMIT: 1000  # maximum distance that the creature can see
+NOISE_STD: 0  # gaussian noise for vision
+
+# Brain parameters
+BRAIN_TYPE: 'graphic_brain'  # 'fully_connected_brain' or 'graphic_brain'
+NORM_INPUT: [ 1,1 ]  # how to normalize inputs that are not eyes
+OUTPUT_SIZE: 2  # magnitude and direction
+BRAIN_RANDOM_MAGNITUDE: 0.2
+
+# Mutations parameters
+MUTATION_CHANCE: 0.3  # number between 0-1 indicating chance of trait to be mutated
+MUTATION_TRAITS_STD: { 'color': 0.1,  # +-in each RGB color
+
+                       'max_age': 2,
+                       'max_mass': 1,
+                       'max_height': 1,
+                       'max_strength': 1,
+                       'max_speed': 0.1,
+                       'max_energy': 0,
+
+                       'digest_dict': { 'grass': 0, 'leaf': 0, 'creature': 0},
+                       'reproduction_energy': 0,
+
+                       'eyes': 5,  # +-degrees for each eye for angle and width
+                       'vision_limit': 4, }
+
+MUTATION_FC_BRAIN: { 'layer_addition': 0.1,
+                     'modify_weights': 0.2,
+                     'modify_layer': 0.2,
+                     'modify_activation': 0.1 }
+
+MUTATION_GRAPH_BRAIN: { 'add_node': 0.1,
+                        'remove_node': 0.1,
+                        'modify_edges': 0.7,  # chance to perform a change to the weights
+                        'modify_edges_percentage': 0.5,  # percentage of edges to change
+                        'add_edge': 0.3,
+                        'remove_edge': 0.1,
+                        'change_activation': 0.1,
+                        'forget_magnitude': 10,
+                        'add_loop': 0.2,
+                        'break_edge': 0.5 }
+
+# Simulation mechanisms
+DT: 2.5  # time passing between consecutive steps (relevant for age and movement)
+ADOLESCENCE_AGE_FRACTION: 0.05  # [0-1] fraction of INIT_MAX_AGE for adulthood
+REPRODUCTION_COOLDOWN: 300  # [sec] minimal time between reproduction events
+CHANCE_TO_HERBIVORE: 0.85
+
+INIT_HERBIVORE_DIGEST_DICT: { 'grass': 1,
+                              'leaf': 0,
+                              'creature': 0 }
+
+INIT_CARNIVORE_DIGEST_DICT: { 'grass': 0,
+                              'leaf': 0,
+                              'creature': 1 }
+
+# Purge parameters
+DO_PURGE: True
+PURGE_POPULATION_PERCENTAGE: 0.75  # percentage of MAX_NUM_CREATURES to do purge
+PURGE_STEP_FREQUENCY: 1000  # do purge every PURGE_STEP_FREQUENCY steps
+PURGE_SPEED_THRESHOLD: 0.1  # minimal speed needed to remain alive after purge
+
+# Video parameters
+FRAME_INTERVAL: 75  # interval between frames in animation [in ms]
+FFMPEG_PATH: a_utils\ffmpeg-2025-02-20-git-bc1a3bfd2c-essentials_build\bin\ffmpeg.exe
+
+
+
+
+
+

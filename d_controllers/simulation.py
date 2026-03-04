@@ -81,9 +81,7 @@ class Simulation:
     def seek(self,
              creature: Creature, i_creature: int,
              creatures_positions: list | np.ndarray,
-             creatures_indices_to_kill: list,
-             noise_std: float = 0.0,
-             ):
+             creatures_indices_to_kill: list):
         """
         Search targets for each eye (angle_offset, aperture) in each channel (grass/creature/...)
         Returns (distance, signed_angle, idx) if a target is found within half the aperture, else None.
@@ -122,8 +120,7 @@ class Simulation:
                         eye_idx=i_eye,
                         kd_tree=kd_tree,
                         candidate_points=candidate_points,
-                        candidates_indices_to_remove=candidates_indices_to_remove,
-                        noise_std=noise_std)
+                        candidates_indices_to_remove=candidates_indices_to_remove)
                 else:
                     result = None
 
@@ -132,7 +129,7 @@ class Simulation:
 
         return seek_results
 
-    def do_step(self, dt: float, noise_std: float = 0.0):
+    def do_step(self):
         """
         Advances the simulation by one time step.
         For each creature:
@@ -151,14 +148,16 @@ class Simulation:
 
         for i_creature, creature in enumerate(self.creatures.values()):
             creature_id = creature.creature_id
-            # death from age/fatigue/eaten by another creature
+            # Death from age
             if creature.age >= creature.max_age:
                 self.statistics_logs.death_causes_dict['age'].append(creature_id)
                 creatures_indices_to_kill.append(i_creature)
+            # Death from fatigue
             elif creature.energy <= 0:
                 self.statistics_logs.death_causes_dict['fatigue'].append(creature_id)
                 creatures_indices_to_kill.append(i_creature)
 
+            # Check if creature is already killed (age/fatigue/eaten/purged)
             if i_creature in creatures_indices_to_kill:
                 continue
             else:
@@ -169,14 +168,12 @@ class Simulation:
                 seek_result = self.seek(
                     creature=creature, i_creature=i_creature,
                     creatures_positions=self.positions,
-                    creatures_indices_to_kill=creatures_indices_to_kill,
-                    noise_std=noise_std)
+                    creatures_indices_to_kill=creatures_indices_to_kill)
 
                 # Use brain to move
                 self.use_brain(
                     creature=creature,
-                    seek_result=seek_result,
-                    dt=dt)
+                    seek_result=seek_result)
 
                 # Check for nearby food
                 eaten_food_type, food_idx = self.eat_food(
@@ -439,8 +436,7 @@ class Simulation:
             # Run steps of frame
             for step in range(self.num_steps_per_frame):
                 # Do simulation step
-                child_ids, dead_ids = self.do_step(dt=sim_config.config.DT,
-                                                   noise_std=sim_config.config.NOISE_STD)
+                child_ids, dead_ids = self.do_step()
 
                 # Update creatures logs (after movement, eating and reproduction)
                 simulation_utils.update_creatures_logs(creatures=self.creatures)
@@ -641,10 +637,10 @@ class Simulation:
             return total_time
 
     def use_brain(self, creature: Creature,
-                  seek_result: dict, dt: float):
+                  seek_result: dict):
         brain_input = simulation_utils.get_brain_input(creature=creature, seek_result=seek_result)
         decision = creature.think(brain_input)
-        self.physical_model.move_creature(creature=creature, decision=decision, dt=dt)
+        self.physical_model.move_creature(creature=creature, decision=decision)
 
         # Collision detection
         simulation_utils.detect_collision(creature=creature, env=self.env)

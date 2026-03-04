@@ -22,12 +22,11 @@ class StaticTraits:
         self.gen = gen
         self.parent_id = parent_id
         self.birth_step = birth_step
-        self.ancestors = []  # list of creature ids that are ancestors
         self.color = color  # Creature's color as an RGB vector.
 
         # for constraining dynamic traits
         self.max_age = max_age
-        self.adolescence = 0
+        self.adolescence_age = 0
         self.max_mass = max_mass
         self.max_height = max_height
         self.max_strength = max_strength

@@ -1,5 +1,6 @@
 import numpy as np
 
+from b_basic.sim_config.codes import sim_config
 from c_models.physical_models.physical_model_abc import PhysicalModel
 
 
@@ -14,7 +15,7 @@ class PhysicalModel2(PhysicalModel):
         # make needed adjustments
         self.trait_energy_func = lambda factor, rate, age: factor * np.exp(-rate * age)
 
-    def move_creature(self, creature, decision, dt,
+    def move_creature(self, creature, decision,
                       debug_position: bool = False, debug_energy: bool = False,
                       debug_force: bool = False):
         # Calc total force and propulsion energy
@@ -23,7 +24,7 @@ class PhysicalModel2(PhysicalModel):
                                                          debug_force=debug_force)
 
         # Update position and velocity
-        self._update_position_and_velocity(creature=creature, total_force=total_force, dt=dt,
+        self._update_position_and_velocity(creature=creature, total_force=total_force,
                                            debug_position=debug_position)
 
         # update energy
@@ -33,7 +34,7 @@ class PhysicalModel2(PhysicalModel):
                     rebalance: bool = False):
         gained_energy = creature.digest_dict[food_type] * food_energy
 
-        if creature.age <= creature.adolescence:
+        if creature.age <= creature.adolescence_age:
             creature.height, height_energy = self._convert_gained_energy_to_trait(
                 trait_type='height_energy',
                 old_trait=creature.height,
@@ -187,8 +188,9 @@ class PhysicalModel2(PhysicalModel):
         if debug_energy: print(f'\t\t{propulsion_energy=:.1f} | {inner_energy=:.1f}')
 
     @staticmethod
-    def _update_position_and_velocity(creature, total_force, dt,
+    def _update_position_and_velocity(creature, total_force,
                                       debug_position: bool = False):
+        dt = sim_config.config.DT
         acceleration = total_force / creature.mass
         new_velocity = creature.velocity + acceleration * dt
         new_position = creature.position + new_velocity * dt

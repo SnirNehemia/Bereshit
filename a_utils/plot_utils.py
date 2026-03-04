@@ -153,7 +153,7 @@ def plot_live_status(ax, agent, debug=False, plot_horizontal=True):
             ax.scatter([sim_config.config.REPRODUCTION_ENERGY + sim_config.config.MIN_LIFE_ENERGY], ['energy'], color='black', s=20)
         if 'age' in ls:
             ax.scatter([agent.max_age], ['age'], color='black', s=20)
-            ax.scatter([agent.adolescence], ['age'], color='pink', s=20)
+            ax.scatter([agent.adolescence_age], ['age'], color='pink', s=20)
             # ax.barh(['Energy', 'Hunger', 'Thirst'], [agent.energy, agent.hunger, agent.thirst], color=['green', 'red', 'blue'])
             ax.set_xlim(0, max(agent.max_energy, agent.max_age))
             # ax.set_xticks([0,agent.max_energy/2, agent.max_energy])
@@ -164,7 +164,7 @@ def plot_live_status(ax, agent, debug=False, plot_horizontal=True):
             ax.scatter(['energy'], [sim_config.config.REPRODUCTION_ENERGY + sim_config.config.MIN_LIFE_ENERGY], color='black', s=20)
         if 'age' in ls:
             ax.scatter(['age'], [agent.max_age], color='black', s=20)
-            ax.scatter(['age'], [agent.adolescence], color='pink', s=20)
+            ax.scatter(['age'], [agent.adolescence_age], color='pink', s=20)
             ax.set_ylim(0, max(agent.max_energy, agent.max_age))
             ax.set_xticks(ls)
             ax.set_xticklabels(ls, rotation=90, ha='right')
@@ -204,7 +204,7 @@ def plot_acc_status(ax, agent, debug=False, plot_type=1, curr_step=-1):
     if max(agent.color) > 1 or min(agent.color) < 0:
         raise ('color exceed [0, 1] range')
     ax.set_facecolor(list(agent.color) + [0.3])
-    ax.set_title(f'C# {agent.creature_id} | Anc. = {len(agent.ancestors)}')
+    ax.set_title(f'C# {agent.creature_id}')
     if plot_type == 0:
         # option 1
         values = [len(agent.log.record[attr]) for attr in ls]  # Dynamically get values

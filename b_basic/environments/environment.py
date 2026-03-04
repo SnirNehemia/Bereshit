@@ -60,7 +60,7 @@ class Environment:
 
             # Add food points
             if num_food_points_to_add > 0:
-                if np.random.rand() < food_growth_chance:
+                if np.random.rand() <= food_growth_chance:
                     choices = food_indices[np.random.choice(
                         num_food_indices, num_food_points_to_add, replace=True)]
                     for pt in choices:
@@ -101,7 +101,7 @@ class Environment:
         new_food_points = self._generate_new_food_points(
             food_indices=self.grass_indices,
             food_points=self.grass_points,
-            max_food_num_points=sim_config.config.MAX_GRASS_NUM,
+            max_food_num_points=sim_config.config.GRASS_MAX_NUM,
             food_generation_rate=self.grass_generation_rate,
             food_growth_chance=sim_config.config.GRASS_GROWTH_CHANCE)
         self.grass_points.extend(new_food_points)

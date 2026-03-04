@@ -46,24 +46,23 @@ class Creature(StaticTraits):
         self.init_state()
         # self.log.record['speed'] = [self.speed]  # fixes an issue with the first generation
 
-    def init_state(self, balance=False):
+    def init_state(self):
         """
         :return:
         """
         self.is_agent = False
         # static trait - update for current max_age
-        self.adolescence = self.max_age * sim_config.config.ADOLESCENCE_AGE_FRACTION
+        self.adolescence_age = self.max_age * sim_config.config.ADOLESCENCE_AGE_FRACTION
 
         # dynamic traits
         self.age = 0
-        if not balance:
-            self.mass = 0.1 * self.max_mass
-            self.height = 0.1 * self.max_height
-            self.strength = 0.1 * self.max_strength
+        self.mass = sim_config.config.INIT_FROM_MAX_FRACTION * self.max_mass
+        self.height = sim_config.config.INIT_FROM_MAX_FRACTION * self.max_height
+        self.strength = sim_config.config.INIT_FROM_MAX_FRACTION * self.max_strength
 
-        self.energy = 0.8 * (
+        self.energy = sim_config.config.INIT_ENERGY_FRACTION * (
                 sim_config.config.REPRODUCTION_ENERGY + sim_config.config.MIN_LIFE_ENERGY)
-        self.velocity = (np.random.rand(2) - 0.5) * self.max_speed
+        self.velocity = (np.random.rand(2) - 0.5) * 2 / sim_config.config.SQRT2 * self.max_speed
         self.max_speed_exp = np.linalg.norm(self.velocity)
         self.calc_speed()
 
@@ -90,15 +89,14 @@ class Creature(StaticTraits):
         and updated max speed experienced (with recursive averaging)
         """
         self.speed = np.linalg.norm(self.velocity)
-        # self.max_speed_exp = max(self.max_speed_exp, self.speed)
-        self.max_speed_exp = (self.max_speed_exp + self.speed) / 2
+        self.max_speed_exp = max([self.max_speed_exp, self.speed])
 
     def can_reproduce(self, step_num):
         """
         Returns 1 if the creature can reproduce (i.e., it is old enough and has not reproduced recently),
         else returns 0.
         """
-        if self.age > self.adolescence:
+        if self.age > self.adolescence_age:
             if len(self.log.record['reproduce']) > 0:
                 if (step_num - self.log.record['reproduce'][-1]) * sim_config.config.DT > self.reproduction_cooldown:
                     return 1
@@ -127,7 +125,6 @@ class Creature(StaticTraits):
         """
         self.gen += 1
         self.parent_id = self.creature_id
-        self.ancestors.append(self.creature_id)
         self.creature_id = None  # updated in simulation
 
         self.mutate()
@@ -142,23 +139,23 @@ class Creature(StaticTraits):
         """
         mutate the desired traits.
         """
-        std_mutation_factors = sim_config.config.STD_MUTATION_FACTORS
-        for trait_key, std_mutation_factor in std_mutation_factors.items():
+        mutation_traits_std = sim_config.config.MUTATION_TRAITS_STD
+        for trait_key, mutation_trait_std in mutation_traits_std.items():
             if np.random.rand(1) < sim_config.config.MUTATION_CHANCE:
                 if trait_key == 'eyes':
                     for eye_idx in range(len(self.eyes)):
-                        mutation_factor = np.random.normal(scale=std_mutation_factor,
+                        mutation_factor = np.random.normal(scale=mutation_trait_std,
                                                            size=2)  # 2 for angle offset and aperture
                         self.eyes[eye_idx] += mutation_factor
                 elif trait_key == 'digest_dict':
-                    std_mutation_factor = np.array(list(std_mutation_factor.values()))
-                    mutation_factor = np.random.normal(scale=std_mutation_factor)
+                    mutation_trait_std = np.array(list(mutation_trait_std.values()))
+                    mutation_factor = np.random.normal(scale=mutation_trait_std)
                     for i, food_type in enumerate(self.digest_dict.keys()):
                         if self.digest_dict[food_type] > 0:  # verify creature can eat this food type
                             self.digest_dict[food_type] += mutation_factor[i]
                             self.digest_dict[food_type] = np.clip(self.digest_dict[food_type], 0, 1)
                 else:
-                    mutation_factor = np.random.normal(scale=std_mutation_factor)
+                    mutation_factor = np.random.normal(scale=mutation_trait_std)
                     new_trait = getattr(self, trait_key) + mutation_factor
                     if trait_key == 'color':
                         new_trait = np.clip(new_trait, 0, 1)

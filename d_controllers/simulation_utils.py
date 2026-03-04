@@ -33,14 +33,20 @@ def init_creatures(env: Environment, brain_obj) -> dict[int, Creature]:
         parent_id = None
         birth_step = 0
         color = np.random.rand(3)  # Random RGB color.
-        max_age = int(np.random.uniform(low=0.8, high=1) * sim_config.config.INIT_MAX_AGE)
+        max_age = int(np.random.uniform(low=sim_config.config.INIT_MAX_FRACTION, high=1) *
+                      sim_config.config.INIT_MAX_AGE)
 
-        max_mass = np.random.uniform(low=0.8, high=1) * sim_config.config.INIT_MAX_MASS
-        max_height = np.random.uniform(low=0.8, high=1) * sim_config.config.INIT_MAX_HEIGHT
-        max_strength = np.random.uniform(low=0.8, high=1) * sim_config.config.INIT_MAX_STRENGTH
+        max_mass = np.random.uniform(low=sim_config.config.INIT_MAX_FRACTION, high=1) * \
+                   sim_config.config.INIT_MAX_MASS
+        max_height = np.random.uniform(low=sim_config.config.INIT_MAX_FRACTION, high=1) * \
+                     sim_config.config.INIT_MAX_HEIGHT
+        max_strength = np.random.uniform(low=sim_config.config.INIT_MAX_FRACTION, high=1) * \
+                       sim_config.config.INIT_MAX_STRENGTH
 
-        max_speed = np.random.uniform(low=0.8, high=1) * sim_config.config.INIT_MAX_SPEED
-        max_energy = np.random.uniform(low=0.8, high=1) * sim_config.config.INIT_MAX_ENERGY
+        max_speed = np.random.uniform(low=sim_config.config.INIT_MAX_FRACTION, high=1) * \
+                    sim_config.config.INIT_MAX_SPEED
+        max_energy = np.random.uniform(low=sim_config.config.INIT_MAX_FRACTION, high=1) * \
+                     sim_config.config.INIT_MAX_ENERGY
 
         reproduction_cooldown = sim_config.config.REPRODUCTION_COOLDOWN
         reproduction_energy = sim_config.config.REPRODUCTION_ENERGY
@@ -150,8 +156,7 @@ def detect_target_from_kdtree(creature: Creature, i_creature: int,
                               eye_idx: int,
                               kd_tree: KDTree,
                               candidate_points: np.ndarray,
-                              candidates_indices_to_remove: list,
-                              noise_std: float = 0.0):
+                              candidates_indices_to_remove: list):
     """
     Generic function to detect the closest target from candidate_points using a KDTree.
 
@@ -193,8 +198,7 @@ def detect_target_from_kdtree(creature: Creature, i_creature: int,
                                       eye_idx=eye_idx,
                                       eye_position=eye_position,
                                       candidates_positions=candidates_positions,
-                                      candidates_indices=candidates_indices,
-                                      noise_std=noise_std)
+                                      candidates_indices=candidates_indices)
 
     # Get closest candidate
     if len(final_distances) > 0:
@@ -220,8 +224,7 @@ def get_eye_direction(creature, eye_idx):
 
 def calc_batch_distance_and_angle(creature, eye_idx, eye_position,
                                   candidates_positions,
-                                  candidates_indices,
-                                  noise_std):
+                                  candidates_indices):
     """
     Optimized batch processing for vision checks.
     returns relative idx, distance, angle
@@ -265,6 +268,7 @@ def calc_batch_distance_and_angle(creature, eye_idx, eye_position,
     final_angles = np.arctan2(dets, final_dots * final_distances)
 
     # 6. Add Noise to final results
+    noise_std = sim_config.config.NOISE_STD
     if noise_std > 0:
         final_distances += np.random.normal(0, noise_std, size=final_distances.shape)
         final_angles += np.random.normal(0, noise_std, size=final_angles.shape)

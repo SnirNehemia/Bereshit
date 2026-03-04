@@ -31,6 +31,9 @@ class Config:
         for key, value in data_dict.items():
             setattr(self, key, value)
 
+        # sqrt 2 is needed for velocity initialization
+        self.SQRT2 = np.sqrt(2)
+
         # Store project folder
         self.project_folder = repos_utils.fetch_directory()
 
@@ -67,8 +70,8 @@ class Config:
         elif self.BRAIN_TYPE == 'graphic_brain':
             setattr(self, 'MUTATION_BRAIN', self.MUTATION_GRAPH_BRAIN)
 
-        self.STD_MUTATION_FACTORS['color'] = np.ones(3) * self.STD_MUTATION_FACTORS['color']
-        self.STD_MUTATION_FACTORS['eyes'] = np.radians(self.STD_MUTATION_FACTORS['eyes'])
+        self.MUTATION_TRAITS_STD['color'] = np.ones(3) * self.MUTATION_TRAITS_STD['color']
+        self.MUTATION_TRAITS_STD['eyes'] = np.radians(self.MUTATION_TRAITS_STD['eyes'])
 
         self.update_config()
 

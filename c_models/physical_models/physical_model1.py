@@ -1,5 +1,6 @@
 import numpy as np
 
+from b_basic.sim_config.codes import sim_config
 from c_models.physical_models.physical_model_abc import PhysicalModel
 
 
@@ -11,19 +12,18 @@ class PhysicalModel1(PhysicalModel):
         for key, value in params.items():
             setattr(self, key, value)
 
-    def move_creature(self, creature, decision, dt, **kwargs):
+    def move_creature(self, creature, decision, **kwargs):
         """
         Update creature position, velocity and energy given decision (brain output).
         :param creature: Creature
         :param decision: brain output, 2 X 1 vector (magnitude, direction)
-        :param dt: float
         :param kwargs:
         :return:
         """
 
         # update position, velocity and speed
         force = self._transform_propulsion_force(creature=creature, decision=decision)
-        self._update_position_and_velocity(creature=creature, total_force=force, dt=dt)
+        self._update_position_and_velocity(creature=creature, total_force=force)
 
         # update energy
         force_mag = decision[0]
@@ -60,8 +60,9 @@ class PhysicalModel1(PhysicalModel):
         return global_propulsion_force
 
     @staticmethod
-    def _update_position_and_velocity(creature, total_force, dt,
+    def _update_position_and_velocity(creature, total_force,
                                       debug_position: bool = False):
+        dt = sim_config.config.DT
         acceleration = total_force / creature.mass
         new_velocity = creature.velocity + acceleration * dt
         new_position = creature.position + new_velocity * dt

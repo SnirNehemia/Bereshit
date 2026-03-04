@@ -402,7 +402,7 @@ def run_simulation(agent, physical_model,
         if debug_position: print(f'{np.linalg.norm(agent.position)=:.1f}')
     if agent.t == 0:
         if debug_energy: print('restart simulation')
-        agent.init_state(balance=True)
+        agent.init_state()
         agent.live_count = 0
         agent.dead_count = 0
         agent.eat_count = 0

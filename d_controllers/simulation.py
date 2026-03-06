@@ -11,7 +11,7 @@ import matplotlib.gridspec as gridspec
 import importlib
 
 from b_basic.creatures.creature import Creature
-from b_basic.sim_config.codes import sim_config
+from b_basic.sim_config import sim_config
 from c_models.physical_model_factory import PhysicalModelFactory
 from d_controllers import simulation_utils
 from e_logs import traits_evolution
@@ -640,10 +640,7 @@ class Simulation:
                   seek_result: dict):
         brain_input = simulation_utils.get_brain_input(creature=creature, seek_result=seek_result)
         decision = creature.think(brain_input)
-        self.physical_model.move_creature(creature=creature, decision=decision)
-
-        # Collision detection
-        simulation_utils.detect_collision(creature=creature, env=self.env)
+        self.physical_model.move_creature(creature=creature, env=self.env, decision=decision)
 
     def eat_food(self,
                  creature: Creature,
@@ -691,7 +688,7 @@ class Simulation:
                     food_to_remove_list = creatures_indices_to_kill
                     prey_id = self.creatures_ids[food_idx]
                     prey = self.creatures[prey_id]
-                    food_energy = prey.energy + self.physical_model.energy_conversion_factors['mass_energy'] * prey.mass
+                    food_energy = self.physical_model.energy_conversion_factors['mass_energy'] * prey.mass
 
                     is_child = creature.creature_id == prey.parent_id
                     is_father = creature.parent_id == prey.creature_id

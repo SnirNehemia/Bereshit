@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib import use
 
 from a_utils import repos_utils
-from b_basic.sim_config.codes import sim_config
+from b_basic.sim_config import sim_config
 from e_logs.statistics_logs import StatisticsLogs
 
 use('TkAgg')

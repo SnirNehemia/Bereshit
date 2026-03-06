@@ -1,6 +1,6 @@
 import numpy as np
 
-from b_basic.sim_config.codes import sim_config
+from b_basic.sim_config import sim_config
 
 
 def validate_config(config: sim_config.Config):

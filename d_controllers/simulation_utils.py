@@ -6,7 +6,7 @@ from scipy.spatial import KDTree
 
 from b_basic.creatures.creature import Creature
 from b_basic.environments.environment import Environment
-from b_basic.sim_config.codes import sim_config
+from b_basic.sim_config import sim_config
 
 
 def init_environment():
@@ -105,27 +105,6 @@ def build_creatures_kd_tree(positions: np.ndarray) -> KDTree:
         return KDTree(positions)
     else:
         return KDTree([[0, 0]])
-
-
-def detect_collision(creature, env):
-    """
-    Handle cases where creature's new position is inside an obstacle or outbound.
-    :param creature:
-    :param env:
-    :return:
-    """
-    height, width = env.map_data.shape[:2]
-    col, row = map(int, creature.position)  # Convert (x, y) to image indices (col, row)
-    if col < 0 or col >= width or row < 0 or row >= height or env.obstacle_mask[row, col]:
-
-        # choose if the velocity is set to zero or get mirrored
-        if sim_config.config.BOUNDARY_CONDITION == 'zero':
-            creature.position = np.clip(creature.position, [0, 0], [width, height])
-            creature.velocity = np.array([0.0, 0.0])
-
-        elif sim_config.config.BOUNDARY_CONDITION == 'mirror':
-            creature.position = np.clip(creature.position, [0, 0], [width, height])
-            creature.velocity = -creature.velocity
 
 
 def get_brain_input(creature: Creature, seek_result: dict):

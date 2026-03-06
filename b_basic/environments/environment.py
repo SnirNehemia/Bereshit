@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import KDTree
 
-from b_basic.sim_config.codes import sim_config
+from b_basic.sim_config import sim_config
 
 
 class Environment:

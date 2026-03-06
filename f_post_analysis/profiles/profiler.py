@@ -2,7 +2,7 @@ import cProfile
 import functools
 import os
 
-from b_basic.sim_config.codes import sim_config
+from b_basic.sim_config import sim_config
 
 
 def profileit():

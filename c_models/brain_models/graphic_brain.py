@@ -5,7 +5,7 @@ from matplotlib.colors import Normalize
 from matplotlib.patches import FancyArrowPatch
 import platform, matplotlib
 import random, math
-from b_basic.sim_config.codes import sim_config
+from b_basic.sim_config import sim_config
 
 if platform.system() == 'Darwin':
     matplotlib.use('MacOSX')

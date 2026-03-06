@@ -8,12 +8,12 @@ class PhysicalModel(ABC):
         pass
 
     @abstractmethod
-    def move_creature(self, creature, decision, dt, **kwargs):
+    def move_creature(self, creature, env, decision, **kwargs):
         """
         Update creature position, velocity and energy given decision (brain output).
         :param creature: Creature
+        :param env: Environment
         :param decision: brain output, 2 X 1 vector (magnitude, direction)
-        :param dt: float
         :param kwargs:
         :return:
         """

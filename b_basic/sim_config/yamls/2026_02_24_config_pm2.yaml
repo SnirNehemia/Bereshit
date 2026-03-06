@@ -47,7 +47,6 @@ physical_model_parameters:
 
 # Environment parameters
 ENV_PATH: b_basic\environments\env_images\Env8.png
-BOUNDARY_CONDITION: 'zero'  # what to do with the velocity on the boundaries - 'mirror' or 'zero'
 FOOD_DISTANCE_THRESHOLD: 75
 
 GRASS_MAX_NUM: 100

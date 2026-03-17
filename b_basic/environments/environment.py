@@ -69,7 +69,10 @@ class Environment:
 
     def remove_grass_points(self):
         for grass_idx in self.grass_indices_to_remove:
-            self.grass_points.pop(grass_idx)
+            try:
+                self.grass_points.pop(grass_idx)
+            except IndexError:
+                print(f'IndexError: {grass_idx=} not in range {len(self.grass_points)}')
         self.grass_indices_to_remove = []
 
     def get_extent(self):

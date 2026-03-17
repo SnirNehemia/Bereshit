@@ -1,10 +1,11 @@
 # Simulation parameters
 VERSION: 2.0
 NUM_RUNS: 5
-NUM_FRAMES: 70  # number of frames in simulation video
+NUM_FRAMES: 200  # number of frames in simulation video
 # key is frame number and value is num steps per frame from this frame onward
-NUM_STEPS_FROM_FRAME_DICT: { 0: 1000,
-                             10: 500
+NUM_STEPS_FROM_FRAME_DICT: { 0: 10000,
+                             10: 500,
+                             100: 100,
 }
 STATUS_EVERY_STEP: False  # choose if to update every step or every frame
 UPDATE_KDTREE_INTERVAL: 120  # update the kdtree every n steps
@@ -104,7 +105,7 @@ MUTATION_GRAPH_BRAIN: { 'add_node': 0.1,
 DT: 1  # [sec] time passing between consecutive steps (relevant for age and movement)
 ADOLESCENCE_AGE_FRACTION: 0  # [0-1] fraction of INIT_MAX_AGE for adulthood
 REPRODUCTION_COOLDOWN: 300  # [sec] minimal time between reproduction events
-CHANCE_TO_HERBIVORE: 0.85
+CHANCE_TO_HERBIVORE: 0.65
 
 INIT_HERBIVORE_DIGEST_DICT: { 'grass': 1,
                               'leaf': 0,

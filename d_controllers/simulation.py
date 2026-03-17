@@ -244,6 +244,14 @@ class Simulation:
 
         return new_children_ids, creatures_ids_to_kill
 
+    def update_logs(self, child_ids, dead_ids):
+        # Update creatures logs (after movement, eating and reproduction)
+        simulation_utils.update_creatures_logs(creatures=self.creatures)
+
+        # Update statistics logs
+        self.statistics_logs.update_statistics_logs(creatures=self.creatures, env=self.env,
+                                                    child_ids=child_ids, dead_ids=dead_ids,
+                                                    step_counter=self.step_counter)
     def run_and_visualize(self):
         """
         Runs the simulation for a given number of frames and saves an animation.
@@ -438,13 +446,8 @@ class Simulation:
                 # Do simulation step
                 child_ids, dead_ids = self.do_step()
 
-                # Update creatures logs (after movement, eating and reproduction)
-                simulation_utils.update_creatures_logs(creatures=self.creatures)
-
-                # Update statistics logs
-                self.statistics_logs.update_statistics_logs(creatures=self.creatures, env=self.env,
-                                                            child_ids=child_ids, dead_ids=dead_ids,
-                                                            step_counter=self.step_counter)
+                # Update logs
+                self.update_logs(child_ids=child_ids, dead_ids=dead_ids)
 
                 # abort simulation if there are too many creatures or no creatures left
                 if not self.abort_simulation:

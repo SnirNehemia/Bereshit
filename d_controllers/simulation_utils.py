@@ -429,7 +429,7 @@ if __name__ == '__main__':
     num_steps_from_frame_dict = sim_config.config.NUM_STEPS_FROM_FRAME_DICT
 
     # Calc num steps up to given frame
-    for frame in range(int(0.8 * num_frames), num_frames):
+    for frame in range(int(0.8 * num_frames), num_frames + 1):
         num_steps = calc_total_num_steps(
             num_steps_from_frame_dict=num_steps_from_frame_dict,
             up_to_frame=frame)

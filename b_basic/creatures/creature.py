@@ -4,7 +4,7 @@ import numpy as np
 
 from b_basic.creatures.static_traits import StaticTraits
 from e_logs.creatures_log import CreaturesLogs
-from b_basic.sim_config.codes import sim_config
+from b_basic.sim_config import sim_config
 
 import importlib
 

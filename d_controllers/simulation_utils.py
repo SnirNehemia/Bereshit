@@ -6,7 +6,7 @@ from scipy.spatial import KDTree
 
 from b_basic.creatures.creature import Creature
 from b_basic.environments.environment import Environment
-from b_basic.sim_config.codes import sim_config
+from b_basic.sim_config import sim_config
 
 
 def init_environment():
@@ -105,27 +105,6 @@ def build_creatures_kd_tree(positions: np.ndarray) -> KDTree:
         return KDTree(positions)
     else:
         return KDTree([[0, 0]])
-
-
-def detect_collision(creature, env):
-    """
-    Handle cases where creature's new position is inside an obstacle or outbound.
-    :param creature:
-    :param env:
-    :return:
-    """
-    height, width = env.map_data.shape[:2]
-    col, row = map(int, creature.position)  # Convert (x, y) to image indices (col, row)
-    if col < 0 or col >= width or row < 0 or row >= height or env.obstacle_mask[row, col]:
-
-        # choose if the velocity is set to zero or get mirrored
-        if sim_config.config.BOUNDARY_CONDITION == 'zero':
-            creature.position = np.clip(creature.position, [0, 0], [width, height])
-            creature.velocity = np.array([0.0, 0.0])
-
-        elif sim_config.config.BOUNDARY_CONDITION == 'mirror':
-            creature.position = np.clip(creature.position, [0, 0], [width, height])
-            creature.velocity = -creature.velocity
 
 
 def get_brain_input(creature: Creature, seek_result: dict):
@@ -450,7 +429,7 @@ if __name__ == '__main__':
     num_steps_from_frame_dict = sim_config.config.NUM_STEPS_FROM_FRAME_DICT
 
     # Calc num steps up to given frame
-    for frame in range(int(0.8 * num_frames), num_frames):
+    for frame in range(int(0.8 * num_frames), num_frames + 1):
         num_steps = calc_total_num_steps(
             num_steps_from_frame_dict=num_steps_from_frame_dict,
             up_to_frame=frame)

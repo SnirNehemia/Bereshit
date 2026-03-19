@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 from a_utils.json_utils import Serializable
 from b_basic.creatures.creature import Creature
 from b_basic.environments.environment import Environment
-from b_basic.sim_config.codes import sim_config
+from b_basic.sim_config import sim_config
 
 
 class StatisticsLogs(Serializable):

@@ -1,8 +1,7 @@
 import importlib
 import pkgutil
 
-from a_utils import repos_utils
-from b_basic.sim_config.codes import sim_config
+from b_basic.sim_config import sim_config
 import c_models.physical_models as physical_models  # Your folder containing model scripts
 from c_models.physical_models.physical_model_abc import PhysicalModel
 

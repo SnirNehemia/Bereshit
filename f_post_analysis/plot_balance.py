@@ -3,7 +3,7 @@ from math import floor
 
 import matplotlib
 
-from b_basic.sim_config.codes import sim_config
+from b_basic.sim_config import sim_config
 
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt

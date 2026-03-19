@@ -1,10 +1,11 @@
 # Simulation parameters
 VERSION: 2.0
 NUM_RUNS: 5
-NUM_FRAMES: 70  # number of frames in simulation video
+NUM_FRAMES: 200  # number of frames in simulation video
 # key is frame number and value is num steps per frame from this frame onward
-NUM_STEPS_FROM_FRAME_DICT: { 0: 1000, # 2000
-                             10: 500 # 500
+NUM_STEPS_FROM_FRAME_DICT: { 0: 10000,
+                             10: 500,
+                             100: 100,
 }
 STATUS_EVERY_STEP: False  # choose if to update every step or every frame
 UPDATE_KDTREE_INTERVAL: 120  # update the kdtree every n steps
@@ -19,13 +20,12 @@ physical_model_type: physicalmodel1  # physical model type
 
 physical_model_parameters:
   # convert physical parameters to energy
-  energy_conversion_factors: { 'activity_efficiency': 0.75,  #0.25,  # propulsion force to energy factor (higher -> efficient)
-                               'mass_energy': 25  # [E]/[m] = [v^2] = [m^2/sec^4]  convert mass to energy
+  energy_conversion_factors: { 'activity_efficiency': 0.75, # propulsion force to energy factor (higher -> efficient)
+                               'mass_energy': 200  # [E]/[m] = [v^2] = [m^2/sec^4]  convert mass to energy
   }
 
 # Environment parameters
 ENV_PATH: b_basic\environments\env_images\Env8.png
-BOUNDARY_CONDITION: 'zero'  # what to do with the velocity on the boundaries - 'mirror' or 'zero'
 FOOD_DISTANCE_THRESHOLD: 75
 
 GRASS_MAX_NUM: 100
@@ -43,7 +43,7 @@ LEAF_HEIGHT: 10
 MAX_NUM_CREATURES: 500
 NUM_CREATURES: 200  # init size of population
 
-INIT_MAX_AGE: 40000 # changed: 60000  # [sec] step_number * config.DT
+INIT_MAX_AGE: 20000 # [sec] step_number * config.DT
 INIT_MAX_MASS: 10  # [kg]
 INIT_MAX_HEIGHT: 1  # [m]
 INIT_MAX_STRENGTH: 5  # [N]
@@ -53,7 +53,7 @@ INIT_MAX_FRACTION: 0.8
 INIT_FROM_MAX_FRACTION: 0.1
 INIT_ENERGY_FRACTION: 0.8
 
-REPRODUCTION_ENERGY: 5000 # changed: 5000  # energy cost of reproduction
+REPRODUCTION_ENERGY: 5000  # energy cost of reproduction
 MIN_LIFE_ENERGY: 5000  # energy to be left after reproduction
 
 # Eyes parameters
@@ -102,10 +102,10 @@ MUTATION_GRAPH_BRAIN: { 'add_node': 0.1,
                         'break_edge': 0.5 }
 
 # Simulation mechanisms
-DT: 2.5  # time passing between consecutive steps (relevant for age and movement)
-ADOLESCENCE_AGE_FRACTION: 0.05  # [0-1] fraction of INIT_MAX_AGE for adulthood
+DT: 1  # [sec] time passing between consecutive steps (relevant for age and movement)
+ADOLESCENCE_AGE_FRACTION: 0  # [0-1] fraction of INIT_MAX_AGE for adulthood
 REPRODUCTION_COOLDOWN: 300  # [sec] minimal time between reproduction events
-CHANCE_TO_HERBIVORE: 0.85
+CHANCE_TO_HERBIVORE: 0.65
 
 INIT_HERBIVORE_DIGEST_DICT: { 'grass': 1,
                               'leaf': 0,

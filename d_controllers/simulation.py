@@ -11,7 +11,7 @@ import matplotlib.gridspec as gridspec
 import importlib
 
 from b_basic.creatures.creature import Creature
-from b_basic.sim_config.codes import sim_config
+from b_basic.sim_config import sim_config
 from c_models.physical_model_factory import PhysicalModelFactory
 from d_controllers import simulation_utils
 from e_logs import traits_evolution
@@ -244,6 +244,14 @@ class Simulation:
 
         return new_children_ids, creatures_ids_to_kill
 
+    def update_logs(self, child_ids, dead_ids):
+        # Update creatures logs (after movement, eating and reproduction)
+        simulation_utils.update_creatures_logs(creatures=self.creatures)
+
+        # Update statistics logs
+        self.statistics_logs.update_statistics_logs(creatures=self.creatures, env=self.env,
+                                                    child_ids=child_ids, dead_ids=dead_ids,
+                                                    step_counter=self.step_counter)
     def run_and_visualize(self):
         """
         Runs the simulation for a given number of frames and saves an animation.
@@ -438,13 +446,8 @@ class Simulation:
                 # Do simulation step
                 child_ids, dead_ids = self.do_step()
 
-                # Update creatures logs (after movement, eating and reproduction)
-                simulation_utils.update_creatures_logs(creatures=self.creatures)
-
-                # Update statistics logs
-                self.statistics_logs.update_statistics_logs(creatures=self.creatures, env=self.env,
-                                                            child_ids=child_ids, dead_ids=dead_ids,
-                                                            step_counter=self.step_counter)
+                # Update logs
+                self.update_logs(child_ids=child_ids, dead_ids=dead_ids)
 
                 # abort simulation if there are too many creatures or no creatures left
                 if not self.abort_simulation:
@@ -640,10 +643,7 @@ class Simulation:
                   seek_result: dict):
         brain_input = simulation_utils.get_brain_input(creature=creature, seek_result=seek_result)
         decision = creature.think(brain_input)
-        self.physical_model.move_creature(creature=creature, decision=decision)
-
-        # Collision detection
-        simulation_utils.detect_collision(creature=creature, env=self.env)
+        self.physical_model.move_creature(creature=creature, env=self.env, decision=decision)
 
     def eat_food(self,
                  creature: Creature,
@@ -691,7 +691,7 @@ class Simulation:
                     food_to_remove_list = creatures_indices_to_kill
                     prey_id = self.creatures_ids[food_idx]
                     prey = self.creatures[prey_id]
-                    food_energy = prey.energy + self.physical_model.energy_conversion_factors['mass_energy'] * prey.mass
+                    food_energy = self.physical_model.energy_conversion_factors['mass_energy'] * prey.mass
 
                     is_child = creature.creature_id == prey.parent_id
                     is_father = creature.parent_id == prey.creature_id

@@ -1,4 +1,4 @@
-from b_basic.sim_config.codes import sim_config
+from b_basic.sim_config import sim_config
 from c_models.physical_model_factory import PhysicalModelFactory
 from d_controllers.simulation import Simulation
 from f_post_analysis.profiles.profiler import profileit

@@ -20,7 +20,6 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FFMpegWriter
-import os
 
 from ppo_training.marl.marl_env import Ecosystem
 from ppo_training.ppo_brain import PPOBrain
@@ -28,6 +27,8 @@ from ppo_training.ppo_brain import PPOBrain
 # Make sure FFMPEG is in your system path, or set it explicitly here:
 plt.rcParams[
     'animation.ffmpeg_path'] = r'C:\Users\saar.nehemia\PycharmProjects\Bereshit\a_utils\ffmpeg-2025-02-20-git-bc1a3bfd2c-essentials_build\bin\ffmpeg.exe'
+
+RESULTS_PATH = rf'C:\Users\saar.nehemia\PycharmProjects\Bereshit\ppo_training\marl\results'
 
 
 def render_ecosystem(results_folder: str, update_milestone: int):
@@ -38,7 +39,7 @@ def render_ecosystem(results_folder: str, update_milestone: int):
     carn_brain = PPOBrain(13, 3)
 
     try:
-        results_full_folder = rf"C:\Users\saar.nehemia\PycharmProjects\Bereshit\ppo_training\marl\{results_folder}"
+        results_full_folder = rf"{RESULTS_PATH}\{results_folder}"
         herb_checkpoint = fr"{results_full_folder}\marl_checkpoints\herb_brain_{update_milestone:03d}.pth"
         carn_checkpoint = fr"{results_full_folder}\marl_checkpoints\carn_brain_{update_milestone:03d}.pth"
         herb_brain.load_state_dict(torch.load(herb_checkpoint))

@@ -17,9 +17,11 @@ UPDATE_EPOCHS = 4
 BATCH_SIZE = 500  # Steps per update
 TOTAL_UPDATES = 500
 
+RESULTS_PATH = rf'C:\Users\saar.nehemia\PycharmProjects\Bereshit\ppo_training\marl\results'
 
 def train_marl(results_folder: str):
-    os.makedirs(f"{results_folder}/marl_checkpoints", exist_ok=True)
+    results_full_folder = f'{RESULTS_PATH}/{results_folder}'
+    os.makedirs(f"{results_full_folder}/marl_checkpoints", exist_ok=True)
 
     # Instantiate the two Master Species Brains (13 inputs, 3 outputs)
     herb_brain = PPOBrain(13, 3)
@@ -96,16 +98,16 @@ def train_marl(results_folder: str):
                         reward += delta_energy * 0.1
 
                     # Reward for seeing prey and moving toward him
-                    if agent.is_carnivore and agent.alive:
-                        obs = env._get_obs(agent)
-                        agent_seen = obs[8]  # Agent Seen Flag
-                        agent_dist = obs[9]  # Normalized Distance (-1 to 1)
-
-                        if agent_seen > 0:
-                            # Give a small "scenting" reward for having prey in sight
-                            # and getting closer to it.
-                            distance_reward = (1.0 - agent_dist) * 0.05
-                            reward += distance_reward
+                    # if agent.is_carnivore and agent.alive:
+                    #     obs = env._get_obs(agent)
+                    #     agent_seen = obs[8]  # Agent Seen Flag
+                    #     agent_dist = obs[9]  # Normalized Distance (-1 to 1)
+                    #
+                    #     if agent_seen > 0:
+                    #         # Give a small "scenting" reward for having prey in sight
+                    #         # and getting closer to it.
+                    #         distance_reward = (1.0 - agent_dist) * 0.05
+                    #         reward += distance_reward
 
                     if agent.health < agent.health_prev:
                         reward -= 1.0  # Pain/Recoil penalty
@@ -172,12 +174,12 @@ def train_marl(results_folder: str):
 
         # Save Checkpoints
         if update % 10 == 0:
-            torch.save(herb_brain.state_dict(), f"{results_folder}/marl_checkpoints/herb_brain_{update:03d}.pth")
-            torch.save(carn_brain.state_dict(), f"{results_folder}/marl_checkpoints/carn_brain_{update:03d}.pth")
+            torch.save(herb_brain.state_dict(), f"{results_full_folder}/marl_checkpoints/herb_brain_{update:03d}.pth")
+            torch.save(carn_brain.state_dict(), f"{results_full_folder}/marl_checkpoints/carn_brain_{update:03d}.pth")
 
     print("Co-Evolution Training Complete!")
 
 
 if __name__ == "__main__":
-    results_folder = "marl_results_500_ent005_ex_eat_dist_hp_reward"
+    results_folder = "updates500_ent005_ex_energy_hp_reward_2"
     train_marl(results_folder=results_folder)

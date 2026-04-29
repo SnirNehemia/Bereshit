@@ -24,8 +24,19 @@ import os
 
 from ppo_training.ppo_brain import PPOBrain
 
+RESULTS_PATH = rf'C:\Users\saar.nehemia\PycharmProjects\Bereshit\ppo_training\marl\results'
 
-def plot_critic_value_map_food(results_folder: str, species: str,
+
+def get_latest_update(results_full_folder: str, species: str):
+    latest_update = max(
+        [int(f.split('_')[-1].split('.')[0]) for f in
+         os.listdir(rf'{results_full_folder}\marl_checkpoints') if
+         f.startswith(species)],
+        default=0)
+    return latest_update
+
+
+def plot_critic_value_map_food(results_folder: str, species: str, update_milestone: int,
                                to_show: bool = True, to_save: bool = True):
     """
 
@@ -38,13 +49,8 @@ def plot_critic_value_map_food(results_folder: str, species: str,
     model = PPOBrain(input_dim, action_dim)
 
     # Find the latest checkpoint dynamically
-    results_full_folder = rf"C:\Users\saar.nehemia\PycharmProjects\Bereshit\ppo_training\marl\{results_folder}"
-    latest_update = max(
-        [int(f.split('_')[-1].split('.')[0]) for f in
-         os.listdir(rf'{results_full_folder}\marl_checkpoints') if
-         f.startswith(species)],
-        default=0)
-    filepath = fr"{results_full_folder}\marl_checkpoints/{species}_brain_{latest_update:03d}.pth"
+    results_full_folder = rf"{RESULTS_PATH}\{results_folder}"
+    filepath = fr"{results_full_folder}\marl_checkpoints/{species}_brain_{update_milestone:03d}.pth"
 
     try:
         model.load_state_dict(torch.load(filepath))
@@ -86,14 +92,14 @@ def plot_critic_value_map_food(results_folder: str, species: str,
     contour = plt.contourf(X, Y, Z, levels=30, cmap='viridis')
     plt.colorbar(contour, label='Critic Value (Expected Reward)')
 
-    plt.title(f"Critic Spatial Value Map - Food ({species.capitalize()} Brain, Update {latest_update})")
+    plt.title(f"Critic Spatial Value Map - Food ({species.capitalize()} Brain, Update {update_milestone:03d})")
     plt.xlabel("Food Angle (Left to Right)")
     plt.ylabel("Food Distance (Close to Far)")
 
     plt.tight_layout()
 
     if to_save:
-        filename = f"{results_full_folder}\critic_value_map_food_{species}.png"
+        filename = f"{results_full_folder}\critic_value_map_food_{species}_update{update_milestone:03d}.png"
         plt.savefig(filename, dpi=150)
         print(f"Saved plot to '{filename}'")
 
@@ -101,7 +107,7 @@ def plot_critic_value_map_food(results_folder: str, species: str,
         plt.show()
 
 
-def plot_critic_value_map_creature(results_folder: str, species: str,
+def plot_critic_value_map_creature(results_folder: str, species: str, update_milestone: int,
                                    to_show: bool = True, to_save: bool = True):
     """
     :param results_folder:
@@ -115,13 +121,8 @@ def plot_critic_value_map_creature(results_folder: str, species: str,
     model = PPOBrain(input_dim, action_dim)
 
     # Find the latest checkpoint dynamically
-    results_full_folder = rf"C:\Users\saar.nehemia\PycharmProjects\Bereshit\ppo_training\marl\{results_folder}"
-    latest_update = max(
-        [int(f.split('_')[-1].split('.')[0]) for f in
-         os.listdir(rf'{results_full_folder}\marl_checkpoints') if
-         f.startswith(species)],
-        default=0)
-    filepath = fr"{results_full_folder}\marl_checkpoints/{species}_brain_{latest_update:03d}.pth"
+    results_full_folder = rf"{RESULTS_PATH}\{results_folder}"
+    filepath = fr"{results_full_folder}\marl_checkpoints\{species}_brain_{update_milestone:03d}.pth"
 
     try:
         model.load_state_dict(torch.load(filepath))
@@ -173,11 +174,11 @@ def plot_critic_value_map_creature(results_folder: str, species: str,
             ax[i_ax].set_ylabel("Creature Distance (Close to Far)")
             i_ax += 1
 
-    fig.suptitle(f"Critic Spatial Value Map - Creature ({species.capitalize()} Brain, Update {latest_update})")
+    fig.suptitle(f"Critic Spatial Value Map - Creature ({species.capitalize()} Brain, Update {update_milestone:03d})")
     plt.tight_layout()
 
     if to_save:
-        filename = f"{results_full_folder}\critic_value_map_creature_{species}.png"
+        filename = f"{results_full_folder}\critic_value_map_creature_{species}_update{update_milestone:03d}.png"
         plt.savefig(filename, dpi=150)
         print(f"Saved plot to '{filename}'")
 
@@ -186,7 +187,13 @@ def plot_critic_value_map_creature(results_folder: str, species: str,
 
 
 if __name__ == "__main__":
-    species = 'carn'
-    results_folder = "marl_results_500_ent005_ex_eat_dist_reward"
-    plot_critic_value_map_creature(results_folder=results_folder, species=species,
-                                   to_show=True, to_save=False)
+    results_folder = "03_marl_results_500_ent005_ex_energy_dist_reward"
+    species_list = ['herb', 'carn']
+    update_milestone = 20
+
+    for species in species_list:
+        plot_critic_value_map_food(results_folder=results_folder, species=species, update_milestone=update_milestone,
+                                   to_show=False, to_save=True)
+
+        plot_critic_value_map_creature(results_folder=results_folder, species=species, update_milestone=update_milestone,
+                                       to_show=False, to_save=True)

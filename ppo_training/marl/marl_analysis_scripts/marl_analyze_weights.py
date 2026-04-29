@@ -25,8 +25,10 @@ import os
 
 from ppo_training.ppo_brain import PPOBrain
 
+RESULTS_PATH = rf'C:\Users\saar.nehemia\PycharmProjects\Bereshit\ppo_training\marl\results'
 
-def analyze_synaptic_attention(results_folder: str, species: str):
+def analyze_synaptic_attention(results_folder: str, species: str,
+                               to_show: bool = True, to_save: bool = True):
     """
 
     :param results_folder:
@@ -48,7 +50,7 @@ def analyze_synaptic_attention(results_folder: str, species: str):
 
     model = PPOBrain(input_dim, action_dim)
 
-    results_full_folder = rf"C:\Users\saar.nehemia\PycharmProjects\Bereshit\ppo_training\marl\{results_folder}"
+    results_full_folder = rf"{RESULTS_PATH}\{results_folder}"
     for update in updates:
         filepath = fr"{results_full_folder}\marl_checkpoints\{species}_brain_{update:03d}.pth"
         if not os.path.exists(filepath):
@@ -86,10 +88,13 @@ def analyze_synaptic_attention(results_folder: str, species: str):
     plt.grid(True, linestyle='--', alpha=0.7)
     plt.tight_layout()
 
-    filename = f"{results_full_folder}\synaptic_attention_{species}.png"
-    plt.savefig(filename, dpi=150)
-    print(f"Saved plot to '{filename}'")
-    plt.show()
+    if to_save:
+        filename = f"{results_full_folder}\synaptic_attention_{species}.png"
+        plt.savefig(filename, dpi=150)
+        print(f"Saved plot to '{filename}'")
+
+    if to_show:
+        plt.show()
 
 
 if __name__ == "__main__":

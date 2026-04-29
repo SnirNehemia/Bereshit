@@ -23,6 +23,8 @@ import os
 
 from ppo_training.ppo_brain import PPOBrain
 
+RESULTS_PATH = rf'C:\Users\saar.nehemia\PycharmProjects\Bereshit\ppo_training\marl\results'
+
 
 def get_action(brain, obs_array):
     """Helper to pass a synthetic observation to the brain and return deterministic actions."""
@@ -141,7 +143,7 @@ def run_probes(results_folder: str, update_milestone: int,
     herb_brain = PPOBrain(13, 3)
     carn_brain = PPOBrain(13, 3)
 
-    results_full_folder = fr"C:\Users\saar.nehemia\PycharmProjects\Bereshit\ppo_training\marl\{results_folder}"
+    results_full_folder = fr"{RESULTS_PATH}\{results_folder}"
     herb_checkpoint = fr"{results_full_folder}\marl_checkpoints\herb_brain_{update_milestone:03d}.pth"
     carn_checkpoint = fr"{results_full_folder}\marl_checkpoints\carn_brain_{update_milestone:03d}.pth"
     if os.path.exists(herb_checkpoint) and os.path.exists(carn_checkpoint):

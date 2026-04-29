@@ -131,12 +131,24 @@ class Ecosystem:
                 dists = np.linalg.norm(np.array([a.pos for a in other_agents]) - predator.pos, axis=1)
                 close_idx = np.where(dists < self.max_attack_dist)[0]
 
+                # In case I prefer one prey strike instead of all that are close by
+                # if len(close_idx) > 0:
+                #     closest_idx = close_idx[np.argmin(dists[close_idx])] # Find the single closest prey
+                #     prey = other_agents[closest_idx]
+
                 for idx in close_idx:
                     prey = other_agents[idx]
+                    dist = dists[idx]  # Actual distance to this specific prey
 
-                    # Probability Math: Based on Mass Ratio
+                    # Proximity Favor
+                    # 1.0 at distance 0, sliding to 0.0 at max_attack_dist
+                    proximity_factor = 1.0 - (dist / self.max_attack_dist)
+
+                    # Mass Ratio
                     mass_ratio = predator.mass / (predator.mass + prey.mass)
-                    success_prob = mass_ratio * 0.9  # Max 90% success
+
+                    # Combined Success Probability
+                    success_prob = mass_ratio * proximity_factor * 0.95  # Max 90% success
 
                     roll = np.random.uniform(0, 1)
                     if roll < success_prob:

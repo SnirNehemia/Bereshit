@@ -6,11 +6,13 @@ import matplotlib.pyplot as plt
 
 from ppo_training.ppo_brain import PPOBrain
 
+RESULTS_PATH = rf'C:\Users\saar.nehemia\PycharmProjects\Bereshit\ppo_training\marl\results'
+
 
 def load_brain(results_folder, species, update_milestone):
     brain = PPOBrain(13, 3)
 
-    results_full_folder = fr"C:\Users\saar.nehemia\PycharmProjects\Bereshit\ppo_training\marl\{results_folder}"
+    results_full_folder = fr"{RESULTS_PATH}\{results_folder}"
     brain_checkpoint = fr"{results_full_folder}\marl_checkpoints\{species}_brain_{update_milestone:03d}.pth"
     if os.path.exists(brain_checkpoint):
         brain.load_state_dict(torch.load(brain_checkpoint))
@@ -19,11 +21,16 @@ def load_brain(results_folder, species, update_milestone):
     return brain
 
 
-def probe_behavior_vectors(brain, species='herb'):
+def probe_behavior_vectors(results_folder: str, species: str, update_milestone: int,
+                           to_show: bool = True, to_save: bool = True):
     """
     Probes the directional intent of the brain using vector alignment.
     Alignment = Dot(Target_Direction_Vector, Agent_Movement_Vector)
     """
+
+    # Load brain
+    brain = load_brain(results_folder, species, update_milestone)
+
     res = 30
     angles = np.linspace(-1, 1, res)  # Normalized -1 to 1 (Left to Right)
     dists = np.linspace(1, -1, res)  # Normalized 1 to -1 (Far to Close)
@@ -76,14 +83,20 @@ def probe_behavior_vectors(brain, species='herb'):
     plt.xlabel("Stimulus Angle (Left to Right)")
     plt.ylabel("Stimulus Distance (Close to Far)")
     plt.grid(alpha=0.3)
-    plt.show()
+
+    if to_save:
+        results_full_folder = fr"{RESULTS_PATH}\{results_folder}"
+        filename = f"{results_full_folder}\probe_vectors_{species}_update{update_milestone:03d}.png"
+        plt.savefig(filename, dpi=150)
+        print(f"Saved plot to '{filename}'")
+
+    if to_show:
+        plt.show()
 
 
 if __name__ == '__main__':
     results_folder = 'marl_results_500_ent005_ex_eat_dist_reward'
     species = 'carn'
     update_milestone = 500
-
-    brain = load_brain(results_folder=results_folder, species=species,
-                       update_milestone=update_milestone)
-    probe_behavior_vectors(brain, species=species)
+    probe_behavior_vectors(results_folder=results_folder, species=species, update_milestone=update_milestone,
+                           to_show=True, to_save=False)

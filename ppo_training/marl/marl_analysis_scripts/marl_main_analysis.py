@@ -1,6 +1,6 @@
 from ppo_training.marl.marl_analysis_scripts.marl_analyze_entropy import analyze_exploration_decay
 from ppo_training.marl.marl_analysis_scripts.marl_analyze_weights import analyze_synaptic_attention
-from ppo_training.marl.marl_analysis_scripts.marl_evaluation import render_ecosystem
+from ppo_training.marl.marl_analysis_scripts.marl_evaluate_actor_video import render_ecosystem
 from ppo_training.marl.marl_analysis_scripts.marl_value_map_video import create_evolution_movie
 from ppo_training.marl.marl_analysis_scripts.probe_decision_making import run_probes
 

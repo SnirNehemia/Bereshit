@@ -60,6 +60,7 @@ def render_ecosystem(results_folder: str, update_milestone: int):
     writer = FFMpegWriter(fps=20)
     filename = fr"{results_full_folder}\ecosystem_evaluation_{update_milestone:03d}.mp4"
 
+    actions_dict = {}
     pop_history_herb = []
     pop_history_carn = []
 
@@ -97,6 +98,15 @@ def render_ecosystem(results_folder: str, update_milestone: int):
                 # Size relative to mass
                 size = agent.mass * 8
                 ax_sim.plot(agent.pos[0], agent.pos[1], marker='o', color=color, markersize=size)
+
+                # Plot strike zone for each carnivore and attack indicator (yellow X)
+                if agent.is_carnivore:
+                    strike_circle = plt.Circle(agent.pos, env.max_attack_dist, color='red', fill=False, alpha=0.2)
+                    ax_sim.add_artist(strike_circle)
+
+                    if actions_dict:
+                        if actions_dict[agent.id][2] > 0:
+                            ax_sim.plot(agent.pos[0], agent.pos[1], 'yx', markersize=12)  # Yellow X for attack
 
                 # Draw direction arrow
                 dx = 0.2 * np.cos(agent.angle)
@@ -146,6 +156,6 @@ def render_ecosystem(results_folder: str, update_milestone: int):
 
 
 if __name__ == "__main__":
-    results_folder = 'marl_results_500_ent001'
+    results_folder = 'updates500_ent005_ex_energy_hp_reward_2'
     update_milestone = 500
     render_ecosystem(results_folder=results_folder, update_milestone=update_milestone)

@@ -13,7 +13,7 @@ import importlib
 from b_basic.creatures.creature import Creature
 from b_basic.sim_config import sim_config
 from c_models.physical_model_factory import PhysicalModelFactory
-from d_controllers import simulation_utils
+from directions import simulation_utils
 from e_logs import traits_evolution
 from e_logs.statistics_logs import StatisticsLogs
 
@@ -121,12 +121,6 @@ class Simulation:
                         kd_tree=kd_tree,
                         candidate_points=candidate_points,
                         candidates_indices_to_remove=candidates_indices_to_remove)
-                    if channel_name == 'creature' and result is not None:
-                        target_idx = result[2]
-                        target_id = self.creatures_ids[target_idx]
-                        target_creature = self.creatures[target_id]
-                        dangerous_target_flag = int(target_creature.digest_dict.get('creature', 0) > 0)
-                        result = (*result, creature.mass / max(target_creature.mass, 1e-6), dangerous_target_flag)
                 else:
                     result = None
 
@@ -682,7 +676,7 @@ class Simulation:
             if result is None or creature.digest_dict[food_type] == 0:
                 continue
             else:
-                food_distance, food_angle, food_idx = result[0:3]
+                food_distance, food_angle, food_idx = result
 
                 if food_type == 'grass':
                     food_to_remove_list = self.env.grass_indices_to_remove
@@ -701,49 +695,21 @@ class Simulation:
 
                     is_child = creature.creature_id == prey.parent_id
                     is_father = creature.parent_id == prey.creature_id
-                    is_food_condition_met = not is_child and not is_father
+                    is_food_condition_met = creature.mass >= prey.mass and not is_child and not is_father
 
                 # Check if conditions to eat food are met (if so, eat and add to food_remove_list)
                 is_food_available = food_idx not in food_to_remove_list
-                if food_type == 'creature':
-                    food_range_limit = sim_config.config.ATTACK_DISTANCE_THRESHOLD
-                else:
-                    food_range_limit = sim_config.config.FOOD_DISTANCE_THRESHOLD
-                is_food_close_enough = food_distance <= food_range_limit
+                is_food_close_enough = food_distance <= sim_config.config.FOOD_DISTANCE_THRESHOLD
 
                 if is_food_available and is_food_close_enough and is_food_condition_met:
-                    if food_type == 'creature':
-                        attack_energy_per_mass = sim_config.config.ATTACK_ENERGY_PER_MASS
-                        attack_energy_cost = attack_energy_per_mass * creature.mass
-                        creature.energy -= attack_energy_cost
-                        creature.log.add_record('attack_attempt', step_counter)
-                        creature.log.add_record('attack_energy_cost', attack_energy_cost)
+                    # eat food and record it
+                    self.physical_model.digest_food(
+                        creature=creature, food_type=food_type, food_energy=food_energy)
+                    creature.log.add_record(f'eat_{food_type}', step_counter)
 
-                        mass_ratio = result[4]
-                        attack_success_probability = simulation_utils.calc_attack_success_probability(
-                            mass_ratio=mass_ratio,
-                            distance=food_distance
-                        )
-                        creature.log.add_record('attack_probability', attack_success_probability)
-                        if np.random.rand() <= attack_success_probability:
-                            self.physical_model.digest_food(
-                                creature=creature, food_type=food_type, food_energy=food_energy)
-                            creature.log.add_record(f'eat_{food_type}', step_counter)
-                            food_to_remove_list.append(food_idx)
-                            eaten_food_type = food_type
-                        else:
-                            creature.log.add_record('attack_fail', step_counter)
-                        # At most one attack attempt per step.
-                        break
-                    else:
-                        # eat food and record it
-                        self.physical_model.digest_food(
-                            creature=creature, food_type=food_type, food_energy=food_energy)
-                        creature.log.add_record(f'eat_{food_type}', step_counter)
-
-                        # remove food
-                        food_to_remove_list.append(food_idx)
-                        eaten_food_type = food_type
-                        break
+                    # remove food
+                    food_to_remove_list.append(food_idx)
+                    eaten_food_type = food_type
+                    break
 
         return eaten_food_type, food_idx

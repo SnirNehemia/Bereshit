@@ -29,7 +29,10 @@ class PhysicalModel1(PhysicalModel):
         # update energy
         force_mag = decision[0]
         propulsion_energy = self.energy_conversion_factors['activity_efficiency'] * force_mag
-        creature.energy -= propulsion_energy
+        rest_energy = self.energy_conversion_factors['rest'] * creature.mass ** 0.75
+        brain_energy = self.energy_conversion_factors['brain_consumption'] * creature.brain.size
+        inner_energy = rest_energy + brain_energy
+        creature.energy -= propulsion_energy + inner_energy
 
     def digest_food(self, creature, food_type, food_energy, **kwargs):
         """

@@ -60,9 +60,15 @@ class Config:
         setattr(self, 'FOOD_SIZE', self.FOOD_DISTANCE_THRESHOLD / 2)  # for display
 
         # Eyes and brain parameters
-        num_channels = len(self.CHANNELS_LIST) * len(self.EYES)
-        norm_input = np.append(self.NORM_INPUT, [1, self.VISION_LIMIT, 1] * num_channels)
-        setattr(self, 'NORM_INPUT', norm_input)
+        # Base eye features for every channel: [flag, distance, angle].
+        # Creature channel adds [target_mass, dangerous_target_flag].
+        norm_input = list(self.NORM_INPUT)
+        for _ in self.EYES:
+            for channel_name in self.CHANNELS_LIST:
+                norm_input.extend([1, self.VISION_LIMIT, 1])
+                if channel_name == 'creature':
+                    norm_input.extend([1, 1])
+        setattr(self, 'NORM_INPUT', np.asarray(norm_input, dtype=float))
 
         # Mutations parameters
         if self.BRAIN_TYPE == 'fully_connected_brain':  # 'fully_connected_brain' or 'graphic_brain'

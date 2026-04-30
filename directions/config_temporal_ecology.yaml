@@ -21,19 +21,12 @@ physical_model_type: physicalmodel1  # physical model type
 physical_model_parameters:
   # convert physical parameters to energy
   energy_conversion_factors: { 'activity_efficiency': 0.75, # propulsion force to energy factor (higher -> efficient)
-                              'rest': 0.001,  # constant for Basal Metabolic Rate (BMR) energy
-                              'brain_consumption': 0,  # [E]/[no units] convert brain size to brain consumption energy
-                              'mass_energy': 200,  # [E]/[m] = [v^2] = [m^2/sec^4]  convert mass to energy
+                               'mass_energy': 200  # [E]/[m] = [v^2] = [m^2/sec^4]  convert mass to energy
   }
 
 # Environment parameters
 ENV_PATH: b_basic\environments\env_images\Env8.png
 FOOD_DISTANCE_THRESHOLD: 75
-ATTACK_DISTANCE_THRESHOLD: 25
-ATTACK_LOGIT_BIAS: -1.2
-ATTACK_MASS_RATIO_WEIGHT: 1.0
-ATTACK_DISTANCE_WEIGHT: 2.0
-ATTACK_ENERGY_PER_MASS: 2.0
 
 GRASS_MAX_NUM: 100
 GRASS_GENERATION_RATE: 5
@@ -131,6 +124,14 @@ PURGE_SPEED_THRESHOLD: 0.1  # minimal speed needed to remain alive after purge
 # Video parameters
 FRAME_INTERVAL: 75  # interval between frames in animation [in ms]
 FFMPEG_PATH: a_utils\ffmpeg-2025-02-20-git-bc1a3bfd2c-essentials_build\bin\ffmpeg.exe
+
+# Temporal ecology parameters (drought, seasons)
+SEASON_LENGTH: 5000  # steps per season cycle
+DROUGHT_PROBABILITY: 0.1  # chance of drought when in drought window
+DROUGHT_GROWTH_FACTOR: 0.2  # growth chance multiplier during drought
+DROUGHT_LENGTH: 500  # steps per drought window
+GRASS_TYPE_A_ACTIVE_PHASE: [0.0, 0.5]  # first half of season
+GRASS_TYPE_B_ACTIVE_PHASE: [0.5, 1.0]  # second half of season
 
 
 

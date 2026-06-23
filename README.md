@@ -1,4 +1,8 @@
 # Bereshit
+
+## a demonstration of the simulation
+![alt text](demonstration.gif)
+
 ## Installation
 - install ffmpeg and put it in project folder
 - create venv:
